@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bullet Hell Dodging — Pixel Space Shooter V2</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="hud-bar">
+      <div class="hud-left">
+        <span class="badge">STAGE: <strong id="stage-label">TIER 01 WAVE</strong></span>
+        <span class="badge">SCORE: <strong id="score-label">000000</strong></span>
+        <span class="badge">BUILD: <strong id="build-label">HP+0 / WP Lv0 / MOB+0</strong></span>
+      </div>
+      <div class="hud-center">
+        <span class="controls-hint">이동: WASD/방향키(Shift:정밀) · 자동사격 · 보상선택: 1/2/3 또는 클릭 · 일시정지: ESC · 재시작: R · 검증도구: F2</span>
+      </div>
+      <div class="hud-right">
+        <button id="btn-pause" type="button" title="일시정지 (ESC)">일시정지</button>
+        <button id="btn-restart" type="button" title="재시작 (R)">재시작</button>
+        <button id="btn-debug-toggle" type="button" title="검증 도구 열기/닫기 (F2)">검증 도구</button>
+      </div>
+    </header>
+
+    <main id="viewport-wrap">
+      <div id="canvas-stage">
+        <canvas id="game-canvas" width="1284" height="724"></canvas>
+
+        <!-- Even-Tier Boss Reward Selection Modal (Tier 02, 04, 06, 08) -->
+        <div id="reward-screen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reward-title">
+          <div class="reward-modal">
+            <div class="reward-header">
+              <span id="reward-tier-badge" class="reward-badge">TIER 02 BOSS DEFEATED</span>
+              <h2 id="reward-title">보스 격파 보상 선택</h2>
+              <p class="reward-desc">세 가지 강화 중 <strong>하나</strong>를 선택하세요 (클릭 또는 키보드 <strong>1 / 2 / 3</strong>)</p>
+            </div>
+            <div class="reward-cards">
+              <button type="button" class="reward-card" data-reward="vitality" id="reward-card-1">
+                <div class="card-key">KEY [1]</div>
+                <div class="card-icon card-icon-hp">♥</div>
+                <h3 class="card-title">체력 강화</h3>
+                <p class="card-effect">최대 체력 <strong>+1</strong> 증가<br/>현재 체력 <strong>+2</strong> 즉시 회복</p>
+                <div class="card-stat" id="reward-stat-vitality">현재: 5/5 → 선택 후: 6/6</div>
+              </button>
+
+              <button type="button" class="reward-card" data-reward="equipment" id="reward-card-2">
+                <div class="card-key">KEY [2]</div>
+                <div class="card-icon card-icon-wp">✦</div>
+                <h3 class="card-title">장비 강화</h3>
+                <p class="card-effect" id="reward-desc-equipment">무기 1단계 진화<br/>정면 2연발 평행 사격</p>
+                <div class="card-stat" id="reward-stat-equipment">무기 레벨: Lv0 → Lv1</div>
+              </button>
+
+              <button type="button" class="reward-card" data-reward="mobility" id="reward-card-3">
+                <div class="card-key">KEY [3]</div>
+                <div class="card-icon card-icon-mob">≫</div>
+                <h3 class="card-title">기동성 강화</h3>
+                <p class="card-effect">기체 크기 <strong>×0.93</strong> 소형화<br/>이동·정밀 속도 <strong>×1.06</strong> 증가</p>
+                <div class="card-stat" id="reward-stat-mobility">배율: 3.00x → 2.79x / 속도: 100% → 106%</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pause / Game Over / Clear Overlay -->
+        <div id="overlay-screen" class="overlay hidden">
+          <div class="overlay-card">
+            <h1 id="overlay-title">PAUSED</h1>
+            <p id="overlay-subtitle">게임이 일시정지되었습니다.</p>
+            <div id="overlay-stats" class="overlay-stats"></div>
+            <div class="overlay-actions">
+              <button id="btn-overlay-resume" type="button">계속하기 (ESC)</button>
+              <button id="btn-overlay-restart" type="button">처음부터 재시작 (R)</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="loading-banner" class="loading-banner">
+          <div class="loading-box">
+            <div class="loading-title">LOADING PIXEL ASSETS...</div>
+            <div id="loading-progress" class="loading-sub">0 / 0</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <section id="debug-panel" class="debug-panel hidden" aria-label="개발 및 플레이 검증 패널">
+      <div class="debug-row">
+        <span class="debug-label">웨이브(60초):</span>
+        <button type="button" data-action="jump-tier" data-tier="1">T1</button>
+        <button type="button" data-action="jump-tier" data-tier="2">T2</button>
+        <button type="button" data-action="jump-tier" data-tier="3">T3</button>
+        <button type="button" data-action="jump-tier" data-tier="4">T4</button>
+        <button type="button" data-action="jump-tier" data-tier="5">T5</button>
+        <button type="button" data-action="jump-tier" data-tier="6">T6</button>
+        <button type="button" data-action="jump-tier" data-tier="7">T7</button>
+        <button type="button" data-action="jump-tier" data-tier="8">T8</button>
+        <span class="debug-sep">|</span>
+        <span class="debug-label">보스 직행:</span>
+        <button type="button" data-action="jump-boss" data-tier="1">B1</button>
+        <button type="button" data-action="jump-boss" data-tier="2">B2</button>
+        <button type="button" data-action="jump-boss" data-tier="3">B3</button>
+        <button type="button" data-action="jump-boss" data-tier="4">B4(호위2)</button>
+        <button type="button" data-action="jump-boss" data-tier="5">B5(돌진)</button>
+        <button type="button" data-action="jump-boss" data-tier="6">B6(미사일)</button>
+        <button type="button" data-action="jump-boss" data-tier="7">B7(레이저)</button>
+        <button type="button" data-action="jump-boss" data-tier="8">B8(4레이저/돌진)</button>
+        <button type="button" data-action="jump-shadow">그림자</button>
+        <button type="button" data-action="jump-revealed">최종보스</button>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">패턴/보상/강화 검증:</span>
+        <button type="button" data-action="trigger-b5-dash">T5 수평돌진</button>
+        <button type="button" data-action="trigger-b6-missiles">T6 4발미사일</button>
+        <button type="button" data-action="trigger-b7-laser">T7 2배레이저</button>
+        <button type="button" data-action="trigger-b8-ult">T8 4레이저 궁극기</button>
+        <button type="button" data-action="trigger-b8-dash">T8 돌진묶음</button>
+        <button type="button" data-action="trigger-final-rush">최종 느린돌진</button>
+        <button type="button" data-action="trigger-escort-laser">호위기 레이저</button>
+        <button type="button" data-action="open-reward">짝수보스 보상창</button>
+        <button type="button" data-action="cycle-weapon" id="btn-cycle-weapon">장비 레벨: Lv0</button>
+        <button type="button" data-action="cycle-mobility" id="btn-cycle-mobility">기동성: +0</button>
+        <button type="button" data-action="damage-boss">보스 -25%</button>
+        <button type="button" data-action="kill-boss">보스 격파</button>
+        <button type="button" data-action="toggle-invincible" id="btn-invincible">무적: OFF</button>
+        <button type="button" data-action="toggle-hitboxes" id="btn-hitboxes">판정/총구/1/3선: OFF</button>
+        <button type="button" data-action="heal-player">회복</button>
+        <span id="asset-warning" class="asset-warning"></span>
+      </div>
+    </section>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+dist/
+node_modules/
+.git/
+design/
+.DS_Store
+**/.DS_Store
+.env
+.env.*
+README.md
+DEPLOYMENT.md
+assets/**/source/
+assets/**/*.svg
+!assets/backgrounds/Space_Unique/rendered/*.svg
+assets/backgrounds/*.png
+assets/**/Preview.html
+assets/**/README.md
