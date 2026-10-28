@@ -48,6 +48,7 @@
     TIER7_SUMMON_INTERVAL: 2.1,
     TIER7_SUMMON_LIMIT: 6,
     ENEMY_SMALL_LASER_LIMIT: 2,
+    FINAL_VOLLEY_ACTIVE_TIME: 6,
 
     // Laser stage timings (in seconds)
     LASER_STAGE1_TIME: 0.65,
@@ -188,12 +189,14 @@
     'bosses/Final_Boss/Final_Boss_Revealed_Body.png': {
       size: [70, 50],
       visibleBounds: [4, 12, 62, 38],
+      // Native up-facing coordinates, matched to the four user-supplied port close-ups.
+      // Use the left-facing barrel lips, not the green rear exhausts of the outer pods.
+      // Half-pixel X values center each ray on its native pixel column.
       muzzles: [
-        { x: 26.0, y: 12, kind: 'body-left-main' },
-        { x: 35.0, y: 14, kind: 'body-center' },
-        { x: 44.0, y: 12, kind: 'body-right-main' },
-        { x: 19.0, y: 14, kind: 'body-left-shoulder' },
-        { x: 51.0, y: 14, kind: 'body-right-shoulder' }
+        { x: 59.5, y: 29.0, kind: 'upper-outer-port' },
+        { x: 43.5, y: 12.0, kind: 'upper-front-port' },
+        { x: 26.5, y: 12.0, kind: 'lower-front-port' },
+        { x: 10.5, y: 29.0, kind: 'lower-outer-port' }
       ]
     },
     // Final Boss - 4 Independent Invulnerable Escort Minions
@@ -739,7 +742,7 @@
     }
     if (p && statVitEl) {
       const nextMax = p.maxHp + 1;
-      const nextHp = Math.min(nextMax, p.hp + 2);
+      const nextHp = p.hp;
       statVitEl.textContent = `현재: ${p.hp}/${p.maxHp} → 선택 후: ${nextHp}/${nextMax}`;
     }
     if (p && statEqEl && descEqEl) {
@@ -775,7 +778,6 @@
       if (choiceType === 'vitality') {
         p.vitalityLevel += 1;
         p.maxHp += 1;
-        p.hp = Math.min(p.maxHp, p.hp + 2);
         state.floatingTexts.push({
           text: `체력 강화! HP ${p.hp}/${p.maxHp}`,
           x: p.x,
@@ -1242,6 +1244,11 @@
       patternStep: 0,
       hitFlash: 0.0,
 
+      bulletTimer: 0.65,
+      normalLaserTimer: 2.0,
+      overdriveTimer: 10.0,
+      sweepCount: 0,
+
       // V3 Slow Forward Rush state machine ('NORMAL' -> 'WARN' -> 'RUSH' -> 'RETURN' -> 'NORMAL')
       rushState: 'NORMAL',
       rushCooldown: 5.8,
@@ -1703,6 +1710,8 @@
       damage: opts.damage ?? CONFIG.LASER_DAMAGE,
       followEscortMuzzleIndex: opts.followEscortMuzzleIndex ?? 0,
       updateFn: opts.updateFn || null,
+      length: opts.length ?? null,
+      kind: opts.kind || 'STANDARD',
       scale: opts.scale ?? CONFIG.LASER_SCALE,
       widthMultiplier: opts.widthMultiplier ?? 1
     };
@@ -1836,6 +1845,7 @@
 
     const beam = spawnLaserBeam({
       color: escort.laserColor || 'Lime',
+      damage: 1,
       widthMultiplier: 1,
       stage1Time: 0.65,
       stage2Time: 0.35,
@@ -1851,6 +1861,68 @@
     state.telemetry.escortLasersByIdx[escort.idx] =
       (state.telemetry.escortLasersByIdx[escort.idx] || 0) + 1;
     return beam;
+  }
+
+  function startFinalSweep(boss) {
+    if (boss.finalSweep || state.lasers.some(b => b.kind === 'FINAL_VOLLEY')) return null;
+    // Four normal-width rainbow beams fire together from the photographed ports.
+    // Their shared timing preserves the existing descent and escape corridors.
+    const upward = (boss.sweepCount || 0) % 2 === 1;
+    boss.sweepCount = (boss.sweepCount || 0) + 1;
+    boss.finalSweep = { phase: 'POSITION', startY: upward ? CONFIG.CANVAS_HEIGHT * 0.65 : 150,
+      endY: upward ? 150 : CONFIG.CANVAS_HEIGHT * 0.65,
+      warningTimer: 1.1, activeElapsed: 0, beamIds: [] };
+    state.floatingTexts.push({ text: upward ? 'OVERDRIVE ↑' : 'OVERDRIVE ↓',
+      x: CONFIG.CANVAS_WIDTH / 2, y: 200, color: '#ffe366', timer: 2.2 });
+    boss.attackTimer = 2.2;
+    return boss.finalSweep;
+  }
+
+  function updateFinalSweep(boss, dt) {
+    const sweep = boss.finalSweep;
+    if (!sweep) return false;
+    if (sweep.phase === 'POSITION') {
+      if (moveEnemyToward(boss, boss.homeX, sweep.startY, 180, dt)) sweep.phase = 'WARNING';
+    } else if (sweep.phase === 'WARNING') {
+      sweep.warningTimer -= dt;
+      if (sweep.warningTimer <= 0) {
+        const muzzles = getWorldMuzzles(boss.x, boss.y, boss.spec, false, boss.scale);
+        const rainbow = ['Red', 'Orange', 'Yellow', 'Lime', 'Cyan', 'Blue', 'Violet', 'Pink'];
+        const offset = boss.rainbowVolleyCount || 0;
+        sweep.beamIds = muzzles.map((m, index) => {
+          const beam = spawnLaserBeam({
+            kind: 'FINAL_VOLLEY', color: rainbow[(offset + index * 2) % rainbow.length],
+            length: computeRayDistanceToScreenEdge(m.x, m.y, Math.PI),
+            scale: CONFIG.LASER_SCALE, widthMultiplier: 1,
+            stage1Time: 0.85, stage2Time: 0.4, stage3Time: CONFIG.FINAL_VOLLEY_ACTIVE_TIME,
+            ox: m.x, oy: m.y, angle: Math.PI, followBossMuzzleIndex: index,
+            updateFn: current => {
+              current.length = computeRayDistanceToScreenEdge(current.ox, current.oy, current.angle);
+            }
+          });
+          return beam.id;
+        });
+        boss.rainbowVolleyCount = (offset + 1) % rainbow.length;
+        sweep.phase = 'FIRING';
+      }
+    } else if (sweep.phase === 'FIRING') {
+      const beams = state.lasers.filter(b => sweep.beamIds.includes(b.id));
+      if (!beams.length) sweep.phase = 'RETURN';
+      else if (beams.every(b => b.stage === 3)) {
+        sweep.activeElapsed = Math.min(CONFIG.FINAL_VOLLEY_ACTIVE_TIME, sweep.activeElapsed + dt);
+        boss.y = sweep.startY + (sweep.endY - sweep.startY) *
+          sweep.activeElapsed / CONFIG.FINAL_VOLLEY_ACTIVE_TIME;
+      }
+    } else if (moveEnemyToward(boss, boss.homeX, boss.homeY, 160, dt)) {
+      boss.finalSweep = null;
+      boss.phaseX = 0; boss.phaseY = 0;
+      boss.bulletTimer = 0.65;
+      boss.normalLaserTimer = 1.8;
+      boss.overdriveTimer = 10;
+      boss.attackTimer = 2.2;
+    }
+    enforceRightThirdBound(boss);
+    return true;
   }
 
   /**
@@ -2216,7 +2288,27 @@
     }
   }
 
+  function fireFinalPrimaryLasers(boss) {
+    if (state.lasers.some(b => b.kind === 'FINAL_PRIMARY')) return;
+    const ports = getWorldMuzzles(boss.x, boss.y, boss.spec, false, boss.scale);
+    const cycle = boss.primaryLaserCount || 0;
+    boss.primaryLaserCount = cycle + 1;
+    const index = cycle % ports.length;
+    const m = ports[index];
+    const direction = cycle % 2 === 0 ? 1 : -1;
+    const startOffset = -direction * 0.25;
+    const colors = ['Cyan', 'Violet', 'Red', 'Yellow'];
+    // A single sustained beam sweeps at a constant rate through charging and firing.
+    spawnLaserBeam({ kind: 'FINAL_PRIMARY', color: colors[index],
+      ox: m.x, oy: m.y, angle: Math.PI + startOffset, followBossMuzzleIndex: index,
+      stage1Time: 0.9, stage2Time: 0.3, stage3Time: 2.4,
+      updateFn: beam => {
+        beam.angle = Math.PI + startOffset + direction * 0.14 * beam.elapsed;
+      } });
+  }
+
   function fireEscortMinionPattern(escort) {
+    if (escort.kind === 'FINAL_ESCORT') return; // True-form escorts use lasers exclusively.
     const muzzles = getWorldMuzzles(escort.x, escort.y, escort.spec, false, escort.scale);
     const m = muzzles[0];
     const p = escort.profile;
@@ -2292,12 +2384,18 @@
 
   function checkLaserHitsPlayer(beam, player) {
     if (beam.stage !== 3) return false; // Only Stage_03 deals damage!
-    const len = computeRayDistanceToScreenEdge(beam.ox, beam.oy, beam.angle);
+    const len = beam.length ?? computeRayDistanceToScreenEdge(beam.ox, beam.oy, beam.angle);
     const ex = beam.ox + Math.cos(beam.angle) * len;
     const ey = beam.oy + Math.sin(beam.angle) * len;
 
     // Stage 3 visible thickness is 12 native px -> half thickness = 6 * scale * widthMultiplier (24px radius for Tier_07 48px beam, 12px radius for 24px beam)
     const beamHalfThick = getLaserStageThicknessPx(beam, 3) / 2;
+    if (beam.kind === 'FINAL_VOLLEY') {
+      return checkCircleHitsBounds(player.x, player.y, player.hitboxRadius, {
+        left: Math.min(beam.ox, ex), right: Math.max(beam.ox, ex),
+        top: beam.oy - beamHalfThick, bottom: beam.oy + beamHalfThick
+      });
+    }
     const totalR = beamHalfThick + player.hitboxRadius;
     return distSqPointToSegment(player.x, player.y, beam.ox, beam.oy, ex, ey) <= totalR * totalR;
   }
@@ -2727,6 +2825,8 @@
       return;
     }
 
+    if (boss.kind === 'FINAL_REVEALED' && updateFinalSweep(boss, dt)) return;
+
     // Tier 04 Escort single-respawn timer management
     if (boss.kind === 'TIER_BOSS' && boss.tier === 4 && boss.t4EscortRespawnTimers.length > 0) {
       for (let i = boss.t4EscortRespawnTimers.length - 1; i >= 0; i--) {
@@ -2804,8 +2904,12 @@
         if (boss.dashSideShotTimer <= 0 && boss.x > 60 && boss.x < CONFIG.CANVAS_WIDTH - 60) {
           boss.dashSideShotTimer = 0.28;
           const sideSpeed = 200;
-          spawnEnemyBullet(boss.x, boss.y, 0, -sideSpeed, 'Diamond', 'Orange');
-          spawnEnemyBullet(boss.x, boss.y, 0,  sideSpeed, 'Diamond', 'Orange');
+          for (const side of [-1, 1]) {
+            for (const spread of [-0.16, 0, 0.16]) {
+              spawnEnemyBullet(boss.x, boss.y, Math.sin(spread) * sideSpeed,
+                side * Math.cos(spread) * sideSpeed, 'Diamond', 'Orange');
+            }
+          }
         }
 
         // Continuous swept-segment collision check against player core
@@ -3052,19 +3156,20 @@
         boss.attackTimer = 0.85;
       }
     } else if (boss.kind === 'FINAL_REVEALED') {
-      boss.attackTimer -= dt;
-      if (boss.attackTimer <= 0) {
-        fireRevealedBossPattern(boss);
-        boss.attackTimer = 0.78;
-      }
-
-      boss.rushCooldown -= dt;
-      if (boss.rushCooldown <= 0) {
-        boss.rushState = 'WARN';
-        boss.rushTimer = 0.95;
-        boss.rushY = state.player
-          ? Math.round(Math.max(155, Math.min(CONFIG.CANVAS_HEIGHT - 155, state.player.y)))
-          : Math.round(boss.y);
+      boss.bulletTimer -= dt;
+      boss.normalLaserTimer -= dt;
+      boss.overdriveTimer -= dt;
+      if (boss.overdriveTimer <= 0 && !state.lasers.some(b => b.kind === 'FINAL_PRIMARY')) {
+        startFinalSweep(boss);
+      } else {
+        if (boss.bulletTimer <= 0) {
+          fireRevealedBossPattern(boss);
+          boss.bulletTimer = 0.78;
+        }
+        if (boss.normalLaserTimer <= 0 && boss.overdriveTimer > 4.0) {
+          fireFinalPrimaryLasers(boss);
+          boss.normalLaserTimer = 4.5;
+        }
       }
     }
   }
@@ -3109,20 +3214,31 @@
 
       const pr = esc.profile;
       const orbitScale = hasOwnLaser ? 0.45 : 1.0;
-      const targetX = state.boss.x + pr.offsetX +
+      let targetX = state.boss.x + pr.offsetX +
         Math.sin(esc.age * pr.freqX1) * pr.ampX * orbitScale +
         Math.cos(esc.age * pr.freqX2) * (pr.ampX * 0.45 * orbitScale) +
         esc.wanderOffsetX * orbitScale + esc.recoilX;
-      const targetY = state.boss.y + pr.offsetY +
+      let targetY = state.boss.y + pr.offsetY +
         Math.cos(esc.age * pr.freqY1) * pr.ampY * orbitScale +
         Math.sin(esc.age * pr.freqY2) * (pr.ampY * 0.45 * orbitScale) +
         esc.wanderOffsetY * orbitScale;
 
+      if (esc.kind === 'FINAL_ESCORT') {
+        if (esc.freeTargetTimer === undefined || esc.freeTargetTimer <= 0) {
+          esc.freeTargetX = CONFIG.ENEMY_MIN_X + 40 + Math.random() * (CONFIG.CANVAS_WIDTH - CONFIG.ENEMY_MIN_X - 80);
+          esc.freeTargetY = 90 + Math.random() * (CONFIG.CANVAS_HEIGHT - 150);
+          esc.freeTargetTimer = 0.8 + Math.random() * 0.9;
+        }
+        esc.freeTargetTimer -= dt;
+        targetX = esc.freeTargetX; targetY = esc.freeTargetY;
+      }
+
       const dx = targetX - esc.x;
       const dy = targetY - esc.y;
       const dist = Math.hypot(dx, dy);
-      if (dist > 0.5) {
-        const moveSpd = pr.speed * (hasOwnLaser ? 0.65 : 1.0);
+      if (dist > 0.5 && !(esc.kind === 'FINAL_ESCORT' && hasOwnLaser)) {
+        const moveSpd = esc.kind === 'FINAL_ESCORT'
+          ? pr.speed * (hasOwnLaser ? 1.0 : 1.25) : pr.speed * (hasOwnLaser ? 0.65 : 1.0);
         const step = Math.min(dist, moveSpd * dt);
         esc.x += (dx / dist) * step;
         esc.y += (dy / dist) * step;
@@ -3146,7 +3262,7 @@
             const currentEscortBeams = state.lasers.filter((l) => l.followEscortId !== null).length;
             if (currentEscortBeams < 2 && !hasOwnLaser) {
               spawnEscortLaser(esc);
-              esc.laserCooldown = pr.laserInterval * (0.88 + Math.random() * 0.28);
+              esc.laserCooldown = pr.laserInterval * (0.65 + Math.random() * 0.2);
               esc.fireCooldown = Math.max(esc.fireCooldown, 1.1);
             } else {
               esc.laserCooldown = 0.55 + Math.random() * 0.35;
@@ -3155,7 +3271,7 @@
         }
 
         esc.fireCooldown -= dt;
-        if (esc.fireCooldown <= 0 && !hasOwnLaser) {
+        if (esc.kind !== 'FINAL_ESCORT' && esc.fireCooldown <= 0 && !hasOwnLaser) {
           fireEscortMinionPattern(esc);
           esc.fireCooldown = pr.fireInterval * (0.85 + Math.random() * 0.3);
         }
@@ -3262,6 +3378,15 @@
     if (!boss || boss.defeatedHandled) return;
     boss.defeatedHandled = true;
 
+    // Every boss heals current HP by one; this never changes maximum HP.
+    if (state.player && state.player.hp > 0) {
+      const p = state.player;
+      const healed = Math.min(1, p.maxHp - p.hp);
+      p.hp += healed;
+      if (healed) state.floatingTexts.push({ text: '+1 HP', x: p.x, y: p.y - 36,
+        color: '#ff7899', timer: 1.5 });
+    }
+
     spawnExplosion(boss.x, boss.y, '#ffce36', 34);
 
     if (boss.kind === 'TIER_BOSS') {
@@ -3291,6 +3416,7 @@
         esc.invulnerable = false;
         spawnExplosion(esc.x, esc.y, '#a8ec46', 22);
       }
+      clearAllCombatHazards();
       boss.dyingTimer = 0.9;
     }
     updateHudBadges();
@@ -3335,8 +3461,18 @@
   function renderGame() {
     ctx.imageSmoothingEnabled = false;
 
+    const finalBoss = state.boss?.kind === 'FINAL_REVEALED' ? state.boss : null;
+    const sweep = finalBoss?.finalSweep;
+    const firing = sweep?.phase === 'FIRING' && sweep.activeElapsed > 0;
+    const shake = firing ? (sweep.activeElapsed < 0.24 ? 7 : 2.2) :
+      sweep?.phase === 'WARNING' ? (1 - sweep.warningTimer / 1.1) * 2 : 0;
+    ctx.save();
+    if (shake) ctx.translate(Math.round(Math.sin(finalBoss.age * 83) * shake),
+      Math.round(Math.cos(finalBoss.age * 97) * shake));
+
     // 1. Streaming Space_Unique Background
     renderBackground();
+    if (finalBoss && !finalBoss.dyingTimer) renderFinalBossPresence(finalBoss);
 
     // 2. Optional Debug Overlay: Right 1/3 Boundary Line (x = 856)
     if (state.debugShowHitboxes) {
@@ -3542,8 +3678,51 @@
       ctx.restore();
     }
 
+    ctx.restore(); // Camera vibration never moves health, timer, or boss bar.
+
     // 16. Render Pixel UI (Top-left Player HP, Top-center Timer, Top-center 64x32 Boss Health Bar)
     renderPixelUI();
+  }
+
+  function renderFinalBossPresence(boss) {
+    const sweep = boss.finalSweep;
+    const charge = sweep && ['POSITION', 'WARNING'].includes(sweep.phase);
+    const pulse = (Math.sin(boss.age * 5) + 1) / 2;
+    ctx.save();
+    // Pixel aura and orbiting energy motes establish the main body's presence without enlarging its hitbox.
+    const bounds = getRotatedBounds(boss.x, boss.y, boss.spec, false, boss.scale);
+    ctx.fillStyle = `rgba(150, 80, 255, ${0.045 + pulse * 0.035})`;
+    ctx.fillRect(bounds.left - 18, bounds.top - 18, bounds.width + 36, bounds.height + 36);
+    for (let i = 0; i < 12; i++) {
+      const a = boss.age * 0.8 + i * Math.PI / 6;
+      ctx.fillStyle = i % 2 ? '#b088ff' : '#d5ff57';
+      const r = charge ? 110 - (1 - (sweep.warningTimer || 0) / 1.1) * 20 : 100;
+      ctx.globalAlpha = 0.4 + pulse * 0.35;
+      ctx.fillRect(Math.round(boss.x + Math.cos(a) * r), Math.round(boss.y + Math.sin(a) * 115), 4, 4);
+    }
+    ctx.globalAlpha = 1;
+    if (charge) {
+      const ports = getWorldMuzzles(boss.homeX, sweep.startY, boss.spec, false, boss.scale);
+      const travel = sweep.endY - sweep.startY;
+      const top = Math.min(...ports.map(m => Math.min(m.y, m.y + travel))) - 12;
+      const bottom = Math.max(...ports.map(m => Math.max(m.y, m.y + travel))) + 12;
+      const right = Math.max(...ports.map(m => m.x));
+      // One solid translucent danger zone, matching the Tier 5 lane treatment.
+      ctx.fillStyle = `rgba(255, 65, 90, ${0.12 + pulse * 0.055})`;
+      ctx.fillRect(0, top, right, bottom - top);
+      ctx.strokeStyle = '#ff526b'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(right, top);
+      ctx.moveTo(0, bottom); ctx.lineTo(right, bottom); ctx.stroke();
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = '#ffe366'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(sweep.endY > sweep.startY ? 'OVERDRIVE  ↓ ↓ ↓ ↓' : 'OVERDRIVE  ↑ ↑ ↑ ↑',
+        CONFIG.CANVAS_WIDTH / 2, 112);
+    }
+    if (sweep?.phase === 'FIRING' && sweep.activeElapsed > 0 && sweep.activeElapsed < 0.24) {
+      ctx.fillStyle = `rgba(205, 180, 255, ${0.16 * (1 - sweep.activeElapsed / 0.24)})`;
+      ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+    }
+    ctx.restore();
   }
 
   function msRound(v) {
@@ -3589,7 +3768,7 @@
     const color = beam.color;
     const scale = beam.scale || CONFIG.LASER_SCALE;
     const widthMult = beam.widthMultiplier || 1;
-    const totalLen = computeRayDistanceToScreenEdge(beam.ox, beam.oy, beam.angle);
+    const totalLen = beam.length ?? computeRayDistanceToScreenEdge(beam.ox, beam.oy, beam.angle);
 
     const originImg = assets.images.get(`lasers/${color}/Laser_${color}_Stage_0${st}_Origin.png`);
     const bodyImg   = assets.images.get(`lasers/${color}/Laser_${color}_Stage_0${st}_Body.png`);
@@ -3598,7 +3777,8 @@
     const canvasH = 32 * scale * widthMult;
     const halfH = 16 * scale * widthMult; // centerY = 16 native
     const originW = 8 * scale * widthMult;
-    const tipW = 12 * scale * widthMult;
+    const tipNativeWidth = beam.kind === 'FINAL_VOLLEY' ? 9 : 12;
+    const tipW = tipNativeWidth * scale * widthMult;
     const bodyLen = Math.max(0, Math.round(totalLen - originW - tipW));
 
     ctx.save();
@@ -3607,6 +3787,15 @@
     // Keep vertical pixel row shading right-side-up when shooting left
     if (Math.cos(beam.angle) < 0) {
       ctx.scale(1, -1);
+    }
+
+    // Show the eventual damaging width before ordinary final-body lasers activate.
+    if (beam.kind === 'FINAL_PRIMARY' && st < 3) {
+      const half = getLaserStageThicknessPx(beam, 3) / 2;
+      ctx.fillStyle = 'rgba(255, 110, 170, 0.12)';
+      ctx.fillRect(0, -half, totalLen, half * 2);
+      ctx.strokeStyle = '#ffb9e1'; ctx.lineWidth = 1;
+      ctx.strokeRect(0, -half, totalLen, half * 2);
     }
 
     // Subtle aim pulse during Stage 1/2 charge warnings
@@ -3625,7 +3814,8 @@
         ctx.drawImage(bodyImg, originW, -halfH, bodyLen, canvasH);
       }
       // 3. Rounded Tip attached once at the end without horizontal or vertical stretching
-      ctx.drawImage(tipImg, originW + bodyLen, -halfH, tipW, canvasH);
+      ctx.drawImage(tipImg, 0, 0, tipNativeWidth, 32,
+        originW + bodyLen, -halfH, tipW, canvasH);
       ctx.restore();
     } else {
       const thick = getLaserStageThicknessPx(beam, st);
@@ -3643,7 +3833,7 @@
     ctx.restore();
 
     // Render mechanical emitter node only if beam originates from Tier 08 rear ultimate array
-    if (beam.followBossMuzzleIndex === null && beam.followEscortId === null) {
+    if (beam.kind !== 'FINAL_VOLLEY' && beam.followBossMuzzleIndex === null && beam.followEscortId === null) {
       ctx.save();
       ctx.fillStyle = st === 3 ? '#ffffff' : '#43d8fa';
       ctx.strokeStyle = '#367dff';
@@ -4276,11 +4466,10 @@
         state.boss.entering = false;
         state.boss.revealTimer = 0;
       }
-      state.boss.rushState = 'WARN';
-      state.boss.rushTimer = 0.95;
-      state.boss.rushY = state.player
-        ? Math.round(Math.max(155, Math.min(CONFIG.CANVAS_HEIGHT - 155, state.player.y)))
-        : Math.round(state.boss.y);
+      state.lasers = state.lasers.filter(b => !['FINAL_VOLLEY', 'FINAL_PRIMARY'].includes(b.kind));
+      state.boss.finalSweep = null;
+      startFinalSweep(state.boss);
+      state.boss.attackTimer = 2.2;
     } else if (action === 'trigger-escort-laser') {
       if (!state.boss || state.boss.kind !== 'FINAL_REVEALED') {
         state.currentTier = 8;
@@ -4382,6 +4571,10 @@
     fireSingleTier6WingMissile,
     fireBossPrimaryLaser,
     spawnEscortLaser,
+    startFinalSweep,
+    fireFinalPrimaryLasers,
+    checkLaserHitsPlayer,
+    fireEscortMinionPattern,
     openRewardSelection,
     applyRewardChoice,
     handleBossDefeated,
@@ -4456,9 +4649,8 @@
       state.boss.entering = false;
       state.boss.revealTimer = 0;
       if (params.get('rush') === '1') {
-        state.boss.rushState = 'RUSH';
-        state.boss.rushY = 362;
-        state.boss.y = 362;
+        startFinalSweep(state.boss, 1);
+        state.boss.attackTimer = 2.2;
       }
       if (params.get('escortLasers') === '1' && state.escorts.length >= 2) {
         spawnEscortLaser(state.escorts[0]);

@@ -142,4 +142,168 @@ test('Pause and rewards freeze special states; restart clears everything', () =>
  s.mode = 'REWARD'; tick(2); assert.equal(e.specialTimer, timer);
  g.resetGame(); assert.equal(s.enemies.length, 0); assert.equal(s.lasers.length, 0);
 });
+test('Each boss heals current HP by one without increasing its maximum', () => {
+ for (let tier = 1; tier <= 8; tier++) {
+  fresh(); s.player.hp = 2;
+  g.startTierBoss(tier); g.handleBossDefeated();
+  assert.equal(s.player.hp, 3); assert.equal(s.player.maxHp, 5);
+  g.handleBossDefeated(); assert.equal(s.player.hp, 3);
+ }
+ for (const start of [g.startShadowBoss, g.startRevealedFinalBoss]) {
+  fresh(); s.player.hp = 2; start(); g.handleBossDefeated();
+  assert.equal(s.player.hp, 3); assert.equal(s.player.maxHp, 5);
+ }
+ fresh(); g.startTierBoss(1); g.handleBossDefeated();
+ assert.equal(s.player.hp, 5); assert.equal(s.player.maxHp, 5);
+});
+test('Vitality reward raises only max HP; boss heal remains separate', () => {
+ fresh(); s.player.hp = 2; g.startTierBoss(2); g.handleBossDefeated();
+ assert.equal(s.player.hp, 3); assert.equal(s.mode, 'REWARD');
+ assert.match(nodes.get('reward-stat-vitality').textContent, /3\/5.*3\/6/);
+ g.applyRewardChoice('vitality');
+ assert.equal(s.player.hp, 3); assert.equal(s.player.maxHp, 6);
+ g.applyRewardChoice('vitality'); assert.equal(s.player.maxHp, 6);
+});
+for (const fps of [30,60]) {
+ test(`Final boss descends firing four synchronized rainbow beams from the selected ports (${fps}fps)`, () => {
+  fresh(); g.startRevealedFinalBoss(); const boss = s.boss;
+  boss.entering = false; boss.revealTimer = 0;
+  const ports = boss.spec.muzzles;
+  assert.equal(ports.length, 4);
+  assert.equal(JSON.stringify(ports.map(p => [p.x,p.y])), JSON.stringify([[59.5,29],[43.5,12],[26.5,12],[10.5,29]]));
+  const sweep = g.startFinalSweep(boss);
+  let fired = false, minTip = Infinity, maxBottom = 0, firstFiringY;
+  for (let i = 0; i < 15 * fps; i++) {
+   const oldY = boss.y; g.updateGame(1 / fps);
+   assert.ok(Math.abs(boss.y - oldY) <= 180 / fps + 0.01, 'No boss teleport');
+   const beams = s.lasers.filter(b => sweep.beamIds.includes(b.id));
+   if (beams.length) {
+    assert.equal(beams.length, 4);
+    assert.equal(new Set(beams.map(b => b.color)).size, 4);
+    assert.equal(new Set(beams.map(b => b.stage)).size, 1, 'Charge and fire together');
+    const muzzles = g.getWorldMuzzles(boss.x, boss.y, boss.spec, false, boss.scale);
+    beams.forEach((beam,index) => {
+     assert.equal(beam.kind, 'FINAL_VOLLEY');
+     assert.equal(beam.followBossMuzzleIndex, index);
+     assert.ok(Math.abs(beam.ox - muzzles[index].x) < 0.001);
+     assert.ok(Math.abs(beam.oy - muzzles[index].y) < 0.001);
+     minTip = Math.min(minTip, beam.ox - beam.length);
+     maxBottom = Math.max(maxBottom, beam.oy + g.getLaserStageThicknessPx(beam, 3) / 2);
+     assert.ok(Math.abs(beam.ox - beam.length + 16) < 0.001, 'Every ray covers the left screen edge with 16px overscan');
+     assert.equal(g.getLaserStageThicknessPx(beam, 3), 24, 'Basic width, no big laser');
+     if (beam.stage === 3) {
+      fired = true; firstFiringY ??= boss.y;
+      assert.ok(boss.y >= firstFiringY);
+      assert.equal(g.checkLaserHitsPlayer(beam, { x: 65, y: beam.oy, hitboxRadius: 8 }), true);
+      assert.equal(g.checkLaserHitsPlayer(beam, { x: 500, y: beam.oy, hitboxRadius: 8 }), true);
+      assert.equal(g.checkLaserHitsPlayer(beam, { x: 500, y: 680, hitboxRadius: 8 }), false);
+     }
+    });
+   }
+   if (fired && !boss.finalSweep) break;
+  }
+  assert.ok(fired); assert.ok(Math.abs(minTip + 16) < 0.001); assert.ok(maxBottom < 550);
+  assert.equal(boss.finalSweep, null); assert.equal(boss.y, boss.homeY);
+ });
+ test(`Final escorts only shoot lasers and wander independently (${fps}fps)`, () => {
+  fresh(); g.startRevealedFinalBoss(); s.boss.entering = false; s.boss.revealTimer = 0;
+  s.boss.bulletTimer = s.boss.normalLaserTimer = s.boss.overdriveTimer = 1e6;
+  const ranges = s.escorts.map(() => ({ min: Infinity, max: -Infinity }));
+  for (const e of s.escorts) { e.laserCooldown = 0.1; g.fireEscortMinionPattern(e); }
+  for (let i = 0; i < 20 * fps; i++) {
+   g.updateGame(1 / fps);
+   s.escorts.forEach((e,j) => {
+    ranges[j].min = Math.min(ranges[j].min, e.y); ranges[j].max = Math.max(ranges[j].max, e.y);
+    assert.ok(e.invulnerable);
+   });
+   assert.equal(s.enemyBullets.length, 0);
+  }
+  assert.ok(ranges.every(r => r.max - r.min > 150));
+  assert.ok(Object.values(s.telemetry.escortLasersByIdx).every(n => n > 0));
+  g.handleBossDefeated(); assert.equal(s.lasers.length, 0); assert.equal(s.escorts.length, 0);
+ });
+}
+test('Tier 5 boss side volley is exactly three times the former two bullets', () => {
+ fresh(); g.startTierBoss(5); const b = s.boss;
+ b.entering = false; b.dashState = 'DASH'; b.x = 700; b.y = b.dashY = 350;
+ b.dashSideShotTimer = 0; g.updateGame(1 / 60);
+ assert.equal(s.enemyBullets.length, 6);
+ assert.equal(s.enemyBullets.filter(b => b.vy > 0).length, 3);
+ assert.equal(s.enemyBullets.filter(b => b.vy < 0).length, 3);
+});
+
+
+for (const fps of [30, 60]) {
+ test(`Final body mixes bullets and one sustained sweeping primary laser before overdrive (${fps}fps)`, () => {
+  fresh(); g.startRevealedFinalBoss(); const b = s.boss; b.entering = false;
+  let bullets = false, primary = false, overdrive = false;
+  const angles = new Map();
+  for (let i = 0; i < 12 * fps; i++) {
+   g.updateGame(1 / fps);
+   bullets ||= s.enemyBullets.length > 0;
+   const beams = s.lasers.filter(x => x.kind === 'FINAL_PRIMARY');
+   if (beams.length) {
+    primary = true; assert.equal(beams.length, 1);
+    assert.equal(beams[0].stage3Time, 2.4);
+    assert.ok(Math.abs(beams[0].angle - Math.PI) <= 0.27);
+    assert.ok(beams.every(x => x.stage1Time + x.stage2Time >= 1.2));
+    assert.ok(beams.every(x => Math.cos(x.angle) < 0));
+    const beam = beams[0];
+    if (angles.has(beam.id)) assert.ok(Math.abs(Math.abs(beam.angle - angles.get(beam.id)) - 0.14 / fps) < 1e-6, 'Steady sweep without angular jumps');
+    angles.set(beam.id, beam.angle);
+   }
+   if (b.finalSweep) {
+    overdrive = true;
+    assert.equal(beams.length, 0, 'Do not overlap primary lasers with overdrive');
+   }
+  }
+  assert.ok(bullets && primary && overdrive);
+ });
+ test(`Final overdrive alternates directions with a harmless warning and lower escape lane (${fps}fps)`, () => {
+  fresh(); g.startRevealedFinalBoss(); const b = s.boss; b.entering = false;
+  for (let pass = 0; pass < 2; pass++) {
+   const sweep = g.startFinalSweep(b);
+   assert.ok(pass === 0 ? sweep.endY > sweep.startY : sweep.endY < sweep.startY);
+   let warned = 0, fired = false, lastY;
+   for (let i = 0; i < 18 * fps; i++) {
+    g.updateGame(1 / fps);
+    if (sweep.phase === 'WARNING') { warned += 1 / fps; assert.equal(sweep.beamIds.length, 0); }
+    if (sweep.activeElapsed > 0 && sweep.phase === 'FIRING') {
+     fired = true;
+     if (lastY !== undefined) assert.ok(pass === 0 ? b.y >= lastY : b.y <= lastY);
+     lastY = b.y;
+     const beams = s.lasers.filter(x => sweep.beamIds.includes(x.id));
+     assert.ok(beams.every(x => !g.checkLaserHitsPlayer(x, {x:200,y:680,hitboxRadius:8})));
+    }
+    if (!b.finalSweep) break;
+   }
+   assert.ok(warned >= 1 && fired); assert.equal(b.finalSweep, null);
+  }
+ });
+}
+
+for (const fps of [30, 60]) {
+ test(`Final escort stays still throughout laser charge and fire, deals one damage, then resumes (${fps}fps)`, () => {
+  fresh(); g.startRevealedFinalBoss(); const boss = s.boss; boss.entering = false;
+  boss.bulletTimer = boss.normalLaserTimer = boss.overdriveTimer = 1e6;
+  const escort = s.escorts[0]; s.escorts = [escort];
+  escort.x = 1050; escort.y = 350; escort.laserCooldown = 1e6;
+  escort.freeTargetX = 1180; escort.freeTargetY = 550; escort.freeTargetTimer = 10;
+  const beam = g.spawnEscortLaser(escort); const stages = new Set();
+  assert.equal(beam.damage, 1);
+  while (s.lasers.includes(beam)) {
+   stages.add(beam.stage); g.updateGame(1 / fps);
+   assert.equal(escort.x, 1050); assert.equal(escort.y, 350);
+   if (beam.stage === 3 && !beam.checkedDamage) {
+    s.player.x = 250; s.player.y = beam.oy; s.player.invulnTimer = 0;
+    const hp = s.player.hp; g.updateGame(1 / fps);
+    assert.equal(s.player.hp, hp - 1); beam.checkedDamage = true;
+   }
+  }
+  assert.equal(stages.size, 3); assert.ok(beam.checkedDamage);
+  g.updateGame(1 / fps);
+  assert.ok(escort.x !== 1050 || escort.y !== 350, 'Movement resumes after laser expires');
+ });
+}
+
 console.log(`\n${results.length} scenario checks passed.`);
