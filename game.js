@@ -41,6 +41,14 @@
     METEOR_MAX_INTERVAL: 14.0,
     METEOR_WARN_TIME: 0.90,
 
+    TIER6_RECHARGE: 1.85,
+    TIER6_MISSILE_SPEED: 875,
+    TIER6_SUICIDE_RADII: [72, 88, 104, 120],
+    TIER6_BOSS_BLAST_RADIUS: 112,
+    TIER7_SUMMON_INTERVAL: 2.1,
+    TIER7_SUMMON_LIMIT: 6,
+    ENEMY_SMALL_LASER_LIMIT: 2,
+
     // Laser stage timings (in seconds)
     LASER_STAGE1_TIME: 0.65,
     LASER_STAGE2_TIME: 0.35,
@@ -831,8 +839,8 @@
   // ============================================================================
   // 8. SPAWNING ENEMIES, TIER BOSSES, ESCORTS, LASERS, MISSILES & DASHERS
   // ============================================================================
-  function spawnWaveEnemy(tier) {
-    const enemyIdx = 1 + Math.floor(Math.random() * 4);
+  function spawnWaveEnemy(tier, options = {}) {
+    const enemyIdx = options.enemyIdx || (1 + Math.floor(Math.random() * 4));
     const relPath = `enemies/Tier_0${tier}/Enemy_0${enemyIdx}.png`;
     const spec = SPRITE_SPECS[relPath];
     const scale = CONFIG.SHIP_SCALE;
@@ -875,8 +883,139 @@
       fireInterval,
       hitFlash: 0.0
     };
+    enemy.specialState = 'NORMAL';
+    enemy.specialTimer = 0;
+    enemy.specialCooldown = 3 + Math.random() * 2;
+    enemy.summonedBy = options.summonedBy || null;
+    if (tier === 8) prepareEnemyFlyby(enemy);
     enforceRightThirdBound(enemy);
     state.enemies.push(enemy);
+    return enemy;
+  }
+
+  // V4: special movement belongs to the same enemy throughout its lifecycle.
+  // No extra copies or independent timers can survive a wave/boss cleanup.
+  function moveEnemyToward(e, x, y, speed, dt) {
+    const dx = x - e.x, dy = y - e.y;
+    const distance = Math.hypot(dx, dy);
+    const step = Math.min(distance, speed * dt);
+    if (distance > 0) { e.x += dx / distance * step; e.y += dy / distance * step; }
+    return distance <= speed * dt + 0.01;
+  }
+
+  function prepareEnemyFlyby(e) {
+    const W = CONFIG.CANVAS_WIDTH, H = CONFIG.CANVAS_HEIGHT;
+    const direction = Math.floor(Math.random() * 8);
+    const target = { x: 200 + Math.random() * (W - 400), y: 150 + Math.random() * (H - 300) };
+    const starts = [
+      [-85, 100 + Math.random() * (H - 200)], [W + 85, 100 + Math.random() * (H - 200)],
+      [100 + Math.random() * (W - 200), -85], [100 + Math.random() * (W - 200), H + 85],
+      [-85, -85], [W + 85, -85], [-85, H + 85], [W + 85, H + 85]
+    ];
+    [e.x, e.y] = starts[direction];
+    const angle = Math.atan2(target.y - e.y, target.x - e.x);
+    e.specialAngle = angle;
+    e.specialVx = Math.cos(angle) * 1400;
+    e.specialVy = Math.sin(angle) * 1400;
+    e.warningX = e.x; e.warningY = e.y;
+    e.specialState = 'FLYBY_WARN'; e.specialTimer = 0.85;
+    e.exemptFromRightThird = true;
+  }
+
+  function startEnemyDash(e) {
+    const p = state.player;
+    if (!p) return;
+    // Sweep fully past the left wall, then re-enter from outside the right wall.
+    e.specialAngle = Math.PI;
+    e.specialVx = -540;
+    e.specialVy = 0;
+    e.specialDuration = (e.x + 100) / 540;
+    e.warningX = e.x; e.warningY = e.y;
+    e.specialState = 'DASH_WARN'; e.specialTimer = 0.8;
+    e.exemptFromRightThird = true;
+  }
+
+  function beginEnemySuicide(e) {
+    if (e.deathHandled) return;
+    e.deathHandled = true;
+    state.score += 100 * e.tier + 25 * e.enemyIdx;
+    e.specialState = 'SUICIDE_APPROACH';
+    e.specialTimer = 0;
+    e.entering = false;
+    e.exemptFromRightThird = true;
+    e.blastRadius = CONFIG.TIER6_SUICIDE_RADII[e.enemyIdx - 1];
+    const p = state.player;
+    const angle = Math.random() * Math.PI * 2;
+    const offset = 12 + Math.random() * 24;
+    e.targetX = Math.max(35, Math.min(CONFIG.CANVAS_WIDTH - 35, (p?.x || 200) + Math.cos(angle) * offset));
+    e.targetY = Math.max(70, Math.min(CONFIG.CANVAS_HEIGHT - 35, (p?.y || 362) + Math.sin(angle) * offset));
+  }
+
+  function removeEnemy(e) {
+    state.lasers = state.lasers.filter(b => b.followEnemyId !== e.id);
+    const index = state.enemies.indexOf(e);
+    if (index !== -1) state.enemies.splice(index, 1);
+  }
+
+  function updateEnemySpecial(e, dt) {
+    const s = e.specialState;
+    if (s === 'NORMAL') return false;
+    const previousX = e.x, previousY = e.y;
+    e.specialTimer -= dt;
+    if (s === 'SUICIDE_APPROACH') {
+      e.specialAngle = Math.atan2(e.targetY - e.y, e.targetX - e.x);
+      if (moveEnemyToward(e, e.targetX, e.targetY, 480, dt)) {
+        // The approach is the warning period; arrival detonates immediately.
+        detonateMissile({ x: e.x, y: e.y, blastRadius: e.blastRadius, damageDealt: false });
+        removeEnemy(e);
+      }
+    } else if (s === 'FLYBY_WARN' || s === 'DASH_WARN') {
+      if (e.specialTimer <= 0) {
+        e.specialState = s === 'FLYBY_WARN' ? 'FLYBY' : 'DASH';
+        e.specialTimer = s === 'FLYBY_WARN' ? 3 : e.specialDuration;
+      }
+    } else if (s === 'FLYBY' || s === 'DASH') {
+      e.x += e.specialVx * dt; e.y += e.specialVy * dt;
+      const p = state.player;
+      const radius = Math.min(e.spec.visibleBounds[2], e.spec.visibleBounds[3]) * e.scale * 0.3;
+      if (p && distSqPointToSegment(p.x, p.y, previousX, previousY, e.x, e.y) <= (p.hitboxRadius + radius) ** 2) {
+        damagePlayer(CONFIG.DASH_DAMAGE, 'ENEMY DASH');
+      }
+      const inScreen = e.x > -65 && e.x < CONFIG.CANVAS_WIDTH + 65 && e.y > -65 && e.y < CONFIG.CANVAS_HEIGHT + 65;
+      if (inScreen) e.flybyEntered = true;
+      if ((s === 'FLYBY' && e.flybyEntered && !inScreen) || e.specialTimer <= 0 ||
+          (s === 'DASH' && !inScreen)) {
+        e.specialState = 'RETURN'; e.specialTimer = 0.35;
+      }
+    } else if (s === 'RETURN') {
+      // Wrap only outside the viewport, then visibly re-enter from the right.
+      if ((e.tier === 8 || e.tier === 5) && !e.returnPrepared) {
+        if (e.specialTimer > 0) return true;
+        e.x = CONFIG.CANVAS_WIDTH + 100; e.y = e.homeY;
+        e.returnPrepared = true;
+      }
+      if (moveEnemyToward(e, e.homeX, e.homeY, 650, dt)) {
+        e.specialState = 'NORMAL'; e.exemptFromRightThird = false; e.entering = false;
+        e.specialCooldown = 4.5 + Math.random() * 2;
+        e.returnPrepared = false;
+        e.fireCooldown = 0.9 + Math.random();
+        e.age = 0; e.phaseOffset = Math.PI / 2;
+      }
+    }
+    return true;
+  }
+
+  function fireSmallEnemyLaser(e) {
+    const owned = state.lasers.filter(b => b.followEnemyId);
+    if (owned.length >= CONFIG.ENEMY_SMALL_LASER_LIMIT || owned.some(b => b.followEnemyId === e.id)) return false;
+    const m = getWorldMuzzles(e.x, e.y, e.spec, false, e.scale)[0];
+    const p = state.player;
+    const angle = Math.PI + Math.max(-0.3, Math.min(0.3,
+      Math.atan2((p?.y || 362) - m.y, Math.max(1, m.x - (p?.x || 160))) * -1));
+    spawnLaserBeam({ color: 'Cyan', scale: 1, widthMultiplier: 0.85,
+      stage1Time: 0.6, stage2Time: 0.25, stage3Time: 0.5,
+      ox: m.x, oy: m.y, angle, followEnemyId: e.id, damage: 1 });
+    return true;
   }
 
   function createTier4Escort(idx, boss) {
@@ -935,6 +1074,7 @@
     state.dashWarnings = [];
     state.dashers = [];
     state.escorts = [];
+    state.enemies = state.enemies.filter(e => !e.deathHandled);
     for (const e of state.enemies) {
       e.retreating = true;
       e.entering = false;
@@ -948,6 +1088,7 @@
     const maxHp = BOSS_HP_TABLE[tier] || (600 + tier * 500);
 
     const boss = {
+      id: `tier-boss-${tier}-${Math.random().toString(36).slice(2)}`,
       kind: 'TIER_BOSS',
       tier,
       barId: `Tier_0${tier}`,
@@ -1427,6 +1568,10 @@
   }
 
   function fireEnemyPattern(enemy) {
+    if (enemy.tier === 7 && enemy.enemyIdx >= 3) {
+      fireSmallEnemyLaser(enemy);
+      return;
+    }
     // Cap total regular wave bullets so screen never gets flooded
     if (state.enemyBullets.length >= 40) return;
 
@@ -1554,6 +1699,8 @@
       angle: opts.angle ?? Math.PI,
       followBossMuzzleIndex: opts.followBossMuzzleIndex ?? null,
       followEscortId: opts.followEscortId ?? null,
+      followEnemyId: opts.followEnemyId ?? null,
+      damage: opts.damage ?? CONFIG.LASER_DAMAGE,
       followEscortMuzzleIndex: opts.followEscortMuzzleIndex ?? 0,
       updateFn: opts.updateFn || null,
       scale: opts.scale ?? CONFIG.LASER_SCALE,
@@ -1568,6 +1715,14 @@
   }
 
   function syncLaserBeamOrigin(beam) {
+    if (beam.followEnemyId) {
+      const enemy = state.enemies.find(e => e.id === beam.followEnemyId && e.hp > 0 && !e.retreating);
+      if (enemy) {
+        const m = getWorldMuzzles(enemy.x, enemy.y, enemy.spec, false, enemy.scale)[0];
+        beam.ox = m.x; beam.oy = m.y;
+      }
+      return;
+    }
     if (beam.followBossMuzzleIndex !== null && state.boss) {
       const muzzles = getWorldMuzzles(state.boss.x, state.boss.y, state.boss.spec, false, state.boss.scale);
       const m = muzzles[beam.followBossMuzzleIndex] || muzzles[0];
@@ -1706,24 +1861,22 @@
     const px = state.player ? state.player.x : 220;
     const py = state.player ? state.player.y : CONFIG.CANVAS_HEIGHT / 2;
 
-    const centerX = Math.max(165, Math.min(CONFIG.ENEMY_MIN_X - 120, px));
-    const centerY = Math.max(160, Math.min(CONFIG.CANVAS_HEIGHT - 160, py));
-
-    const offsets = [
-      { dx: -78, dy: -74 }, // Upper-left of player
-      { dx: -78, dy:  74 }, // Lower-left of player
-      { dx:  84, dy: -74 }, // Upper-right of player
-      { dx:  84, dy:  74 }  // Lower-right of player
-    ];
-
-    boss.salvoTargets = offsets.map((off, idx) => {
-      const jx = ((idx % 2 === 0 ? 1 : -1) * 8);
-      const jy = ((idx < 2 ? -1 : 1) * 6);
-      return {
-        x: Math.round(centerX + off.dx + jx),
-        y: Math.round(centerY + off.dy + jy)
-      };
-    });
+    // The first blast threatens a stationary player; the other three are randomized.
+    // All points stay within 180px, leaving a reachable escape beyond the warned cluster.
+    boss.salvoTargets = [];
+    for (let i = 0; i < 4; i++) {
+      let point;
+      for (let attempt = 0; attempt < 32; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = i === 0 ? Math.random() * 24 : 85 + Math.random() * 95;
+        point = {
+          x: Math.round(Math.max(30, Math.min(CONFIG.CANVAS_WIDTH - 30, px + Math.cos(angle) * radius))),
+          y: Math.round(Math.max(60, Math.min(CONFIG.CANVAS_HEIGHT - 30, py + Math.sin(angle) * radius)))
+        };
+        if (boss.salvoTargets.every(t => Math.hypot(t.x - point.x, t.y - point.y) > 60)) break;
+      }
+      boss.salvoTargets.push(point);
+    }
     boss.salvoFiredCount = 0;
     boss.salvoShotTimer = 0.0;
     boss.missileVolleyIndex += 1;
@@ -1732,7 +1885,7 @@
 
   /**
    * Launches a single fast wing missile (from muzzles[slotIdx]) toward boss.salvoTargets[slotIdx].
-   * Links flight speed (700 px/s), distance to target, and post-arrival detonation delay (0.28s).
+   * Flies visibly from a wing pod at 875px/s, with 0.35s after arrival before the blast.
    */
   function fireSingleTier6WingMissile(boss, slotIdx, customTarget) {
     const muzzles = getWorldMuzzles(boss.x, boss.y, boss.spec, false, boss.scale);
@@ -1742,18 +1895,20 @@
       y: 260 + Math.floor(slotIdx / 2) * 160
     };
 
+    // Targets are random around the player, but every missile visibly flies from a wing pod.
     const dx = target.x - m.x;
     const dy = target.y - m.y;
     const dist = Math.max(1, Math.hypot(dx, dy));
-    const speed = 700; // Fast 600~800 px/s missile speed
+    const speed = CONFIG.TIER6_MISSILE_SPEED;
     const flightTime = dist / speed;
-    const detonateDelay = 0.28; // Short 0.2~0.4s delay after reaching target point
+    const detonateDelay = 0.35; // Visible flight plus a short arrival warning.
     const totalFuse = flightTime + detonateDelay;
     const angle = Math.atan2(dy, dx);
 
     state.missiles.push({
       id: Math.random().toString(36).slice(2),
       slotIdx,
+      proximityOnly: false,
       x: m.x,
       y: m.y,
       prevX: m.x,
@@ -1770,7 +1925,7 @@
       fuse: totalFuse,
       maxFuse: totalFuse,
       radius: 10,
-      blastRadius: 72,
+      blastRadius: CONFIG.TIER6_BOSS_BLAST_RADIUS,
       damageDealt: false
     });
 
@@ -2323,6 +2478,11 @@
         continue;
       }
 
+      if (updateEnemySpecial(e, dt)) continue;
+      if (e.tier === 5 && e.enemyIdx >= 3 && !e.entering) {
+        e.specialCooldown -= dt;
+        if (e.specialCooldown <= 0) { startEnemyDash(e); continue; }
+      }
       if (e.entering) {
         e.x -= 300 * dt;
         if (e.x <= e.homeX) {
@@ -2330,8 +2490,9 @@
           e.entering = false;
         }
       } else {
-        e.x = e.homeX + Math.sin(e.age * e.moveFreqX + e.phaseOffset) * e.moveAmpX;
-        e.y = e.homeY + Math.cos(e.age * e.moveFreqY + e.phaseOffset) * e.moveAmpY;
+        const targetX = e.homeX + Math.sin(e.age * e.moveFreqX + e.phaseOffset) * e.moveAmpX;
+        const targetY = e.homeY + Math.cos(e.age * e.moveFreqY + e.phaseOffset) * e.moveAmpY;
+        moveEnemyToward(e, targetX, targetY, 160, dt);
       }
 
       enforceRightThirdBound(e);
@@ -2344,7 +2505,8 @@
       e.fireCooldown -= dt;
       if (!e.entering && e.fireCooldown <= 0) {
         fireEnemyPattern(e);
-        e.fireInterval = computeEnemyFireInterval(e.tier, e.enemyIdx);
+        e.fireInterval = e.tier === 7 && e.enemyIdx >= 3
+          ? 4 + Math.random() * 2 : computeEnemyFireInterval(e.tier, e.enemyIdx);
         e.fireCooldown = e.fireInterval;
       }
     }
@@ -2358,6 +2520,9 @@
     // 9. Update Active 3-Stage Lasers & Player Collision
     for (let i = state.lasers.length - 1; i >= 0; i--) {
       const beam = state.lasers[i];
+      if (beam.followEnemyId && !state.enemies.some(e => e.id === beam.followEnemyId && e.hp > 0 && !e.retreating)) {
+        state.lasers.splice(i, 1); continue;
+      }
       beam.elapsed += dt;
       syncLaserBeamOrigin(beam);
       if (beam.updateFn) {
@@ -2380,7 +2545,7 @@
       }
 
       if (p && beam.stage === 3 && checkLaserHitsPlayer(beam, p)) {
-        damagePlayer(CONFIG.LASER_DAMAGE, 'LASER');
+        damagePlayer(beam.damage ?? CONFIG.LASER_DAMAGE, 'LASER');
       }
     }
 
@@ -2407,7 +2572,7 @@
       ms.fuse -= dt;
 
       // Continuous direct-hit check against player core
-      if (p && !ms.damageDealt) {
+      if (p && !ms.damageDealt && !ms.proximityOnly) {
         const hitR = ms.radius + p.hitboxRadius;
         if (distSqPointToSegment(p.x, p.y, ms.prevX, ms.prevY, ms.x, ms.y) <= hitR * hitR) {
           ms.damageDealt = true;
@@ -2807,15 +2972,22 @@
           }
           if (boss.missileStateTimer <= 0 && boss.salvoFiredCount >= 4) {
             boss.missileState = 'RECHARGE';
-            boss.missileStateTimer = 2.45;
+            boss.missileStateTimer = CONFIG.TIER6_RECHARGE;
           }
         } else {
           if (boss.missileStateTimer <= 0) {
             boss.missileState = 'LOAD';
-            boss.missileStateTimer = 0.75;
+            boss.missileStateTimer = 0.55;
           }
         }
       } else if (boss.tier === 7) {
+        boss.summonTimer = (boss.summonTimer ?? 1.6) - dt;
+        if (boss.summonTimer <= 0) {
+          if (state.enemies.filter(e => e.summonedBy === boss.id && !e.retreating).length < CONFIG.TIER7_SUMMON_LIMIT) {
+            spawnWaveEnemy(7, { enemyIdx: 3, summonedBy: boss.id });
+          }
+          boss.summonTimer = CONFIG.TIER7_SUMMON_INTERVAL + Math.random() * 0.35;
+        }
         // Tier 07: 2x Thick (16/32/48px) 3-stage Lime Laser at varied heights / sweeps + moderate bullet volleys
         boss.laserModeTimer -= dt;
         if (boss.laserModeTimer <= 0) {
@@ -3062,7 +3234,7 @@
       // 3. Check hit against Regular Enemies
       for (let j = state.enemies.length - 1; j >= 0; j--) {
         const e = state.enemies[j];
-        if (e.retreating) continue;
+        if (e.retreating || e.deathHandled || e.specialState === 'FLYBY_WARN') continue;
         const eBounds = getRotatedBounds(e.x, e.y, e.spec, false, e.scale);
         if (checkCircleHitsBounds(pb.x, pb.y, pb.radius, eBounds)) {
           e.hp -= pb.damage;
@@ -3072,9 +3244,12 @@
           consumed = true;
 
           if (e.hp <= 0) {
-            state.score += 100 * e.tier + 25 * e.enemyIdx;
-            spawnExplosion(e.x, e.y, '#ff9b3d', 14);
-            state.enemies.splice(j, 1);
+            if (e.tier === 6) beginEnemySuicide(e);
+            else {
+              state.score += 100 * e.tier + 25 * e.enemyIdx;
+              spawnExplosion(e.x, e.y, '#ff9b3d', 14);
+              removeEnemy(e);
+            }
           }
           break;
         }
@@ -3227,7 +3402,12 @@
 
     // 8. Render Regular Enemies (with pre-fire muzzle telegraph)
     for (const e of state.enemies) {
-      drawRotatedSprite(e.path, e.x, e.y, e.spec.size, e.scale, -Math.PI / 2, e.hitFlash > 0);
+      renderEnemySpecialWarning(e);
+      if (e.specialState === 'FLYBY_WARN') continue;
+      const movingSpecial = ['FLYBY', 'DASH', 'SUICIDE_APPROACH'].includes(e.specialState);
+      const rotation = movingSpecial ? e.specialAngle + Math.PI / 2 : -Math.PI / 2;
+      drawRotatedSprite(e.path, e.x, e.y, e.spec.size, e.scale, rotation,
+        e.hitFlash > 0 || (e.specialState === 'SUICIDE_ARM' && Math.floor(e.specialTimer * 16) % 2 === 0));
       if (!e.entering && !e.retreating && e.fireCooldown < 0.32) {
         const muzzles = getWorldMuzzles(e.x, e.y, e.spec, false, e.scale);
         ctx.save();
@@ -3375,6 +3555,35 @@
    * aligned at centerY = 16 native pixels, stretching from muzzle (ox, oy) to the viewport edge.
    * Supports per-beam widthMultiplier (2x on Tier 07 -> 16px / 32px / 48px stage thickness).
    */
+  function renderEnemySpecialWarning(e) {
+    if (e.retreating) return;
+    const s = e.specialState;
+    if (s === 'FLYBY_WARN' || s === 'DASH_WARN') {
+      const distance = s === 'DASH_WARN' ? e.specialDuration * 540 : 2300;
+      const x = e.warningX, y = e.warningY;
+      ctx.save();
+      ctx.strokeStyle = s === 'FLYBY_WARN' ? '#43d8fa' : '#ff7899';
+      ctx.globalAlpha = 0.45 + Math.sin(e.specialTimer * 18) * 0.2;
+      ctx.lineWidth = 2; ctx.setLineDash([9, 7]);
+      ctx.beginPath(); ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(e.specialAngle) * distance, y + Math.sin(e.specialAngle) * distance);
+      ctx.stroke(); ctx.restore();
+    } else if (s === 'SUICIDE_ARM' || s === 'SUICIDE_APPROACH') {
+      const arming = s === 'SUICIDE_ARM';
+      const x = arming ? e.x : e.targetX, y = arming ? e.y : e.targetY;
+      ctx.save();
+      ctx.strokeStyle = '#ff7899';
+      ctx.fillStyle = arming ? 'rgba(255,65,95,0.18)' : 'rgba(255,65,95,0.05)';
+      ctx.lineWidth = arming ? 3 : 1;
+      ctx.beginPath(); ctx.arc(x, y, e.blastRadius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      if (arming) {
+        ctx.fillStyle = '#fff0dc'; ctx.font = 'bold 16px monospace';
+        ctx.fillText(Math.max(0, e.specialTimer).toFixed(1), x - 14, y - e.blastRadius - 8);
+      }
+      ctx.restore();
+    }
+  }
+
   function renderLaserBeam(beam) {
     const st = beam.stage;
     const color = beam.color;
@@ -3407,6 +3616,9 @@
 
     if (originImg && bodyImg && tipImg) {
       // 1. Origin at x = 0 (muzzle anchor)
+      ctx.save();
+      ctx.translate(totalLen, 0);
+      ctx.scale(-1, 1);
       ctx.drawImage(originImg, 0, -halfH, originW, canvasH);
       // 2. Body extended across straight middle section without vertical distortion
       if (bodyLen > 0) {
@@ -3414,6 +3626,7 @@
       }
       // 3. Rounded Tip attached once at the end without horizontal or vertical stretching
       ctx.drawImage(tipImg, originW + bodyLen, -halfH, tipW, canvasH);
+      ctx.restore();
     } else {
       const thick = getLaserStageThicknessPx(beam, st);
       ctx.fillStyle = color === 'Blue' ? '#367dff' : '#73deff';
@@ -3787,6 +4000,8 @@
         stageEl.textContent = `TIER 0${state.rewardPendingTier} REWARD`;
       } else if (state.phase === 'WAVE') {
         stageEl.textContent = `TIER 0${state.currentTier} WAVE`;
+      } else if (state.phase === 'TEST') {
+        stageEl.textContent = `TIER 0${state.currentTier} PATTERN TEST`;
       } else if (state.phase === 'BOSS') {
         stageEl.textContent = `TIER 0${state.currentTier} BOSS`;
       } else if (state.phase === 'FINAL_SHADOW') {
@@ -3953,7 +4168,21 @@
     if (!btn) return;
     const action = btn.dataset.action;
 
-    if (action === 'jump-tier') {
+    if (action === 'v4-enemy-demo') {
+      const tier = Number(btn.dataset.tier);
+      hideRewardModal(); hideOverlay();
+      state.mode = 'PLAYING'; state.phase = 'TEST'; state.currentTier = tier;
+      clearAllCombatHazards(); state.boss = null;
+      for (let stage = 1; stage <= 4; stage++) {
+        const enemy = spawnWaveEnemy(tier, { enemyIdx: stage });
+        if (tier !== 8) {
+          enemy.entering = false; enemy.x = enemy.homeX;
+          if (tier === 6) { enemy.hp = 0; beginEnemySuicide(enemy); }
+          if (tier === 5 && stage >= 3) enemy.specialCooldown = 0.5;
+          if (tier === 7 && stage >= 3) enemy.fireCooldown = 0.5 + stage * 0.2;
+        }
+      }
+    } else if (action === 'jump-tier') {
       const tier = Number(btn.dataset.tier) || 1;
       jumpToTierWave(tier);
     } else if (action === 'jump-boss') {
@@ -4127,6 +4356,15 @@
     TIER8_DASH_DIRECTIONS,
     state,
     assets,
+    spawnWaveEnemy,
+    beginEnemySuicide,
+    startEnemyDash,
+    updateEnemySpecial,
+    fireSmallEnemyLaser,
+    updatePlayerBullets,
+    clearAllCombatHazards,
+    updateGame,
+    renderLaserBeam,
     getEnemyMaxHp,
     getLaserStageThicknessPx,
     computeEnemyFireInterval,

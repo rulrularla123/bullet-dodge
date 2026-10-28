@@ -1,6 +1,19 @@
-# ARGON — Horizontal Pixel Bullet-Hell Dodging Game (V3 Update)
+# ARGON — Horizontal Pixel Bullet-Hell Dodging Game (V4 Update)
 
-횡스크롤 픽셀 탄막 회피 슈팅 게임 **ARGON (3차 고도화 버전)**입니다. `design/ARGON_V3_PROMPT.md`, `design/ARGON_V2_PROMPT.md`, `design/ARGON_PROMPT.md` 명세를 준수하며, 충돌 시 **3차 문서(`ARGON_V3_PROMPT.md`)를 최우선**으로 반영했습니다.
+## V4 추가 패턴
+
+- Tier 5 일반 적 3·4단계: 예고 후 540px/s로 왼쪽 화면 밖까지 수평 직진하고, 오른쪽 화면 밖에서 재진입합니다.
+- Tier 6 보스: 날개의 4개 발사구에서 875px/s로 비행해 플레이어 주변 랜덤 위치를 공격합니다. 폭발 반경 112px, 도착 후 대기 0.35초, 재충전 1.85초입니다.
+- Tier 6 일반 적: HP 0 후 접근하며 범위를 표시하고 도착 즉시 자폭. 단계별 반경 72/88/104/120px, 피해 2.
+- Tier 7 일반 적 3·4단계: 약 10px 소형 레이저(피해 1), 충전 포함 동시 최대 2개.
+- Tier 7 보스: 2.1~2.45초 간격 3단계 적 보충, 입장 중 포함 최대 6개.
+- Tier 8 일반 적: 사방 고속 통과 입장 후 같은 개체가 오른쪽 전투 위치에 정착.
+- 레이저: 공격 선분과 총구 원점을 유지하면서 외형의 좌우 반전.
+- F2 검증 패널에 신규 잡몹 패턴 단독 재현 버튼 추가.
+
+검증: `npm test`로 실제 게임 코드를 사용하는 15개 시나리오(30/60fps 포함)를 검사합니다. `npm run build`로 배포 파일을 생성합니다. 브라우저에서도 Tier 6 주변 폭발과 Tier 7 소환·레이저 화면을 확인했습니다.
+
+횡스크롤 픽셀 탄막 회피 슈팅 게임 **ARGON (4차 업데이트)**입니다. 기존 3차 구현에 `design/ARGON_V4_PROMPT.md`의 잡몹·폭발·레이저 변경을 반영했습니다. 충돌하는 이전 요구보다 4차 요구를 우선합니다.
 
 ## 실행 방법 (How to Run)
 

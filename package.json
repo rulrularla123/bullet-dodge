@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "node scripts/prepare-deploy.mjs"
+    "build": "node scripts/prepare-deploy.mjs",
+    "test": "node scripts/test-game.mjs"
   }
 }
