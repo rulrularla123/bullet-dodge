@@ -306,4 +306,72 @@ for (const fps of [30, 60]) {
  });
 }
 
+test('Weapon form 4 fires only one forward piercing crescent; form 5 fires three directions', () => {
+ for (const level of [3, 4]) {
+  fresh(); s.player.weaponLevel = level; g.firePlayerWeapon(s.player);
+  const shots = s.playerBullets;
+  assert.equal(shots.length, level === 3 ? 1 : 3);
+  assert.ok(shots.every(b => b.path === 'bullets/Player_Piercing_Crescent.png' && b.piercing));
+  assert.equal(s.player.fireCooldown, 0.12);
+  assert.ok(shots.every(b => b.damage === (level === 3 ? 25 : 27)));
+  assert.ok(shots.some(b => b.vy === 0));
+  if (level === 4) { assert.ok(shots[0].vy < 0 && shots[2].vy > 0); assert.equal(shots[0].vx, shots[2].vx); }
+ }
+});
+test('One crescent passes through successive enemies and damages each only once', () => {
+ fresh(); s.player.weaponLevel = 3; g.firePlayerWeapon(s.player);
+ const shot = s.playerBullets[0]; shot.vx = shot.vy = 0;
+ const a = g.spawnWaveEnemy(3, { enemyIdx: 2 }), b = g.spawnWaveEnemy(3, { enemyIdx: 2 });
+ a.x = 950; b.x = 1100; a.y = b.y = 350; a.hp = b.hp = 1000;
+ for (const target of [a, b]) {
+  const box = g.getRotatedBounds(target.x, target.y, target.spec, false, target.scale);
+  shot.x = (box.left + box.right) / 2; shot.y = (box.top + box.bottom) / 2;
+  g.updatePlayerBullets(0); g.updatePlayerBullets(0);
+  assert.equal(target.hp, 1000 - shot.damage); assert.ok(s.playerBullets.includes(shot));
+ }
+ assert.equal(shot.hitTargets.size, 2);
+ shot.x = 1400; g.updatePlayerBullets(0); assert.equal(s.playerBullets.length, 0);
+});
+test('Piercing shot hits a boss once and passes through invulnerable escorts without damaging them', () => {
+ fresh(); g.startRevealedFinalBoss(); const boss = s.boss; boss.entering = false;
+ s.player.weaponLevel = 3; g.firePlayerWeapon(s.player); const shot = s.playerBullets[0]; shot.vx = shot.vy = 0;
+ const escort = s.escorts[0];
+ for (const target of [escort, boss]) {
+  const box = g.getRotatedBounds(target.x, target.y, target.spec, false, target.scale);
+  shot.x = (box.left + box.right) / 2; shot.y = (box.top + box.bottom) / 2;
+  const hp = target.hp;
+  g.updatePlayerBullets(0); g.updatePlayerBullets(0);
+  assert.equal(target.hp, target === boss ? hp - shot.damage : hp);
+  assert.ok(s.playerBullets.includes(shot));
+ }
+});
+test('Weapon forms 1 to 3 retain their previous non-piercing volleys', () => {
+ for (const level of [0, 1, 2]) {
+  fresh(); s.player.weaponLevel = level; g.firePlayerWeapon(s.player);
+  assert.equal(s.playerBullets.length, [1, 2, 4][level]);
+  assert.ok(s.playerBullets.every(b => !b.piercing && b.path === 'bullets/Needle_Cyan.png'));
+ }
+});
+
+test('Waves allow twice the former population and stop at the new cap', () => {
+ for (const tier of [1, 3, 6, 8]) {
+  fresh(); s.phase = 'WAVE'; s.currentTier = tier;
+  const cap = 2 * (3 + Math.floor(tier / 3));
+  for (let i = 0; i < cap - 1; i++) g.spawnWaveEnemy(tier);
+  s.enemySpawnTimer = 0; g.updateGame(0);
+  assert.equal(s.enemies.length, cap);
+  s.enemySpawnTimer = 0; g.updateGame(0);
+  assert.equal(s.enemies.length, cap);
+ }
+});
+test('Wave spawn interval is halved while retaining the tier speed and random spread', () => {
+ for (const tier of [1, 3, 6, 8]) {
+  fresh(); s.phase = 'WAVE'; s.currentTier = tier; s.enemySpawnTimer = 0;
+  g.updateGame(0);
+  const base = (1.65 - tier * 0.06) * 0.5;
+  assert.ok(s.enemySpawnTimer >= base * 0.85 && s.enemySpawnTimer <= base * 1.2);
+  assert.equal(s.enemies.length, 1);
+ }
+});
+
 console.log(`\n${results.length} scenario checks passed.`);

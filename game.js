@@ -243,8 +243,8 @@
     '기본 정면 단발 사격',
     '정면 평행 2연발 사격',
     '정면 2연발 + 사선 2발 확산 사격',
-    '정면·사선 4발 + 대형 고화력 중앙 탄 추가',
-    '초대형 중앙 탄 상시 발사 + 강화 사선 탄막'
+    '관통 초승달 정면 연사',
+    '관통 초승달 정면·상하 사선 3방향 연사'
   ];
 
   // ============================================================================
@@ -299,6 +299,7 @@
     // 1. Player & Meteor
     paths.add('player/주인공.png');
     paths.add('extras/Single_Sprite.png');
+    paths.add('bullets/Player_Piercing_Crescent.png');
 
     // 2. UI Hearts & Font Glyphs
     paths.add('ui/player/Heart_Full.png');
@@ -398,6 +399,7 @@
 
   /**
    * Computes regular enemy max HP from separate tier (1..8) and enemyIdx (1..4) axes.
+   * Doubles regular enemy durability while keeping tier/stage progression.
    * Uses exponential tier scaling (1.25^(tier-1)) and steeper stage multipliers [1.0, 1.35, 1.8, 2.4].
    * Guarantees Enemy_01 < 02 < 03 < 04 within every tier, and Tier 1 < 2 < ... < 8 for every stage.
    */
@@ -405,7 +407,7 @@
     const t = Math.max(1, Math.min(8, tier));
     const idx = Math.max(1, Math.min(4, enemyIdx));
     const base = 34 * Math.pow(1.25, t - 1);
-    return Math.ceil(base * ENEMY_STAGE_HP_MULT[idx - 1]);
+    return 2 * Math.ceil(base * ENEMY_STAGE_HP_MULT[idx - 1]);
   }
 
   /**
@@ -1377,7 +1379,9 @@
       vx: opts.vx,
       vy: opts.vy,
       angle: Math.atan2(opts.vy, opts.vx),
-      damage: opts.damage
+      damage: opts.damage,
+      piercing: opts.piercing === true,
+      hitTargets: opts.piercing ? new Set() : null
     });
   }
 
@@ -1452,96 +1456,17 @@
           damage: 9.0
         });
       }
-    } else if (lv === 3) {
-      // Lv3: Lv2 + Periodic Large Center Orb_Cyan (every 2nd shot) (~400.0 DPS)
-      p.fireCooldown = 0.145;
-      for (const dy of [-8, 8]) {
-        spawnPlayerBullet({
-          path: 'bullets/Needle_Cyan.png',
-          shape: 'Needle',
-          size: [12, 6],
-          scale: CONFIG.BULLET_SCALE,
-          radius: 5,
-          x: m.x,
-          y: m.y + dy,
-          vx: 820,
-          vy: 0,
-          damage: 12.0
-        });
-      }
-      const diagSpeed = 800;
-      for (const angDeg of [-12, 12]) {
-        const rad = (angDeg * Math.PI) / 180;
-        spawnPlayerBullet({
-          path: 'bullets/Needle_Cyan.png',
-          shape: 'Needle',
-          size: [12, 6],
-          scale: CONFIG.BULLET_SCALE,
-          radius: 5,
-          x: m.x,
-          y: m.y,
-          vx: Math.cos(rad) * diagSpeed,
-          vy: Math.sin(rad) * diagSpeed,
-          damage: 10.0
-        });
-      }
-      if (p.shotCounter % 2 === 0) {
-        spawnPlayerBullet({
-          path: 'bullets/Orb_Cyan.png',
-          shape: 'Orb',
-          size: [8, 8],
-          scale: 4.0, // Large 32x32 center shot
-          radius: 11,
-          x: m.x + 4,
-          y: m.y,
-          vx: 720,
-          vy: 0,
-          damage: 28
-        });
-      }
     } else {
-      // Lv4: Every volley includes High-Power Heavy Center Diamond_Cyan + Twin Front + Enhanced Diagonal (~514.3 DPS)
-      p.fireCooldown = 0.14;
-      spawnPlayerBullet({
-        path: 'bullets/Diamond_Cyan.png',
-        shape: 'Diamond',
-        size: [8, 8],
-        scale: 4.25, // Heavy 34x34 center shot
-        radius: 12,
-        x: m.x + 4,
-        y: m.y,
-        vx: 760,
-        vy: 0,
-        damage: 24
-      });
-      for (const dy of [-9, 9]) {
+      // Forms 4 and 5 (Lv3 / Lv4): user-authored piercing crescent, always facing travel direction.
+      p.fireCooldown = 0.12;
+      const angles = lv === 3 ? [0] : [-18, 0, 18];
+      for (const degrees of angles) {
+        const angle = degrees * Math.PI / 180;
         spawnPlayerBullet({
-          path: 'bullets/Needle_Cyan.png',
-          shape: 'Needle',
-          size: [12, 6],
-          scale: CONFIG.BULLET_SCALE,
-          radius: 5,
-          x: m.x,
-          y: m.y + dy,
-          vx: 840,
-          vy: 0,
-          damage: 12.5
-        });
-      }
-      const diagSpeed = 830;
-      for (const angDeg of [-10, 10]) {
-        const rad = (angDeg * Math.PI) / 180;
-        spawnPlayerBullet({
-          path: 'bullets/Needle_Cyan.png',
-          shape: 'Needle',
-          size: [12, 6],
-          scale: CONFIG.BULLET_SCALE,
-          radius: 5,
-          x: m.x,
-          y: m.y,
-          vx: Math.cos(rad) * diagSpeed,
-          vy: Math.sin(rad) * diagSpeed,
-          damage: 11.5
+          path: 'bullets/Player_Piercing_Crescent.png', shape: 'Crescent',
+          size: [32, 64], scale: 1.5, radius: 22,
+          x: m.x, y: m.y, vx: Math.cos(angle) * 840, vy: Math.sin(angle) * 840,
+          damage: lv === 3 ? 25 : 27, piercing: true
         });
       }
     }
@@ -2509,10 +2434,10 @@
         state.cumulativeWaveTime = (state.currentTier - 1) * CONFIG.WAVE_DURATION + progressRatio * CONFIG.WAVE_DURATION;
 
         state.enemySpawnTimer -= dt;
-        const maxConcurrent = 3 + Math.floor(state.currentTier / 3); // 3..5 concurrent regular enemies
+        const maxConcurrent = 2 * (3 + Math.floor(state.currentTier / 3)); // Double wave population: 6..10 regular enemies
         if (state.enemySpawnTimer <= 0 && state.enemies.filter((e) => !e.retreating).length < maxConcurrent) {
           spawnWaveEnemy(state.currentTier);
-          state.enemySpawnTimer = (1.65 - state.currentTier * 0.06) * (0.85 + Math.random() * 0.35);
+          state.enemySpawnTimer = 0.5 * (1.65 - state.currentTier * 0.06) * (0.85 + Math.random() * 0.35);
         }
       }
     }
@@ -3297,13 +3222,13 @@
       // 1. Check hit against active Boss
       if (state.boss && !state.boss.entering && (!state.boss.dyingTimer || state.boss.dyingTimer <= 0)) {
         const bBounds = getRotatedBounds(state.boss.x, state.boss.y, state.boss.spec, false, state.boss.scale);
-        if (checkCircleHitsBounds(pb.x, pb.y, pb.radius, bBounds)) {
+        if (!pb.hitTargets?.has(state.boss) && checkCircleHitsBounds(pb.x, pb.y, pb.radius, bBounds)) {
+          pb.hitTargets?.add(state.boss);
           state.boss.hp = Math.max(0, state.boss.hp - pb.damage);
           state.boss.hitFlash = 0.08;
           state.score += 25;
           spawnExplosion(pb.x, pb.y, '#50e5ff', 3);
-          state.playerBullets.splice(i, 1);
-          consumed = true;
+          if (!pb.piercing) { state.playerBullets.splice(i, 1); consumed = true; }
 
           if (state.boss.hp <= 0) {
             handleBossDefeated();
@@ -3317,7 +3242,8 @@
         for (let k = state.escorts.length - 1; k >= 0; k--) {
           const esc = state.escorts[k];
           const eBounds = getRotatedBounds(esc.x, esc.y, esc.spec, false, esc.scale);
-          if (checkCircleHitsBounds(pb.x, pb.y, pb.radius, eBounds)) {
+          if (!pb.hitTargets?.has(esc) && checkCircleHitsBounds(pb.x, pb.y, pb.radius, eBounds)) {
+            pb.hitTargets?.add(esc);
             if (esc.invulnerable) {
               // Final Boss escort: invulnerable deflection
               esc.shieldFlash = 0.18;
@@ -3339,9 +3265,9 @@
                 state.escorts.splice(k, 1);
               }
             }
-            state.playerBullets.splice(i, 1);
-            consumed = true;
-            break;
+            if (!pb.piercing) {
+              state.playerBullets.splice(i, 1); consumed = true; break;
+            }
           }
         }
       }
@@ -3352,12 +3278,12 @@
         const e = state.enemies[j];
         if (e.retreating || e.deathHandled || e.specialState === 'FLYBY_WARN') continue;
         const eBounds = getRotatedBounds(e.x, e.y, e.spec, false, e.scale);
-        if (checkCircleHitsBounds(pb.x, pb.y, pb.radius, eBounds)) {
+        if (!pb.hitTargets?.has(e) && checkCircleHitsBounds(pb.x, pb.y, pb.radius, eBounds)) {
+          pb.hitTargets?.add(e);
           e.hp -= pb.damage;
           e.hitFlash = 0.08;
           spawnExplosion(pb.x, pb.y, '#50e5ff', 3);
-          state.playerBullets.splice(i, 1);
-          consumed = true;
+          if (!pb.piercing) { state.playerBullets.splice(i, 1); consumed = true; }
 
           if (e.hp <= 0) {
             if (e.tier === 6) beginEnemySuicide(e);
@@ -3367,7 +3293,7 @@
               removeEnemy(e);
             }
           }
-          break;
+          if (consumed) break;
         }
       }
     }
@@ -3532,7 +3458,7 @@
 
     // 7. Render Player Bullets (dynamic size, scale, and angle per weapon evolution level)
     for (const pb of state.playerBullets) {
-      const rot = pb.shape === 'Needle' ? pb.angle : 0;
+      const rot = ['Needle', 'Crescent'].includes(pb.shape) ? pb.angle : 0;
       drawRotatedSprite(pb.path, pb.x, pb.y, pb.size, pb.scale, rot, false);
     }
 
@@ -4570,6 +4496,7 @@
     prepareTier6SalvoTargets,
     fireSingleTier6WingMissile,
     fireBossPrimaryLaser,
+    firePlayerWeapon,
     spawnEscortLaser,
     startFinalSweep,
     fireFinalPrimaryLasers,
