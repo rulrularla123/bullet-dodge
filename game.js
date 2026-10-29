@@ -520,7 +520,8 @@
     }
 
     const minCenterY = 56 + topRadius;
-    const maxCenterY = CONFIG.CANVAS_HEIGHT - 14 - bottomRadius;
+    const bottomMargin = entity.kind === 'FINAL_REVEALED' && entity.finalSweep?.upward ? 0 : 14;
+    const maxCenterY = CONFIG.CANVAS_HEIGHT - bottomMargin - bottomRadius;
     if (entity.y < minCenterY) entity.y = minCenterY;
     if (entity.y > maxCenterY) entity.y = maxCenterY;
   }
@@ -1794,8 +1795,15 @@
     // Their shared timing preserves the existing descent and escape corridors.
     const upward = (boss.sweepCount || 0) % 2 === 1;
     boss.sweepCount = (boss.sweepCount || 0) + 1;
-    boss.finalSweep = { phase: 'POSITION', startY: upward ? CONFIG.CANVAS_HEIGHT * 0.65 : 150,
-      endY: upward ? 150 : CONFIG.CANVAS_HEIGHT * 0.65,
+    const nativeCenterX = boss.spec.size[0] / 2;
+    const bottomRadius = (nativeCenterX - boss.spec.visibleBounds[0]) * boss.scale;
+    const upperPortOffset = Math.max(...boss.spec.muzzles.map(m => (m.x - nativeCenterX) * boss.scale));
+    // Upward sweeps start flush with the lower edge and preserve the top quarter, including core-hitbox clearance.
+    const upwardEndY = Math.ceil(CONFIG.CANVAS_HEIGHT / 4 + upperPortOffset +
+      12 + CONFIG.PLAYER_BASE_HITBOX_RADIUS + 2);
+    boss.finalSweep = { phase: 'POSITION', upward,
+      startY: upward ? CONFIG.CANVAS_HEIGHT - bottomRadius : 150,
+      endY: upward ? upwardEndY : CONFIG.CANVAS_HEIGHT * 0.65,
       warningTimer: 1.1, activeElapsed: 0, beamIds: [] };
     state.floatingTexts.push({ text: upward ? 'OVERDRIVE ↑' : 'OVERDRIVE ↓',
       x: CONFIG.CANVAS_WIDTH / 2, y: 200, color: '#ffe366', timer: 2.2 });

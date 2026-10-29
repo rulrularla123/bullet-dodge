@@ -259,11 +259,15 @@ for (const fps of [30, 60]) {
   }
   assert.ok(bullets && primary && overdrive);
  });
- test(`Final overdrive alternates directions with a harmless warning and lower escape lane (${fps}fps)`, () => {
+ test(`Final overdrive alternates directions with a harmless warning and direction-specific escape lane (${fps}fps)`, () => {
   fresh(); g.startRevealedFinalBoss(); const b = s.boss; b.entering = false;
   for (let pass = 0; pass < 2; pass++) {
    const sweep = g.startFinalSweep(b);
    assert.ok(pass === 0 ? sweep.endY > sweep.startY : sweep.endY < sweep.startY);
+   if (pass === 1) {
+    const bounds = g.getRotatedBounds(b.homeX, sweep.startY, b.spec, false, b.scale);
+    assert.ok(Math.abs(bounds.bottom - g.CONFIG.CANVAS_HEIGHT) < 0.001, 'Start flush with bottom edge');
+   }
    let warned = 0, fired = false, lastY;
    for (let i = 0; i < 18 * fps; i++) {
     g.updateGame(1 / fps);
@@ -273,7 +277,8 @@ for (const fps of [30, 60]) {
      if (lastY !== undefined) assert.ok(pass === 0 ? b.y >= lastY : b.y <= lastY);
      lastY = b.y;
      const beams = s.lasers.filter(x => sweep.beamIds.includes(x.id));
-     assert.ok(beams.every(x => !g.checkLaserHitsPlayer(x, {x:200,y:680,hitboxRadius:8})));
+     assert.ok(beams.every(x => !g.checkLaserHitsPlayer(x, {x:200,y:pass === 0 ? 680 : g.CONFIG.CANVAS_HEIGHT / 4,hitboxRadius:8.5})));
+     if (pass === 1) assert.ok(beams.every(x => x.oy - g.getLaserStageThicknessPx(x, 3) / 2 > g.CONFIG.CANVAS_HEIGHT / 4));
     }
     if (!b.finalSweep) break;
    }
