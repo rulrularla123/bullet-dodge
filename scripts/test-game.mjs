@@ -107,7 +107,7 @@ test('Tier 5 traverses left wall then reappears beyond right wall', () => {
  for (let i = 0; i < 360; i++) {
   const oldX = e.x; g.updateGame(1 / 60);
   if (e.specialState === 'DASH') { assert.equal(e.y, y); assert.ok(e.x <= oldX); }
-  if (e.specialState === 'RETURN' && e.x < -65) leftExit = true;
+  if (e.specialState === 'RETURN' && e.x <= -65) leftExit = true;
   if (leftExit && e.x > g.CONFIG.CANVAS_WIDTH) rightEntry = true;
  }
  assert.ok(leftExit && rightEntry); assert.equal(e.specialState, 'NORMAL');
@@ -694,5 +694,20 @@ test('Player laser starts at the forward muzzle with a small activation shake an
  g.advancePlayerSkills(0.2);assert.equal(s.player.skills.laser.flashTimer,0);
  assert.ok(s.player.skills.laser.remaining>0);
 });
+
+for(const fps of [30,60]) {
+ test(`Laser clears existing shots, suppresses all five weapon forms for six seconds, and resumes after ending (${fps}fps)`,()=>{
+  for(const level of [0,1,2,3,4]) {
+   fresh();s.player.weaponLevel=level;g.firePlayerWeapon(s.player);
+   assert.ok(s.playerBullets.length>0);const count=s.player.shotCounter;
+   g.usePlayerSkill('laser');assert.equal(s.playerBullets.length,0);
+   for(let i=0;i<6*fps;i++) {
+    g.updateGame(1/fps);assert.equal(s.playerBullets.length,0);assert.equal(s.player.shotCounter,count);
+   }
+   assert.equal(s.player.skills.laser.remaining,0);
+   g.updateGame(1/fps);assert.equal(s.player.shotCounter,count+1);assert.ok(s.playerBullets.length>0);
+  }
+ });
+}
 
 console.log(`\n${results.length} scenario checks passed.`);

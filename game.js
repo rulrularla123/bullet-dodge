@@ -3029,9 +3029,11 @@
       p.x = Math.max(24 + halfW, Math.min(CONFIG.CANVAS_WIDTH - 24 - halfW, p.x));
       p.y = Math.max(54 + halfH, Math.min(CONFIG.CANVAS_HEIGHT - 16 - halfH, p.y));
 
-      p.fireCooldown -= dt;
-      if (p.fireCooldown <= 0) {
-        firePlayerWeapon(p);
+      if(p.skills.laser.remaining>0 || p.skills.laser.pendingTicks>0) {
+        p.fireCooldown=0;
+      } else {
+        p.fireCooldown-=dt;
+        if(p.fireCooldown<=0) firePlayerWeapon(p);
       }
     }
 
@@ -4055,6 +4057,7 @@
     skill.cooldown=120;
     if (id==='laser') {
       skill.remaining=6;skill.accumulator=0;skill.pendingTicks=0;skill.elapsed=0;skill.flashTimer=0.14;
+      state.playerBullets=[];p.fireCooldown=0;
       triggerCameraShake(0.18,2.5);
     } else if (id==='heal') {
       p.hp=Math.min(p.maxHp,p.hp+2);
