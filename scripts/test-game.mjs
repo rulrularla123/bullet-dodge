@@ -19,7 +19,8 @@ class Image {
   set src(value) { this._src = value; queueMicrotask(() => this.onload?.()); }
   get src() { return this._src; }
 }
-const window = { location: { search: '' }, addEventListener() {} };
+const windowListeners = new Map();
+const window = { location: { search: '' }, addEventListener(name,handler) {windowListeners.set(name,handler);} };
 const context = vm.createContext({ window, document, Image, console, URLSearchParams,
   requestAnimationFrame() {}, setTimeout, clearTimeout });
 vm.runInContext(source, context);
@@ -620,5 +621,78 @@ for(const fps of [30,60]) {
   }
  });
 }
+
+for(const fps of [30,60]) {
+ test(`Player laser deals 120 ticks of 20 damage over six seconds and pierces aligned targets (${fps}fps)`,()=>{
+  fresh(); const targets=[];
+  for(const [x,y] of [[960,s.player.y],[1150,s.player.y],[1050,580]]) {
+   const enemy=g.spawnWaveEnemy(1,{enemyIdx:1});
+   enemy.entering=false;enemy.x=enemy.homeX=x;enemy.y=enemy.homeY=y;
+   enemy.moveAmpX=enemy.moveAmpY=0;enemy.fireCooldown=1e6;enemy.hp=10000;
+   targets.push(enemy);
+  }
+  assert.ok(g.usePlayerSkill('laser'));assert.equal(s.player.skills.laser.cooldown,120);
+  assert.equal(g.usePlayerSkill('laser'),false);
+  tick(6,fps);
+  assert.equal(targets[0].hp,7600);assert.equal(targets[1].hp,7600);assert.equal(targets[2].hp,10000);
+  assert.equal(s.player.skills.laser.remaining,0);assert.equal(s.player.skills.laser.pendingTicks,0);
+  assert.ok(Math.abs(s.player.skills.laser.cooldown-114)<1e-7);
+  tick(0.5,fps);assert.equal(targets[0].hp,7600,'Beam stops damaging after six seconds');
+ });
+}
+test('Heal restores two HP capped at maximum; full-HP use does not waste its cooldown',()=>{
+ fresh();assert.equal(g.usePlayerSkill('heal'),false);assert.equal(s.player.skills.heal.cooldown,0);
+ s.player.hp=2;assert.ok(g.usePlayerSkill('heal'));assert.equal(s.player.hp,4);assert.equal(s.player.maxHp,5);
+ assert.equal(g.usePlayerSkill('heal'),false);
+ fresh();s.player.hp=4;g.usePlayerSkill('heal');assert.equal(s.player.hp,5);
+});
+test('Shield prevents all routed damage for ten seconds, then normal damage resumes',()=>{
+ fresh();s.player.invulnTimer=0;assert.ok(g.usePlayerSkill('shield'));
+ for(const source of ['BULLET','LASER','MISSILE','BOSS DASH','RAID SHIP','FULL-MAP BLAST','METEOR']) g.damagePlayer(2,source);
+ assert.equal(s.player.hp,5);
+ g.advancePlayerSkills(9.9);g.damagePlayer(2,'LASER');assert.equal(s.player.hp,5);
+ g.advancePlayerSkills(0.1);assert.equal(s.player.skills.shield.remaining,0);
+ g.damagePlayer(2,'LASER');assert.equal(s.player.hp,3);
+});
+test('Skills have independent cooldowns, freeze in pause/rewards, survive wave transitions, and reset on restart',()=>{
+ fresh();s.player.hp=2;g.usePlayerSkill('laser');g.usePlayerSkill('heal');g.usePlayerSkill('shield');
+ for(const mode of ['PAUSED','REWARD','GAMEOVER','CLEAR']) {
+  s.mode=mode;g.updateGame(5);assert.equal(s.player.skills.laser.remaining,6);
+  assert.equal(s.player.skills.shield.remaining,10);assert.equal(s.player.skills.heal.cooldown,120);
+ }
+ s.mode='PLAYING';g.clearAllCombatHazards();assert.equal(s.player.skills.laser.remaining,6);
+ g.advancePlayerSkills(120);for(const skill of Object.values(s.player.skills)) assert.equal(skill.cooldown,0);
+ g.resetGame();assert.equal(s.player.skills.laser.remaining,0);assert.equal(s.player.skills.shield.remaining,0);
+ g.updatePlayerSkillUI();assert.equal(nodes.get('skill-laser').disabled,false);
+ assert.equal(nodes.get('skill-heal').disabled,true);
+});
+test('Skill laser respects T8 formation protection and invulnerable final escorts',()=>{
+ fresh();g.startTierBoss(8);s.boss.entering=false;s.boss.hp=1400;g.checkAndTriggerBossPhase2(s.boss);
+ s.player.y=s.boss.y;const hp=s.boss.hp;g.applyPlayerSkillLaserTick();assert.equal(s.boss.hp,hp);
+ fresh();g.startRevealedFinalBoss();s.boss.entering=false;
+ const escort=s.escorts[0],escortHp=escort.hp;s.player.y=escort.y;
+ g.applyPlayerSkillLaserTick();assert.equal(escort.hp,escortHp);
+});
+test('E/R/T activate skills without restarting; number keys remain reward controls',()=>{
+ fresh();const key=code=>({code,repeat:false,preventDefault(){}});
+ windowListeners.get('keydown')(key('KeyE'));assert.equal(s.player.skills.laser.cooldown,120);
+ s.player.hp=2;windowListeners.get('keydown')(key('KeyR'));assert.equal(s.player.hp,4);
+ assert.equal(s.player.skills.laser.cooldown,120,'R does not restart the game');
+ windowListeners.get('keydown')(key('KeyT'));assert.equal(s.player.skills.shield.remaining,10);
+ windowListeners.get('keydown')(key('KeyN'));assert.equal(s.player.skills.laser.cooldown,0);
+ windowListeners.get('keydown')(key('Digit1'));assert.equal(s.player.skills.laser.cooldown,0);
+ fresh();s.player.hp=2;g.openRewardSelection(2);
+ windowListeners.get('keydown')(key('Digit1'));
+ assert.equal(s.player.skills.laser.cooldown,0);assert.equal(s.player.maxHp,6);
+});
+
+test('Player laser starts at the forward muzzle with a small activation shake and a brief flash',()=>{
+ fresh();const m=g.getPlayerSkillLaserOrigin();assert.ok(m.x>s.player.x);
+ const shakes=s.telemetry.cameraShakesTriggered;g.usePlayerSkill('laser');
+ assert.equal(s.telemetry.cameraShakesTriggered,shakes+1);assert.equal(s.cameraShake.magnitude,2.5);
+ assert.equal(s.player.skills.laser.flashTimer,0.14);
+ g.advancePlayerSkills(0.2);assert.equal(s.player.skills.laser.flashTimer,0);
+ assert.ok(s.player.skills.laser.remaining>0);
+});
 
 console.log(`\n${results.length} scenario checks passed.`);

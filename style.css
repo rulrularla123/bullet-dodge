@@ -401,3 +401,18 @@ button.active-toggle {
     display: none;
   }
 }
+
+/* Pixel skill HUD follows the same logical scale as the canvas. */
+#player-skills { position:absolute; left:120px; top:12px; display:flex; gap:6px; transform-origin:top left; z-index:5; }
+.player-skill { width:116px; height:46px; display:flex; align-items:center; gap:6px; padding:4px; background:rgba(6,19,42,.94); border:2px solid #326084; border-radius:0; color:#d9f4ff; cursor:pointer; font-family:monospace; }
+.player-skill:hover:not(:disabled), .player-skill:focus-visible { border-color:#8cedff; background:#122e4a; outline:2px solid #67d9ef; outline-offset:2px; }
+.player-skill:disabled { cursor:default; }
+.skill-icon { position:relative; display:block; flex:0 0 32px; height:32px; background:#102c46; overflow:hidden; }
+.skill-icon svg { display:block; width:32px; height:32px; shape-rendering:crispEdges; }
+.skill-shade { position:absolute; inset:auto 0 0; height:0; background:rgba(0,4,15,.78); border-top:1px solid rgba(153,212,255,.6); pointer-events:none; }
+.skill-key { position:absolute; left:1px; bottom:0; color:#fff; font:bold 10px monospace; text-shadow:1px 1px #000; }
+.skill-details { display:flex; flex-direction:column; gap:4px; min-width:0; text-align:left; white-space:nowrap; }
+.skill-name { font-size:11px; font-weight:bold; }
+.skill-time { font-size:10px; color:#87b3ce; }
+.player-skill.skill-active { border-color:#71e5ff; box-shadow:inset 0 0 8px rgba(64,214,255,.25); }
+.player-skill.skill-active .skill-time { color:#bcf4ff; }

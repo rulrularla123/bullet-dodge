@@ -26,6 +26,7 @@
     TOTAL_TIERS: 8,
 
     PLAYER_MAX_HP: 5,
+    PLAYER_SKILL_LASER_DAMAGE: 20,
     PLAYER_SPEED: 350,
     PLAYER_FOCUS_SPEED: 170,
     PLAYER_INVULN_TIME: 1.25,
@@ -676,6 +677,11 @@
       hp: CONFIG.PLAYER_MAX_HP,
       maxHp: CONFIG.PLAYER_MAX_HP,
       vitalityLevel: 0,
+      skills: {
+        laser: { cooldown: 0, remaining: 0, accumulator: 0, pendingTicks: 0, elapsed: 0, flashTimer: 0 },
+        heal: { cooldown: 0 },
+        shield: { cooldown: 0, remaining: 0 }
+      },
       weaponLevel: 0,    // Only increases when 'equipment' is chosen at even-boss reward
       mobilityLevel: 0,  // Only increases when 'mobility' is chosen at even-boss reward
       shotCounter: 0,
@@ -2940,7 +2946,7 @@
 
   function damagePlayer(amount, sourceLabel) {
     const p = state.player;
-    if (!p || p.invulnTimer > 0 || state.debugInvincible || state.mode !== 'PLAYING') return;
+    if (!p || p.invulnTimer > 0 || p.skills?.shield.remaining > 0 || state.debugInvincible || state.mode !== 'PLAYING') return;
 
     p.hp = Math.max(0, p.hp - amount);
     p.invulnTimer = CONFIG.PLAYER_INVULN_TIME;
@@ -2982,6 +2988,8 @@
   function updateGame(dt) {
     // Freeze all gameplay, timers, background scroll, and spawns during PAUSED, REWARD, GAMEOVER, CLEAR
     if (!assets.ready || state.mode !== 'PLAYING') return;
+
+    advancePlayerSkills(dt);
 
     // 1. Scroll background continuously right-to-left, wrapping at 43,440px
     state.bgScrollX = (state.bgScrollX + CONFIG.BG_SCROLL_SPEED * dt) % CONFIG.BG_TOTAL_WIDTH;
@@ -3303,6 +3311,11 @@
 
     // 12. Update Player Bullets & Hit Detection
     updatePlayerBullets(dt);
+    const skillLaser=state.player?.skills.laser;
+    while(skillLaser?.pendingTicks>0) {
+      skillLaser.pendingTicks-=1;
+      if(state.mode==='PLAYING' && state.player.hp>0) applyPlayerSkillLaserTick();
+    }
     if (p) {
       for (const unit of state.enemies.filter(e=>e.isTier8Phase2Raider && e.specialState==='RAID_DASH')) {
         const now=getRotatedBounds(unit.x,unit.y,unit.spec,false,unit.scale);
@@ -4027,6 +4040,113 @@
     return true;
   }
 
+  function canDamageBossWithPlayerAttack(boss) {
+    if (!boss || boss.hp<=0 || boss.entering || boss.defeatedHandled || boss.dyingTimer>0) return false;
+    if (['OFFSCREEN','P2_WARN','P2_WAIT'].includes(boss.dashState)) return false;
+    if (boss.tier===8 && boss.phase2Active) return false;
+    if (boss.tier===7 && boss.phase2Triggered && !state.lasers.some(l=>l.id===boss.p2ActiveBeamId && l.stage===3)) return false;
+    return true;
+  }
+
+  function usePlayerSkill(id) {
+    const p=state.player, skill=p?.skills[id];
+    if (!assets.ready || state.mode!=='PLAYING' || !p || p.hp<=0 || !skill || skill.cooldown>0) return false;
+    if (id==='heal' && p.hp>=p.maxHp) return false;
+    skill.cooldown=120;
+    if (id==='laser') {
+      skill.remaining=6;skill.accumulator=0;skill.pendingTicks=0;skill.elapsed=0;skill.flashTimer=0.14;
+      triggerCameraShake(0.18,2.5);
+    } else if (id==='heal') {
+      p.hp=Math.min(p.maxHp,p.hp+2);
+      spawnExplosion(p.x,p.y,'#ff7899',18);
+    } else if (id==='shield') {
+      skill.remaining=10;spawnExplosion(p.x,p.y,'#7ebaff',18);
+    }
+    updatePlayerSkillUI();updateHudBadges();
+    return true;
+  }
+
+  function advancePlayerSkills(dt) {
+    const skills=state.player?.skills;
+    if (!skills) return;
+    for(const skill of Object.values(skills)) {
+      skill.cooldown=Math.max(0,skill.cooldown-dt);
+      if(skill.cooldown<1e-8) skill.cooldown=0;
+    }
+    skills.shield.remaining=Math.max(0,skills.shield.remaining-dt);
+    if(skills.shield.remaining<1e-8) skills.shield.remaining=0;
+    const laser=skills.laser;
+    const activeDt=Math.min(dt,laser.remaining);
+    laser.elapsed+=activeDt;
+    laser.flashTimer=Math.max(0,laser.flashTimer-dt);
+    laser.remaining=Math.max(0,laser.remaining-dt);
+    if(laser.remaining<1e-8) laser.remaining=0;
+    laser.accumulator+=activeDt;
+    const ticks=Math.floor((laser.accumulator+1e-9)/0.05);
+    laser.accumulator=Math.max(0,laser.accumulator-ticks*0.05);
+    laser.pendingTicks+=ticks;
+  }
+
+  function getPlayerSkillLaserOrigin() {
+    const p=state.player;
+    return p ? getWorldMuzzles(p.x,p.y,p.spec,true,p.scale)[0] : null;
+  }
+
+  function applyPlayerSkillLaserTick() {
+    const m=getPlayerSkillLaserOrigin();if(!m) return;
+    const damage=CONFIG.PLAYER_SKILL_LASER_DAMAGE;
+    const hits=entity=>{
+      const box=getRotatedBounds(entity.x,entity.y,entity.spec,false,entity.scale);
+      return box.right>=m.x && box.left<=CONFIG.CANVAS_WIDTH && box.bottom>=m.y-16 && box.top<=m.y+16;
+    };
+    const boss=state.boss;
+    if(canDamageBossWithPlayerAttack(boss) && hits(boss)) {
+      boss.hp=Math.max(0,boss.hp-damage);boss.hitFlash=0.06;
+      if(boss.hp<=0) {handleBossDefeated();return;}
+      if(checkAndTriggerBossPhase2(boss)) return;
+    }
+    for(const escort of [...state.escorts]) {
+      if(escort.invulnerable || escort.hp<=0 || !hits(escort)) continue;
+      escort.hp-=damage;escort.hitFlash=0.06;
+      if(escort.hp<=0) {
+        state.score+=250;spawnExplosion(escort.x,escort.y,'#4adeff',14);
+        if(escort.respawnRemaining>0 && state.boss?.tier===4) state.boss.t4EscortRespawnTimers.push({idx:escort.idx,timer:9});
+        state.escorts=state.escorts.filter(e=>e!==escort);
+      }
+    }
+    for(const enemy of [...state.enemies]) {
+      if(enemy.invulnerable || enemy.hp<=0 || enemy.retreating || enemy.deathHandled || enemy.specialState==='FLYBY_WARN' || !hits(enemy)) continue;
+      enemy.hp-=damage;enemy.hitFlash=0.06;
+      if(enemy.hp<=0) {
+        if(enemy.tier===6) beginEnemySuicide(enemy);
+        else {
+          state.score+=100*enemy.tier+25*enemy.enemyIdx;
+          spawnExplosion(enemy.x,enemy.y,'#50e5ff',12);removeEnemy(enemy);
+        }
+      }
+    }
+  }
+
+  function updatePlayerSkillUI() {
+    const p=state.player;
+    const labels={laser:'관통 레이저',heal:'응급 회복',shield:'방어막'};
+    for(const [id,label] of Object.entries(labels)) {
+      const skill=p?.skills[id], button=document.getElementById(`skill-${id}`);
+      if(!button || !skill) continue;
+      const full=id==='heal' && p.hp>=p.maxHp;
+      const cd=skill.cooldown>0 ? `${Math.ceil(skill.cooldown)}초` : full ? 'HP 최대' : '준비';
+      const active=skill.remaining>0 ? ` · ${Math.ceil(skill.remaining)}초 유지` : '';
+      const value=cd+active;
+      const text=document.getElementById(`skill-${id}-time`);
+      if(text && text.textContent!==value) text.textContent=value;
+      const shade=document.getElementById(`skill-${id}-shade`);
+      if(shade) shade.style.height=`${(skill.cooldown/120*100).toFixed(2)}%`;
+      button.disabled=!assets.ready || state.mode!=='PLAYING' || p.hp<=0 || skill.cooldown>0 || full;
+      button.ariaLabel=`${label}: ${value}`;
+      button.classList.toggle('skill-active',skill.remaining>0);
+    }
+  }
+
   function updatePlayerBullets(dt) {
     for (let i = state.playerBullets.length - 1; i >= 0; i--) {
       const pb = state.playerBullets[i];
@@ -4043,11 +4163,7 @@
       let consumed = false;
 
       // 1. Check hit against active Boss
-      const bossOffscreen = state.boss && ['OFFSCREEN', 'P2_WARN', 'P2_WAIT'].includes(state.boss.dashState);
-      const blinkProtected = state.boss?.tier === 7 && state.boss.phase2Triggered &&
-        !state.lasers.some(l => l.id === state.boss.p2ActiveBeamId && l.stage === 3);
-      const raidProtected = state.boss?.tier === 8 && state.boss.phase2Active;
-      if (state.boss && !state.boss.entering && !bossOffscreen && !blinkProtected && !raidProtected && (!state.boss.dyingTimer || state.boss.dyingTimer <= 0)) {
+      if (canDamageBossWithPlayerAttack(state.boss)) {
         let hitBoss;
         if (state.boss.tier === 7 && state.boss.phase2Triggered) {
           const b = state.boss, r = b.rotation ?? -Math.PI / 2;
@@ -4245,8 +4361,10 @@
     const camShake = state.cameraShake.timer > 0 && state.cameraShake.duration > 0
       ? (state.cameraShake.magnitude || state.cameraShake.intensity || 0) * (state.cameraShake.timer / state.cameraShake.duration)
       : 0;
-    const shake = Math.max(finalShake, camShake);
-    const shakePhase = (finalBoss?.age || state.boss?.age || state.cameraShake.timer || 0);
+    const skillLaser=state.player?.skills.laser;
+    const skillShake=skillLaser?.remaining>0 ? 1 : 0;
+    const shake = Math.max(finalShake, camShake, skillShake);
+    const shakePhase = skillLaser?.remaining>0 ? skillLaser.elapsed : (finalBoss?.age || state.boss?.age || state.cameraShake.timer || 0);
     ctx.save();
     if (shake > 0) {
       ctx.translate(
@@ -4321,6 +4439,24 @@
     // 6. Render Active 3-Stage Lasers (Origin + Tiled Body + Unstretched Rounded Tip)
     for (const beam of state.lasers) {
       renderLaserBeam(beam);
+    }
+
+    if(state.player?.skills.laser.remaining>0) {
+      const m=getPlayerSkillLaserOrigin();
+      ctx.save();ctx.fillStyle='rgba(80,229,255,0.16)';
+      ctx.fillRect(m.x,m.y-22,CONFIG.CANVAS_WIDTH-m.x,44);ctx.restore();
+      renderLaserBeam({kind:'PLAYER_SKILL',stage:3,color:'Cyan',scale:2,widthMultiplier:32/24,
+        ox:m.x,oy:m.y,angle:0,length:CONFIG.CANVAS_WIDTH-m.x,followBossMuzzleIndex:null,followEscortId:null,followEnemyId:'player'});
+      ctx.save();
+      ctx.fillStyle='rgba(184,250,255,0.65)';
+      ctx.beginPath();ctx.moveTo(m.x,m.y-19);ctx.lineTo(m.x+26,m.y);ctx.lineTo(m.x,m.y+19);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#a8f7ff';
+      const length=CONFIG.CANVAS_WIDTH-m.x;
+      for(let i=0;i<6;i++) {
+        const x=m.x+(state.player.skills.laser.elapsed*1200+i*190)%Math.max(1,length);
+        ctx.fillRect(Math.round(x),m.y-20,12,2);ctx.fillRect(Math.round(x),m.y+18,12,2);
+      }
+      ctx.restore();
     }
 
     // 7. Render Player Bullets (dynamic size, scale, and angle per weapon evolution level)
@@ -4464,6 +4600,13 @@
     // 13. Render Player (rotated +90 deg CW to face right, scaled by mobility upgrade)
     if (state.player) {
       const p = state.player;
+      if(p.skills.shield.remaining>0) {
+        const bounds=getRotatedBounds(p.x,p.y,p.spec,true,p.scale);
+        ctx.save();ctx.strokeStyle='#8dcaff';ctx.fillStyle='rgba(75,150,255,0.12)';ctx.lineWidth=3;
+        ctx.beginPath();ctx.ellipse(p.x,p.y,bounds.width/2+12,bounds.height/2+12,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#c7e8ff';ctx.font='bold 12px monospace';ctx.textAlign='center';
+        ctx.fillText(`${Math.ceil(p.skills.shield.remaining)}s`,p.x,p.y-bounds.height/2-20);ctx.restore();
+      }
       const blinkSkip = p.invulnTimer > 0 && Math.floor(p.invulnTimer * 16) % 2 === 1;
       if (!blinkSkip) {
         drawRotatedSprite(p.path, p.x, p.y, p.spec.size, p.scale, Math.PI / 2, p.hitFlashTimer > 0);
@@ -4505,6 +4648,10 @@
       ctx.fillStyle = `rgba(195, 234, 255, ${0.16 * state.boss.p2FlashTimer / 0.18})`;
       ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
       ctx.restore();
+    }
+    if(state.player?.skills.laser.flashTimer>0) {
+      ctx.save();ctx.fillStyle=`rgba(195,250,255,${0.12*state.player.skills.laser.flashTimer/0.14})`;
+      ctx.fillRect(0,0,CONFIG.CANVAS_WIDTH,CONFIG.CANVAS_HEIGHT);ctx.restore();
     }
     ctx.restore(); // Camera vibration never moves health, timer, or boss bar.
 
@@ -4655,7 +4802,8 @@
     }
 
     if (strip) {
-      ctx.save(); ctx.translate(totalLen, 0); ctx.scale(-1, 1);
+      ctx.save();
+      ctx.translate(totalLen,0);ctx.scale(-1,1);
       ctx.drawImage(strip, 0, -halfH, totalLen, canvasH);
       ctx.restore();
     } else {
@@ -5073,6 +5221,7 @@
   }
 
   function renderPixelUI() {
+    updatePlayerSkillUI();
     // 1. Top-Left Player HP: [Current HP Number] × [Single 8x8 Heart]
     const hp = state.player ? state.player.hp : 0;
     const hpStr = String(hp);
@@ -5242,7 +5391,7 @@
 
   function triggerGameOver() {
     state.mode = 'GAMEOVER';
-    showOverlay('GAME OVER', '기체가 파괴되었습니다. R 키 또는 재시작 버튼으로 다시 도전하세요.', false);
+    showOverlay('GAME OVER', '기체가 파괴되었습니다. N 키 또는 재시작 버튼으로 다시 도전하세요.', false);
   }
 
   function triggerGameClear() {
@@ -5270,6 +5419,8 @@
     canvas.style.height = `${dispH}px`;
     stage.style.width = `${dispW}px`;
     stage.style.height = `${dispH}px`;
+    const skills=document.getElementById('player-skills');
+    if(skills) {skills.style.left=`${120*scale}px`;skills.style.top=`${12*scale}px`;skills.style.transform=`scale(${scale})`;}
     ctx.imageSmoothingEnabled = false;
   }
 
@@ -5298,15 +5449,19 @@
           applyRewardChoice('mobility');
         }
       }
-      if (e.code === 'KeyR') {
+      if (e.code === 'KeyN') {
         resetGame();
       }
       return;
     }
 
+    if(!e.repeat && state.mode==='PLAYING') {
+      const skillId={KeyE:'laser',KeyR:'heal',KeyT:'shield'}[e.code];
+      if(skillId) {e.preventDefault();usePlayerSkill(skillId);return;}
+    }
     if (e.code === 'Escape' || e.code === 'KeyP') {
       togglePause();
-    } else if (e.code === 'KeyR') {
+    } else if (e.code === 'KeyN') {
       resetGame();
     } else if (e.code === 'F2') {
       e.preventDefault();
@@ -5334,6 +5489,10 @@
     document.getElementById('debug-panel')?.classList.toggle('hidden');
     fitCanvasToViewport();
   });
+
+  for(const id of ['laser','heal','shield']) {
+    document.getElementById(`skill-${id}`)?.addEventListener('click',()=>usePlayerSkill(id));
+  }
 
   // Debug Panel Actions
   document.getElementById('debug-panel')?.addEventListener('click', (e) => {
@@ -5591,6 +5750,12 @@
     prepareTier8RaidWave,
     finishTier8Phase2,
     firePlayerWeapon,
+    usePlayerSkill,
+    applyPlayerSkillLaserTick,
+    getPlayerSkillLaserOrigin,
+    advancePlayerSkills,
+    damagePlayer,
+    updatePlayerSkillUI,
     spawnEscortLaser,
     startFinalSweep,
     fireFinalPrimaryLasers,

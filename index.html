@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bullet Hell Dodging — Pixel Space Shooter V4</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=20261102-player-laser-impact" />
 </head>
 <body>
   <div id="app">
@@ -15,11 +15,11 @@
         <span class="badge">BUILD: <strong id="build-label">HP+0 / WP Lv0 / MOB+0</strong></span>
       </div>
       <div class="hud-center">
-        <span class="controls-hint">이동: WASD/방향키(Shift:정밀) · 자동사격 · 보상선택: 1/2/3 또는 클릭 · 일시정지: ESC · 재시작: R · 검증도구: F2</span>
+        <span class="controls-hint">이동: WASD/방향키(Shift:정밀) · 자동사격 · 스킬: E/R/T · 보상선택: 1/2/3 또는 클릭 · 일시정지: ESC · 재시작: N · 검증도구: F2</span>
       </div>
       <div class="hud-right">
         <button id="btn-pause" type="button" title="일시정지 (ESC)">일시정지</button>
-        <button id="btn-restart" type="button" title="재시작 (R)">재시작</button>
+        <button id="btn-restart" type="button" title="재시작 (N)">재시작</button>
         <button id="btn-debug-toggle" type="button" title="검증 도구 열기/닫기 (F2)">검증 도구</button>
       </div>
     </header>
@@ -27,6 +27,22 @@
     <main id="viewport-wrap">
       <div id="canvas-stage">
         <canvas id="game-canvas" width="1284" height="724"></canvas>
+
+
+        <div id="player-skills" role="group" aria-label="플레이어 스킬">
+          <button type="button" id="skill-laser" class="player-skill" title="[E] 관통 레이저 · 쿨타임 120초">
+            <span class="skill-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#50e5ff" d="M1 6h3V4h2v2h9v4H6v2H4v-2H1z"/><path fill="#fff" d="M5 7h10v2H5z"/></svg><span class="skill-shade" id="skill-laser-shade"></span><span class="skill-key">E</span></span>
+            <span class="skill-details"><span class="skill-name">관통 레이저</span><span class="skill-time" id="skill-laser-time">준비</span></span>
+          </button>
+          <button type="button" id="skill-heal" class="player-skill" title="[R] 응급 회복 · 쿨타임 120초">
+            <span class="skill-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#ff6f98" d="M2 3h4v2h4V3h4v2h2v5h-2v2h-2v2H4v-2H2v-2H0V5h2z"/><path fill="#fff" d="M7 5h2v2h2v2H9v2H7V9H5V7h2z"/></svg><span class="skill-shade" id="skill-heal-shade"></span><span class="skill-key">R</span></span>
+            <span class="skill-details"><span class="skill-name">응급 회복</span><span class="skill-time" id="skill-heal-time">준비</span></span>
+          </button>
+          <button type="button" id="skill-shield" class="player-skill" title="[T] 방어막 · 쿨타임 120초">
+            <span class="skill-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#67a7ff" d="M2 2h12v7h-2v3h-2v2H6v-2H4V9H2z"/><path fill="#d4f5ff" d="M4 4h8v4h-2v3H8v1H6V9H4z"/></svg><span class="skill-shade" id="skill-shield-shade"></span><span class="skill-key">T</span></span>
+            <span class="skill-details"><span class="skill-name">방어막</span><span class="skill-time" id="skill-shield-time">준비</span></span>
+          </button>
+        </div>
 
         <!-- Even-Tier Boss Reward Selection Modal (Tier 02, 04, 06, 08) -->
         <div id="reward-screen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reward-title">
@@ -72,7 +88,7 @@
             <div id="overlay-stats" class="overlay-stats"></div>
             <div class="overlay-actions">
               <button id="btn-overlay-resume" type="button">계속하기 (ESC)</button>
-              <button id="btn-overlay-restart" type="button">처음부터 재시작 (R)</button>
+              <button id="btn-overlay-restart" type="button">처음부터 재시작 (N)</button>
             </div>
           </div>
         </div>
@@ -143,6 +159,6 @@
     </section>
   </div>
 
-  <script src="game.js?v=20261102-raid-wait"></script>
+  <script src="game.js?v=20261102-player-laser-impact"></script>
 </body>
 </html>
