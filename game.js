@@ -26,7 +26,6 @@
     TOTAL_TIERS: 8,
 
     PLAYER_MAX_HP: 5,
-    PLAYER_SKILL_LASER_DAMAGE: 20,
     PLAYER_SPEED: 350,
     PLAYER_FOCUS_SPEED: 170,
     PLAYER_INVULN_TIME: 1.25,
@@ -427,6 +426,40 @@
    * Uses exponential tier scaling (1.25^(tier-1)) and steeper stage multipliers [1.0, 1.35, 1.8, 2.4].
    * Guarantees Enemy_01 < 02 < 03 < 04 within every tier, and Tier 1 < 2 < ... < 8 for every stage.
    */
+  const SKILL_UPGRADE_STATS = [
+    { laserTotal: BOSS_HP_TABLE[1], laserCooldown:120, healAmount:1, healCooldown:180, shieldDuration:4, shieldCooldown:120 },
+    { laserTotal: BOSS_HP_TABLE[3], laserCooldown:120, healAmount:2, healCooldown:180, shieldDuration:6, shieldCooldown:120 },
+    { laserTotal: BOSS_HP_TABLE[3], laserCooldown:100, healAmount:2, healCooldown:120, shieldDuration:7, shieldCooldown:120 },
+    { laserTotal: BOSS_HP_TABLE[5], laserCooldown:100, healAmount:3, healCooldown:120, shieldDuration:10, shieldCooldown:120 },
+    { laserTotal: BOSS_HP_TABLE[10]/3, laserCooldown:80, healAmount:3, healCooldown:90, shieldDuration:10, shieldCooldown:100 }
+  ];
+
+  function getSkillStats(level=state.player?.skillLevel ?? 0) {
+    return SKILL_UPGRADE_STATS[Math.max(0,Math.min(4,Math.floor(level)))];
+  }
+
+  function getRewardLevels(p=state.player) {
+    return p ? {vitality:p.vitalityLevel,equipment:p.weaponLevel,mobility:p.mobilityLevel,skills:p.skillLevel} : {};
+  }
+
+  function canChooseReward(choice,p=state.player) {
+    const levels=getRewardLevels(p);
+    if(choice==='continue') return Object.values(levels).length===4 && Object.values(levels).every(level=>level>=4);
+    return Object.hasOwn(levels,choice) && levels[choice]<4;
+  }
+
+  function upgradePlayerSkills(p) {
+    if(p.skillLevel>=4) return false;
+    p.skillLevel++;
+    const stats=getSkillStats(p.skillLevel);
+    for(const [id,maximum] of [['laser',stats.laserCooldown],['heal',stats.healCooldown],['shield',stats.shieldCooldown]]) {
+      const skill=p.skills[id];
+      skill.cooldown=skill.cooldown/(skill.cooldownDuration || maximum)*maximum;
+      skill.cooldownDuration=maximum;
+    }
+    return true;
+  }
+
   function getEnemyMaxHp(tier, enemyIdx) {
     const t = Math.max(1, Math.min(8, tier));
     const idx = Math.max(1, Math.min(4, enemyIdx));
@@ -677,10 +710,11 @@
       hp: CONFIG.PLAYER_MAX_HP,
       maxHp: CONFIG.PLAYER_MAX_HP,
       vitalityLevel: 0,
+      skillLevel: 0,
       skills: {
-        laser: { cooldown: 0, remaining: 0, accumulator: 0, pendingTicks: 0, elapsed: 0, flashTimer: 0 },
-        heal: { cooldown: 0 },
-        shield: { cooldown: 0, remaining: 0 }
+        laser: { cooldown: 0, remaining: 0, accumulator: 0, pendingTicks: 0, elapsed: 0, flashTimer: 0, cooldownDuration:120, damagePerTick:null },
+        heal: { cooldown: 0, cooldownDuration:180 },
+        shield: { cooldown: 0, remaining: 0, cooldownDuration:120 }
       },
       weaponLevel: 0,    // Only increases when 'equipment' is chosen at even-boss reward
       mobilityLevel: 0,  // Only increases when 'mobility' is chosen at even-boss reward
@@ -821,6 +855,19 @@
       statMobEl.textContent = `배율: ${curScale}x → ${nxtScale}x / 속도: ${curSpd}% → ${nxtSpd}%`;
     }
 
+    if(p) {
+      const current=getSkillStats(p.skillLevel),next=getSkillStats(Math.min(4,p.skillLevel+1));
+      const description=document.getElementById('reward-desc-skills');
+      if(description) description.innerHTML=`세 스킬 함께 강화<br/>레이저 <strong>${Math.round(current.laserTotal)} → ${Math.round(next.laserTotal)}</strong> / 쿨 ${next.laserCooldown}초<br/>회복 <strong>${next.healAmount} HP</strong> / 쿨 ${next.healCooldown}초<br/>방어막 <strong>${next.shieldDuration}초</strong> / 쿨 ${next.shieldCooldown}초`;
+      const stat=document.getElementById('reward-stat-skills');
+      if(stat) stat.textContent=`스킬 +${p.skillLevel} → +${Math.min(4,p.skillLevel+1)}`;
+      for(const [choice,id] of [['vitality',1],['equipment',2],['mobility',3],['skills',4]]) {
+        const card=document.getElementById(`reward-card-${id}`);
+        if(card) {card.hidden=!canChooseReward(choice,p);card.disabled=card.hidden;}
+      }
+      const nextButton=document.getElementById('reward-continue');
+      if(nextButton) {nextButton.hidden=!canChooseReward('continue',p);nextButton.disabled=nextButton.hidden;}
+    }
     document.getElementById('reward-screen')?.classList.remove('hidden');
     updateHudBadges();
   }
@@ -831,7 +878,7 @@
 
   function applyRewardChoice(choiceType) {
     if (state.mode !== 'REWARD' || state.rewardKeyLock) return;
-    if (!['vitality', 'equipment', 'mobility'].includes(choiceType)) return;
+    if (!canChooseReward(choiceType)) return;
 
     state.rewardKeyLock = true;
     const p = state.player;
@@ -857,6 +904,9 @@
           color: '#50e5ff',
           timer: 2.0
         });
+      } else if (choiceType === 'skills') {
+        upgradePlayerSkills(p);
+        state.floatingTexts.push({text:`스킬 강화 +${p.skillLevel}!`,x:p.x,y:p.y-36,color:'#b4a5ff',timer:2});
       } else if (choiceType === 'mobility') {
         p.mobilityLevel = Math.min(4, p.mobilityLevel + 1);
         syncPlayerUpgradeStats(p);
@@ -4054,16 +4104,18 @@
     const p=state.player, skill=p?.skills[id];
     if (!assets.ready || state.mode!=='PLAYING' || !p || p.hp<=0 || !skill || skill.cooldown>0) return false;
     if (id==='heal' && p.hp>=p.maxHp) return false;
-    skill.cooldown=120;
+    const stats=getSkillStats(p.skillLevel);
+    skill.cooldownDuration=id==='laser' ? stats.laserCooldown : id==='heal' ? stats.healCooldown : stats.shieldCooldown;
+    skill.cooldown=skill.cooldownDuration;
     if (id==='laser') {
-      skill.remaining=6;skill.accumulator=0;skill.pendingTicks=0;skill.elapsed=0;skill.flashTimer=0.14;
+      skill.remaining=6;skill.damagePerTick=stats.laserTotal/120;skill.accumulator=0;skill.pendingTicks=0;skill.elapsed=0;skill.flashTimer=0.14;
       state.playerBullets=[];p.fireCooldown=0;
       triggerCameraShake(0.18,2.5);
     } else if (id==='heal') {
-      p.hp=Math.min(p.maxHp,p.hp+2);
+      p.hp=Math.min(p.maxHp,p.hp+stats.healAmount);
       spawnExplosion(p.x,p.y,'#ff7899',18);
     } else if (id==='shield') {
-      skill.remaining=10;spawnExplosion(p.x,p.y,'#7ebaff',18);
+      skill.remaining=stats.shieldDuration;spawnExplosion(p.x,p.y,'#7ebaff',18);
     }
     updatePlayerSkillUI();updateHudBadges();
     return true;
@@ -4097,21 +4149,21 @@
 
   function applyPlayerSkillLaserTick() {
     const m=getPlayerSkillLaserOrigin();if(!m) return;
-    const damage=CONFIG.PLAYER_SKILL_LASER_DAMAGE;
+    const damage=state.player.skills.laser.damagePerTick ?? getSkillStats().laserTotal/120;
     const hits=entity=>{
       const box=getRotatedBounds(entity.x,entity.y,entity.spec,false,entity.scale);
       return box.right>=m.x && box.left<=CONFIG.CANVAS_WIDTH && box.bottom>=m.y-16 && box.top<=m.y+16;
     };
     const boss=state.boss;
     if(canDamageBossWithPlayerAttack(boss) && hits(boss)) {
-      boss.hp=Math.max(0,boss.hp-damage);boss.hitFlash=0.06;
+      boss.hp=Math.max(0,boss.hp-damage);if(boss.hp<1e-7) boss.hp=0;boss.hitFlash=0.06;
       if(boss.hp<=0) {handleBossDefeated();return;}
       if(checkAndTriggerBossPhase2(boss)) return;
     }
     for(const escort of [...state.escorts]) {
       if(escort.invulnerable || escort.hp<=0 || !hits(escort)) continue;
       escort.hp-=damage;escort.hitFlash=0.06;
-      if(escort.hp<=0) {
+      if(escort.hp<=1e-7) {
         state.score+=250;spawnExplosion(escort.x,escort.y,'#4adeff',14);
         if(escort.respawnRemaining>0 && state.boss?.tier===4) state.boss.t4EscortRespawnTimers.push({idx:escort.idx,timer:9});
         state.escorts=state.escorts.filter(e=>e!==escort);
@@ -4120,7 +4172,7 @@
     for(const enemy of [...state.enemies]) {
       if(enemy.invulnerable || enemy.hp<=0 || enemy.retreating || enemy.deathHandled || enemy.specialState==='FLYBY_WARN' || !hits(enemy)) continue;
       enemy.hp-=damage;enemy.hitFlash=0.06;
-      if(enemy.hp<=0) {
+      if(enemy.hp<=1e-7) {
         if(enemy.tier===6) beginEnemySuicide(enemy);
         else {
           state.score+=100*enemy.tier+25*enemy.enemyIdx;
@@ -4143,9 +4195,16 @@
       const text=document.getElementById(`skill-${id}-time`);
       if(text && text.textContent!==value) text.textContent=value;
       const shade=document.getElementById(`skill-${id}-shade`);
-      if(shade) shade.style.height=`${(skill.cooldown/120*100).toFixed(2)}%`;
+      if(shade) shade.style.height=`${(skill.cooldown/(skill.cooldownDuration || 120)*100).toFixed(2)}%`;
+      const profile=getSkillStats(p.skillLevel);
+      const name=document.getElementById(`skill-${id}-name`);
+      const levelText=p.skillLevel ? ` +${p.skillLevel}` : '';
+      if(name) name.textContent=label+levelText;
+      const info=id==='laser' ? `6초간 총 ${Math.round(profile.laserTotal)} 피해 · 쿨 ${profile.laserCooldown}초` :
+        id==='heal' ? `HP ${profile.healAmount} 회복 · 쿨 ${profile.healCooldown}초` : `${profile.shieldDuration}초 보호 · 쿨 ${profile.shieldCooldown}초`;
+      button.title=`[${{laser:'E',heal:'R',shield:'T'}[id]}] ${label}${levelText} · ${info}`;
       button.disabled=!assets.ready || state.mode!=='PLAYING' || p.hp<=0 || skill.cooldown>0 || full;
-      button.ariaLabel=`${label}: ${value}`;
+      button.ariaLabel=`${label}${p.skillLevel ? ` +${p.skillLevel}` : ''}: ${value}`;
       button.classList.toggle('skill-active',skill.remaining>0);
     }
   }
@@ -4292,7 +4351,7 @@
       clearAllCombatHazards();
       state.boss = null;
 
-      // Even-Tier Bosses (Tier 02, 04, 06, 08) open the 3-card Reward Selection!
+      // Even-Tier Bosses (Tier 02, 04, 06, 08) open the upgrade reward selection!
       if (isEvenRewardTier(defeatedTier)) {
         openRewardSelection(defeatedTier);
       } else {
@@ -5346,6 +5405,8 @@
     if (wpBtn && state.player) {
       wpBtn.textContent = `장비 레벨: Lv${state.player.weaponLevel}`;
     }
+    const skillBtn=document.getElementById('btn-cycle-skills');
+    if(skillBtn && state.player) skillBtn.textContent=`스킬 강화: +${state.player.skillLevel}`;
     const mobBtn = document.getElementById('btn-cycle-mobility');
     if (mobBtn && state.player) {
       mobBtn.textContent = `기동성: +${state.player.mobilityLevel}`;
@@ -5366,7 +5427,7 @@
     statsEl.innerHTML = [
       `도달 단계: ${document.getElementById('stage-label')?.textContent || ''}`,
       `누적 웨이브 타이머: ${getFormattedTimerText()} (누적 ${Math.floor(state.cumulativeWaveTime)}초)`,
-      `선택 강화: 체력 +${p ? p.vitalityLevel : 0} / 장비 Lv${p ? p.weaponLevel : 0} / 기동성 +${p ? p.mobilityLevel : 0}`,
+      `선택 강화: 체력 +${p ? p.vitalityLevel : 0} / 장비 Lv${p ? p.weaponLevel : 0} / 기동성 +${p ? p.mobilityLevel : 0} / 스킬 +${p ? p.skillLevel : 0}`,
       `최종 점수: ${state.score.toLocaleString()}`
     ].join('<br/>');
 
@@ -5441,7 +5502,7 @@
     }
     keys.add(e.code);
 
-    // Reward Selection Keys (1, 2, 3) only when reward modal is active
+    // Reward Selection Keys (1, 2, 3, 4) only when reward modal is active
     if (state.mode === 'REWARD') {
       if (!e.repeat) {
         if (e.code === 'Digit1' || e.code === 'Numpad1') {
@@ -5450,6 +5511,10 @@
           applyRewardChoice('equipment');
         } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
           applyRewardChoice('mobility');
+        } else if (e.code === 'Digit4' || e.code === 'Numpad4') {
+          applyRewardChoice('skills');
+        } else if(e.code==='Enter') {
+          applyRewardChoice('continue');
         }
       }
       if (e.code === 'KeyN') {
@@ -5483,6 +5548,8 @@
     if (!card) return;
     applyRewardChoice(card.dataset.reward);
   });
+
+  document.getElementById('reward-continue')?.addEventListener('click',()=>applyRewardChoice('continue'));
 
   document.getElementById('btn-pause')?.addEventListener('click', togglePause);
   document.getElementById('btn-restart')?.addEventListener('click', resetGame);
@@ -5656,6 +5723,8 @@
         state.player.weaponLevel = (state.player.weaponLevel + 1) % 5;
         updateHudBadges();
       }
+    } else if (action === 'cycle-skills') {
+      if(state.player) {state.player.skillLevel=(state.player.skillLevel+1)%5;updatePlayerSkillUI();updateHudBadges();}
     } else if (action === 'cycle-mobility') {
       if (state.player) {
         state.player.mobilityLevel = (state.player.mobilityLevel + 1) % 5;
@@ -5754,6 +5823,9 @@
     finishTier8Phase2,
     firePlayerWeapon,
     usePlayerSkill,
+    getSkillStats,
+    canChooseReward,
+    upgradePlayerSkills,
     applyPlayerSkillLaserTick,
     getPlayerSkillLaserOrigin,
     advancePlayerSkills,
@@ -5795,6 +5867,7 @@
     if (params.get('hitboxes') === '1') {
       state.debugShowHitboxes = true;
     }
+    if(params.get('skills')) state.player.skillLevel=Math.max(0,Math.min(4,Number(params.get('skills')) || 0));
     if (params.get('wp')) {
       state.player.weaponLevel = Math.max(0, Math.min(4, Number(params.get('wp')) || 0));
     }

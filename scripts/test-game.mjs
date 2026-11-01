@@ -623,7 +623,7 @@ for(const fps of [30,60]) {
 }
 
 for(const fps of [30,60]) {
- test(`Player laser deals 120 ticks of 20 damage over six seconds and pierces aligned targets (${fps}fps)`,()=>{
+ test(`Player laser deals 120 ticks of base-level 5 damage over six seconds and pierces aligned targets (${fps}fps)`,()=>{
   fresh(); const targets=[];
   for(const [x,y] of [[960,s.player.y],[1150,s.player.y],[1050,580]]) {
    const enemy=g.spawnWaveEnemy(1,{enemyIdx:1});
@@ -634,23 +634,23 @@ for(const fps of [30,60]) {
   assert.ok(g.usePlayerSkill('laser'));assert.equal(s.player.skills.laser.cooldown,120);
   assert.equal(g.usePlayerSkill('laser'),false);
   tick(6,fps);
-  assert.equal(targets[0].hp,7600);assert.equal(targets[1].hp,7600);assert.equal(targets[2].hp,10000);
+  assert.equal(targets[0].hp,9400);assert.equal(targets[1].hp,9400);assert.equal(targets[2].hp,10000);
   assert.equal(s.player.skills.laser.remaining,0);assert.equal(s.player.skills.laser.pendingTicks,0);
   assert.ok(Math.abs(s.player.skills.laser.cooldown-114)<1e-7);
-  tick(0.5,fps);assert.equal(targets[0].hp,7600,'Beam stops damaging after six seconds');
+  tick(0.5,fps);assert.equal(targets[0].hp,9400,'Beam stops damaging after six seconds');
  });
 }
-test('Heal restores two HP capped at maximum; full-HP use does not waste its cooldown',()=>{
+test('Base heal restores one HP capped at maximum; full-HP use does not waste its cooldown',()=>{
  fresh();assert.equal(g.usePlayerSkill('heal'),false);assert.equal(s.player.skills.heal.cooldown,0);
- s.player.hp=2;assert.ok(g.usePlayerSkill('heal'));assert.equal(s.player.hp,4);assert.equal(s.player.maxHp,5);
+ s.player.hp=2;assert.ok(g.usePlayerSkill('heal'));assert.equal(s.player.hp,3);assert.equal(s.player.maxHp,5);
  assert.equal(g.usePlayerSkill('heal'),false);
  fresh();s.player.hp=4;g.usePlayerSkill('heal');assert.equal(s.player.hp,5);
 });
-test('Shield prevents all routed damage for ten seconds, then normal damage resumes',()=>{
+test('Base shield prevents all routed damage for four seconds, then normal damage resumes',()=>{
  fresh();s.player.invulnTimer=0;assert.ok(g.usePlayerSkill('shield'));
  for(const source of ['BULLET','LASER','MISSILE','BOSS DASH','RAID SHIP','FULL-MAP BLAST','METEOR']) g.damagePlayer(2,source);
  assert.equal(s.player.hp,5);
- g.advancePlayerSkills(9.9);g.damagePlayer(2,'LASER');assert.equal(s.player.hp,5);
+ g.advancePlayerSkills(3.9);g.damagePlayer(2,'LASER');assert.equal(s.player.hp,5);
  g.advancePlayerSkills(0.1);assert.equal(s.player.skills.shield.remaining,0);
  g.damagePlayer(2,'LASER');assert.equal(s.player.hp,3);
 });
@@ -658,10 +658,10 @@ test('Skills have independent cooldowns, freeze in pause/rewards, survive wave t
  fresh();s.player.hp=2;g.usePlayerSkill('laser');g.usePlayerSkill('heal');g.usePlayerSkill('shield');
  for(const mode of ['PAUSED','REWARD','GAMEOVER','CLEAR']) {
   s.mode=mode;g.updateGame(5);assert.equal(s.player.skills.laser.remaining,6);
-  assert.equal(s.player.skills.shield.remaining,10);assert.equal(s.player.skills.heal.cooldown,120);
+  assert.equal(s.player.skills.shield.remaining,4);assert.equal(s.player.skills.heal.cooldown,180);
  }
  s.mode='PLAYING';g.clearAllCombatHazards();assert.equal(s.player.skills.laser.remaining,6);
- g.advancePlayerSkills(120);for(const skill of Object.values(s.player.skills)) assert.equal(skill.cooldown,0);
+ g.advancePlayerSkills(180);for(const skill of Object.values(s.player.skills)) assert.equal(skill.cooldown,0);
  g.resetGame();assert.equal(s.player.skills.laser.remaining,0);assert.equal(s.player.skills.shield.remaining,0);
  g.updatePlayerSkillUI();assert.equal(nodes.get('skill-laser').disabled,false);
  assert.equal(nodes.get('skill-heal').disabled,true);
@@ -676,9 +676,9 @@ test('Skill laser respects T8 formation protection and invulnerable final escort
 test('E/R/T activate skills without restarting; number keys remain reward controls',()=>{
  fresh();const key=code=>({code,repeat:false,preventDefault(){}});
  windowListeners.get('keydown')(key('KeyE'));assert.equal(s.player.skills.laser.cooldown,120);
- s.player.hp=2;windowListeners.get('keydown')(key('KeyR'));assert.equal(s.player.hp,4);
+ s.player.hp=2;windowListeners.get('keydown')(key('KeyR'));assert.equal(s.player.hp,3);
  assert.equal(s.player.skills.laser.cooldown,120,'R does not restart the game');
- windowListeners.get('keydown')(key('KeyT'));assert.equal(s.player.skills.shield.remaining,10);
+ windowListeners.get('keydown')(key('KeyT'));assert.equal(s.player.skills.shield.remaining,4);
  windowListeners.get('keydown')(key('KeyN'));assert.equal(s.player.skills.laser.cooldown,0);
  windowListeners.get('keydown')(key('Digit1'));assert.equal(s.player.skills.laser.cooldown,0);
  fresh();s.player.hp=2;g.openRewardSelection(2);
@@ -709,5 +709,86 @@ for(const fps of [30,60]) {
   }
  });
 }
+
+test('All five skill ranks match the requested damage, cooldowns, heal and shield durations',()=>{
+ const expected=[
+  [600,120,1,180,4,120], [1300,120,2,180,6,120], [1300,100,2,120,7,120],
+  [2700,100,3,120,10,120], [13000/3,80,3,90,10,100]
+ ];
+ for(let level=0;level<=4;level++) {
+  fresh();s.player.skillLevel=level;s.player.maxHp=10;s.player.hp=1;
+  const [total,laserCd,heal,healCd,shield,shieldCd]=expected[level];
+  g.usePlayerSkill('laser');g.usePlayerSkill('heal');g.usePlayerSkill('shield');
+  assert.equal(s.player.skills.laser.damagePerTick,total/120);
+  assert.equal(s.player.skills.laser.cooldown,laserCd);
+  assert.equal(s.player.hp,1+heal);assert.equal(s.player.skills.heal.cooldown,healCd);
+  assert.equal(s.player.skills.shield.remaining,shield);assert.equal(s.player.skills.shield.cooldown,shieldCd);
+ }
+});
+for(const fps of [30,60]) {
+ test(`Every laser rank deals its exact six-second total to each pierced target (${fps}fps)`,()=>{
+  const totals=[600,1300,1300,2700,13000/3];
+  for(let level=0;level<=4;level++) {
+   fresh();s.player.skillLevel=level;
+   const enemy=g.spawnWaveEnemy(1,{enemyIdx:1});enemy.entering=false;
+   enemy.x=enemy.homeX=1050;enemy.y=enemy.homeY=s.player.y;
+   enemy.moveAmpX=enemy.moveAmpY=0;enemy.fireCooldown=1e6;enemy.hp=100000;
+   g.usePlayerSkill('laser');tick(6,fps);
+   assert.ok(Math.abs((100000-enemy.hp)-totals[level])<1e-6);
+  }
+ });
+}
+test('Base and +1 lasers can finish Tier 1 and Tier 3 HP exactly despite fractional tick damage',()=>{
+ for(const [level,tier] of [[0,1],[1,3]]) {
+  fresh();s.player.skillLevel=level;g.startTierBoss(tier);const b=s.boss;
+  b.entering=false;b.x=b.homeX;s.player.y=b.y;g.usePlayerSkill('laser');
+  for(let i=0;i<120;i++) g.applyPlayerSkillLaserTick();
+  assert.equal(b.hp,0);assert.ok(b.defeatedHandled);
+ }
+});
+test('Four even-boss skill rewards advance all three skills together to +4',()=>{
+ fresh();
+ for(const [index,tier] of [2,4,6,8].entries()) {
+  g.openRewardSelection(tier);assert.equal(nodes.get('reward-card-4').hidden,false);
+  g.applyRewardChoice('skills');assert.equal(s.player.skillLevel,index+1);
+  assert.equal(s.player.weaponLevel,0);assert.equal(s.player.vitalityLevel,0);assert.equal(s.player.mobilityLevel,0);
+ }
+ assert.equal(s.rewardsChosenHistory.length,4);assert.equal(s.player.skillLevel,4);
+});
+test('Capped rewards are hidden and cannot consume a choice through click or keyboard',()=>{
+ for(const [choice,field,id] of [['equipment','weaponLevel',2],['mobility','mobilityLevel',3],['skills','skillLevel',4],['vitality','vitalityLevel',1]]) {
+  fresh();s.player[field]=4;g.openRewardSelection(2);
+  assert.equal(nodes.get(`reward-card-${id}`).hidden,true);
+  assert.equal(nodes.get(`reward-card-${id}`).disabled,true);
+  g.applyRewardChoice(choice);assert.equal(s.mode,'REWARD');assert.equal(s.rewardKeyLock,false);
+  assert.equal(s.rewardsChosenHistory.length,0);assert.equal(s.player[field],4);
+ }
+ fresh();s.player.skillLevel=4;g.openRewardSelection(2);
+ windowListeners.get('keydown')({code:'Digit4',repeat:false,preventDefault(){}});
+ assert.equal(s.mode,'REWARD');g.applyRewardChoice('vitality');assert.equal(s.player.maxHp,6);
+});
+test('Skill upgrade shortens existing cooldowns proportionally without refilling or changing an active cast',()=>{
+ fresh();s.player.hp=1;g.usePlayerSkill('laser');g.usePlayerSkill('heal');g.usePlayerSkill('shield');
+ const damage=s.player.skills.laser.damagePerTick;
+ g.openRewardSelection(2);g.applyRewardChoice('skills');
+ assert.equal(s.player.skillLevel,1);assert.equal(s.player.skills.laser.damagePerTick,damage);
+ assert.equal(s.player.skills.shield.remaining,4);
+ g.openRewardSelection(4);g.applyRewardChoice('skills');
+ assert.equal(s.player.skills.laser.cooldown,100);assert.equal(s.player.skills.heal.cooldown,120);
+ assert.equal(s.player.skills.shield.cooldown,120);
+ g.updatePlayerSkillUI();assert.equal(nodes.get('skill-heal-shade').style.height,'100.00%');
+});
+test('All-max rewards allow continuing without choosing a capped upgrade',()=>{
+ fresh();s.player.weaponLevel=s.player.vitalityLevel=s.player.mobilityLevel=s.player.skillLevel=4;
+ g.openRewardSelection(2);assert.equal(nodes.get('reward-continue').hidden,false);
+ g.applyRewardChoice('continue');assert.equal(s.mode,'PLAYING');assert.equal(s.currentTier,3);
+});
+test('Reward key 4 upgrades skills while E/R/T remain inactive during the reward screen',()=>{
+ fresh();g.openRewardSelection(2);
+ const event=code=>({code,repeat:false,preventDefault(){}});
+ windowListeners.get('keydown')(event('KeyE'));assert.equal(s.player.skills.laser.cooldown,0);
+ windowListeners.get('keydown')(event('Digit4'));assert.equal(s.player.skillLevel,1);
+ assert.equal(s.mode,'PLAYING');assert.equal(s.rewardsChosenHistory[0].choice,'skills');
+});
 
 console.log(`\n${results.length} scenario checks passed.`);

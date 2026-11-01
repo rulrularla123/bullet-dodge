@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bullet Hell Dodging — Pixel Space Shooter V4</title>
-  <link rel="stylesheet" href="style.css?v=20261102-laser-exclusive" />
+  <link rel="stylesheet" href="style.css?v=20261102-skill-upgrades" />
 </head>
 <body>
   <div id="app">
@@ -15,7 +15,7 @@
         <span class="badge">BUILD: <strong id="build-label">HP+0 / WP Lv0 / MOB+0</strong></span>
       </div>
       <div class="hud-center">
-        <span class="controls-hint">이동: WASD/방향키(Shift:정밀) · 자동사격 · 스킬: E/R/T · 보상선택: 1/2/3 또는 클릭 · 일시정지: ESC · 재시작: N · 검증도구: F2</span>
+        <span class="controls-hint">이동: WASD/방향키(Shift:정밀) · 자동사격 · 스킬: E/R/T · 보상선택: 1/2/3/4 또는 클릭 · 일시정지: ESC · 재시작: N · 검증도구: F2</span>
       </div>
       <div class="hud-right">
         <button id="btn-pause" type="button" title="일시정지 (ESC)">일시정지</button>
@@ -32,15 +32,15 @@
         <div id="player-skills" role="group" aria-label="플레이어 스킬">
           <button type="button" id="skill-laser" class="player-skill" title="[E] 관통 레이저 · 쿨타임 120초">
             <span class="skill-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#50e5ff" d="M1 6h3V4h2v2h9v4H6v2H4v-2H1z"/><path fill="#fff" d="M5 7h10v2H5z"/></svg><span class="skill-shade" id="skill-laser-shade"></span><span class="skill-key">E</span></span>
-            <span class="skill-details"><span class="skill-name">관통 레이저</span><span class="skill-time" id="skill-laser-time">준비</span></span>
+            <span class="skill-details"><span class="skill-name" id="skill-laser-name">관통 레이저</span><span class="skill-time" id="skill-laser-time">준비</span></span>
           </button>
           <button type="button" id="skill-heal" class="player-skill" title="[R] 응급 회복 · 쿨타임 120초">
             <span class="skill-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#ff6f98" d="M2 3h4v2h4V3h4v2h2v5h-2v2h-2v2H4v-2H2v-2H0V5h2z"/><path fill="#fff" d="M7 5h2v2h2v2H9v2H7V9H5V7h2z"/></svg><span class="skill-shade" id="skill-heal-shade"></span><span class="skill-key">R</span></span>
-            <span class="skill-details"><span class="skill-name">응급 회복</span><span class="skill-time" id="skill-heal-time">준비</span></span>
+            <span class="skill-details"><span class="skill-name" id="skill-heal-name">응급 회복</span><span class="skill-time" id="skill-heal-time">준비</span></span>
           </button>
           <button type="button" id="skill-shield" class="player-skill" title="[T] 방어막 · 쿨타임 120초">
             <span class="skill-icon"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#67a7ff" d="M2 2h12v7h-2v3h-2v2H6v-2H4V9H2z"/><path fill="#d4f5ff" d="M4 4h8v4h-2v3H8v1H6V9H4z"/></svg><span class="skill-shade" id="skill-shield-shade"></span><span class="skill-key">T</span></span>
-            <span class="skill-details"><span class="skill-name">방어막</span><span class="skill-time" id="skill-shield-time">준비</span></span>
+            <span class="skill-details"><span class="skill-name" id="skill-shield-name">방어막</span><span class="skill-time" id="skill-shield-time">준비</span></span>
           </button>
         </div>
 
@@ -50,7 +50,7 @@
             <div class="reward-header">
               <span id="reward-tier-badge" class="reward-badge">TIER 02 BOSS DEFEATED</span>
               <h2 id="reward-title">보스 격파 보상 선택</h2>
-              <p class="reward-desc">세 가지 강화 중 <strong>하나</strong>를 선택하세요 (클릭 또는 키보드 <strong>1 / 2 / 3</strong>)</p>
+              <p class="reward-desc">강화 항목 중 <strong>하나</strong>를 선택하세요 (클릭 또는 키보드 <strong>1 / 2 / 3 / 4</strong>)</p>
             </div>
             <div class="reward-cards">
               <button type="button" class="reward-card" data-reward="vitality" id="reward-card-1">
@@ -76,7 +76,14 @@
                 <p class="card-effect">기체 크기 <strong>×0.93</strong> 소형화<br/>이동·정밀 속도 <strong>×1.06</strong> 증가</p>
                 <div class="card-stat" id="reward-stat-mobility">배율: 3.00x → 2.79x / 속도: 100% → 106%</div>
               </button>
+              <button type="button" class="reward-card" data-reward="skills" id="reward-card-4">
+                <div class="card-key">KEY [4]</div><div class="card-icon card-icon-skill">E R T</div>
+                <h3 class="card-title">스킬 강화</h3>
+                <p class="card-effect" id="reward-desc-skills">레이저 · 회복 · 방어막 함께 강화</p>
+                <div class="card-stat" id="reward-stat-skills">스킬 +0 → +1</div>
+              </button>
             </div>
+            <button type="button" id="reward-continue" hidden>모든 강화 완료 · 계속하기 (Enter)</button>
           </div>
         </div>
 
@@ -148,6 +155,7 @@
         <button type="button" data-action="trigger-escort-laser">호위기 레이저</button>
         <button type="button" data-action="open-reward">짝수보스 보상창</button>
         <button type="button" data-action="cycle-weapon" id="btn-cycle-weapon">장비 레벨: Lv0</button>
+        <button type="button" data-action="cycle-skills" id="btn-cycle-skills">스킬 강화: +0</button>
         <button type="button" data-action="cycle-mobility" id="btn-cycle-mobility">기동성: +0</button>
         <button type="button" data-action="damage-boss">보스 -25%</button>
         <button type="button" data-action="kill-boss">보스 격파</button>
@@ -159,6 +167,6 @@
     </section>
   </div>
 
-  <script src="game.js?v=20261102-laser-exclusive"></script>
+  <script src="game.js?v=20261102-skill-upgrades"></script>
 </body>
 </html>
