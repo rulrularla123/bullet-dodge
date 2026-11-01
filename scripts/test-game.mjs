@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 const source = fs.readFileSync(fileURLToPath(new URL('../game.js', import.meta.url)), 'utf8');
 const transforms = [];
-const draw = new Proxy({}, { get: (_, key) => (...args) => { if (key === 'scale') transforms.push(args); } });
+const imageDraws = [];
+const draw = new Proxy({}, { get: (_, key) => (...args) => { if (key === 'scale') transforms.push(args); if (key === 'drawImage') imageDraws.push(args); } });
 const nodes = new Map();
 const document = {
   hidden: false, addEventListener() {}, createElement: () => ({ getContext: () => draw }),
@@ -223,13 +224,17 @@ for (const fps of [30,60]) {
   g.handleBossDefeated(); assert.equal(s.lasers.length, 0); assert.equal(s.escorts.length, 0);
  });
 }
-test('Tier 5 boss side volley is exactly three times the former two bullets', () => {
+test('Tier 5 boss dash fires rapid 1-per-side perpendicular bullets in both Phase 1 and Phase 2', () => {
  fresh(); g.startTierBoss(5); const b = s.boss;
  b.entering = false; b.dashState = 'DASH'; b.x = 700; b.y = b.dashY = 350;
  b.dashSideShotTimer = 0; g.updateGame(1 / 60);
- assert.equal(s.enemyBullets.length, 6);
- assert.equal(s.enemyBullets.filter(b => b.vy > 0).length, 3);
- assert.equal(s.enemyBullets.filter(b => b.vy < 0).length, 3);
+ assert.equal(s.enemyBullets.length, 2);
+ assert.equal(s.enemyBullets.filter(eb => eb.vy > 0 && Math.abs(eb.vx) < 1e-4).length, 1);
+ assert.equal(s.enemyBullets.filter(eb => eb.vy < 0 && Math.abs(eb.vx) < 1e-4).length, 1);
+ assert.ok(Math.abs(b.dashSideShotTimer - (g.CONFIG.TIER5_DASH_SIDE_INTERVAL - 1 / 60)) < 1e-6);
+ // Stepping through 0.45s of dash produces multiple rapid single-per-side volleys
+ for (let i = 0; i < 27; i++) g.updateGame(1 / 60);
+ assert.ok(s.enemyBullets.length >= 10 && s.enemyBullets.length % 2 === 0);
 });
 
 
@@ -378,5 +383,242 @@ test('Wave spawn interval is halved while retaining the tier speed and random sp
   assert.equal(s.enemies.length, 1);
  }
 });
+
+test('Tier 5 Phase 2 triggers at <=30% HP (810/2700), executes 5 omnidirectional dashes without post-dash waits, and returns to home', () => {
+ fresh(); g.startTierBoss(5); const b = s.boss;
+ b.entering = false; b.x = b.homeX; b.y = b.homeY;
+ b.hp = 810; // exact 30% of 2700
+ assert.ok(g.checkAndTriggerBossPhase2(b));
+ assert.equal(b.phase2Triggered, true);
+ assert.equal(b.phase2Active, true);
+ assert.equal(b.dashState, 'P2_WARN');
+ assert.equal(b.p2TotalDashes, 5);
+ // Cannot re-trigger a second time
+ assert.equal(g.checkAndTriggerBossPhase2(b), false);
+
+ const seenAngles = [];
+ let waitSeenCount = 0;
+ for (let step = 0; step < 30 * 60; step++) {
+  const prevState = b.dashState;
+  g.updateGame(1 / 60);
+  if (prevState !== 'P2_DASH' && b.dashState === 'P2_DASH') {
+   seenAngles.push(Number(b.p2DashAngle.toFixed(3)));
+  }
+  if (prevState !== 'P2_WAIT' && b.dashState === 'P2_WAIT') {
+   waitSeenCount += 1;
+   assert.ok(b.dashTimer === 0, 'Next warning starts without a 2s rest');
+  }
+  if (b.dashState === 'NORMAL' && !b.phase2Active) break;
+ }
+ assert.equal(seenAngles.length, 5, 'Executed all 5 omnidirectional dashes');
+ assert.equal(waitSeenCount, 5, 'All five dashes finish without a rest delay');
+ assert.ok(new Set(seenAngles).size >= 4, 'Omnidirectional dashes use distinct angles');
+ assert.equal(b.phase2Active, false);
+ assert.equal(b.dashState, 'NORMAL');
+ assert.ok(Math.abs(b.x - b.homeX) < 1 && Math.abs(b.y - b.homeY) < 1, 'Returned to home position');
+ assert.ok(s.telemetry.tier5Phase2Dashes >= 5);
+});
+
+for (const fps of [30, 60]) {
+ test(`Tier 6 full-map burst detonates three times one second apart with shake and 2 damage (${fps}fps)`, () => {
+  fresh(); g.startTierBoss(6); const boss = s.boss; boss.entering = false;
+  boss.x = boss.homeX; boss.hp = 1520; g.checkAndTriggerBossPhase2(boss);
+  const first = s.globalBlastWaves[0];
+  assert.ok(first.safeZones.length >= 1 && first.blasts.length >= 16);
+  for (const zone of first.safeZones) assert.ok(first.blasts.every(b => Math.hypot(b.x-zone.x,b.y-zone.y) >= b.radius + zone.radius));
+  const times = []; let shakes = s.telemetry.cameraShakesTriggered;
+  for (let i = 1; i <= 4 * fps; i++) {
+   g.updateGame(1 / fps);
+   if (s.telemetry.cameraShakesTriggered > shakes) {
+    times.push(i / fps); shakes = s.telemetry.cameraShakesTriggered;
+   }
+  }
+  assert.equal(times.length, 3);
+  assert.ok(Math.abs(times[1]-times[0]-1) < 2/fps);
+  assert.ok(Math.abs(times[2]-times[1]-1) < 2/fps);
+  assert.equal(s.telemetry.tier6GlobalBlastWaves, 3);
+  while (boss.age < 18.1) g.updateGame(1 / fps);
+  assert.equal(s.telemetry.tier6GlobalBlastWaves, 4, 'Next triple burst starts at 18 seconds');
+  const wave = s.globalBlastWaves[0], blast = wave.blasts[0];
+  s.player.x = blast.x; s.player.y = blast.y; s.player.invulnTimer = 0;
+  const hp = s.player.hp; wave.blasts.push({...blast});
+  g.detonateGlobalBlastWave(wave); g.detonateGlobalBlastWave(wave);
+  assert.equal(s.player.hp, hp-2, 'Overlapping circles and repeated calls still only deal 2');
+ });
+ test(`Tier 7 blink is rapid, faces its laser, protects the boss before firing, and damages only in Stage 3 (${fps}fps)`, () => {
+  fresh(); g.startTierBoss(7); const b = s.boss; b.entering = false; b.x = b.homeX; b.hp = 520;
+  g.spawnWaveEnemy(7, { enemyIdx:3 });
+  g.checkAndTriggerBossPhase2(b);
+  assert.equal(s.enemies.length, 0); assert.ok(s.afterimages.length > 0);
+  const beam = s.lasers.find(l => l.kind === 'TIER7_PHASE2_LASER');
+  assert.equal(beam.stage1Time, 0.175); assert.equal(beam.stage2Time, 0.10);
+  assert.equal(beam.stage3Time, 0.25); assert.equal(beam.damage, 1);
+  assert.ok(Math.abs(Math.sin(b.rotation - Math.PI/2 - beam.angle)) < 1e-9);
+  const muzzle = g.getFacingBossMuzzles(b)[0];
+  assert.ok(Math.hypot(muzzle.x-beam.ox,muzzle.y-beam.oy) < 1e-6);
+  const box = b.spec.visibleBounds;
+  const lx=(box[0]+box[2]/2-b.spec.size[0]/2)*b.scale;
+  const ly=(box[1]+box[3]/2-b.spec.size[1]/2)*b.scale;
+  const shot={x:b.x+lx*Math.cos(b.rotation)-ly*Math.sin(b.rotation),
+   y:b.y+lx*Math.sin(b.rotation)+ly*Math.cos(b.rotation), vx:0,vy:0,radius:5,damage:5};
+  s.playerBullets.push(shot); const bossHp=b.hp;
+  g.updatePlayerBullets(0); assert.equal(b.hp,bossHp);
+  let stage3=false; const x=b.x,y=b.y;
+  while(s.lasers.includes(beam)) {
+   g.updateGame(1/fps);
+   assert.equal(b.x,x); assert.equal(b.y,y);
+   assert.equal(s.enemies.length,0); assert.equal(s.enemyBullets.length,0);
+   if (beam.stage < 3) {
+    assert.equal(b.hp,bossHp);
+    assert.equal(g.checkLaserHitsPlayer(beam,{x:beam.ox-100,y:beam.oy,hitboxRadius:8}),false);
+   }
+   if (beam.stage===3 && !stage3) {
+    stage3=true; assert.ok(s.cameraShake.timer>0);
+    g.updatePlayerBullets(0); assert.equal(b.hp,bossHp-5, 'Boss is vulnerable only during firing');
+    s.player.x=beam.ox+Math.cos(beam.angle)*300;
+    s.player.y=beam.oy+Math.sin(beam.angle)*300;
+    s.player.invulnTimer=0; const hp=s.player.hp;
+    g.updateGame(1/fps); assert.equal(s.player.hp,hp-1);
+   }
+  }
+  assert.ok(stage3); const count=b.p2BlinkCount;
+  for(let i=0;i<Math.floor(0.3*fps);i++) g.updateGame(1/fps);
+  assert.equal(b.p2BlinkCount,count,'A 0.4s pause separates shots');
+  for(let i=0;i<Math.ceil(0.15*fps);i++) g.updateGame(1/fps);
+  assert.ok(b.p2BlinkCount>count, 'Next blink follows the 0.4s recovery');
+ });
+ test(`Tier 8 launches seven original-size enemies with one killable Lv1 ship and six Lv4 ships, six times (${fps}fps)`, () => {
+  fresh(); g.startTierBoss(8); const b=s.boss; b.entering=false; b.x=b.homeX; b.hp=1400;
+  g.checkAndTriggerBossPhase2(b);
+  let rounds=0,lastWave=0,moved=false; const initialShakes=s.telemetry.cameraShakesTriggered;
+  for(let i=0;i<20*fps && b.phase2Active;i++) {
+   g.updateGame(1/fps);
+   assert.equal(s.lasers.length,0,'No phase-2 lasers remain');
+   const units=s.enemies.filter(e=>e.isTier8Phase2Raider);
+   if(units.some(e=>e.specialState==='RAID_DASH') && lastWave!==b.p2WaveCount) {
+    rounds++; lastWave=b.p2WaveCount;
+    assert.equal(units.length,7);
+    assert.equal(units.filter(e=>e.enemyIdx===1).length,1);
+    assert.equal(units.filter(e=>e.enemyIdx===4).length,6);
+    assert.ok(units.every(e=>e.scale===g.CONFIG.SHIP_SCALE));
+    assert.ok(units.every(e=>!e.invulnerable));
+    assert.ok(units.filter(e=>e.enemyIdx===1).every(e=>e.hp===68 && e.path.endsWith('Enemy_01.png')));
+    assert.ok(units.filter(e=>e.enemyIdx===4).every(e=>e.hp===g.getEnemyMaxHp(8,4)));
+   }
+   moved ||= units.some(e=>e.specialState==='RAID_DASH' && e.x<856);
+  }
+  assert.equal(rounds,6); assert.ok(moved); assert.equal(b.phase2Active,false);
+  assert.equal(s.enemies.filter(e=>e.isTier8Phase2Raider).length,0);
+  assert.equal(s.telemetry.cameraShakesTriggered-initialShakes,6);
+ });
+ test(`Shooting the Lv1 raider opens a safe path; leaving it alive still causes contact damage (${fps}fps)`, () => {
+  for(const destroy of [false,true]) {
+   fresh(); g.startTierBoss(8); const b=s.boss; b.entering=false;b.x=b.homeX;b.hp=1400;
+   g.checkAndTriggerBossPhase2(b);
+   while(b.p2FormationPending) g.updateGame(1/fps);
+   const weak=s.enemies.find(e=>e.isWeakRaider); s.player.x=220;s.player.y=weak.homeY;
+   weak.x=300;weak.prevX=300;weak.y=weak.homeY;
+   s.player.invulnTimer=0; const hp=s.player.hp;
+   if(destroy) {
+    const box=g.getRotatedBounds(weak.x,weak.y,weak.spec,false,weak.scale);
+    s.playerBullets.push({x:(box.left+box.right)/2,y:(box.top+box.bottom)/2,vx:0,vy:0,radius:5,damage:68});
+    g.updatePlayerBullets(0);
+    assert.ok(!s.enemies.includes(weak),'Weak ship can be shot down before contact');
+   }
+   g.updateGame(0.1);
+   assert.equal(s.player.hp,destroy?hp:hp-2);
+  }
+ });
+}
+
+test('Fast raiders can be hit by moving bullets even when their endpoints cross between frames', () => {
+ fresh();g.startTierBoss(8);s.boss.entering=false;s.boss.hp=1400;g.checkAndTriggerBossPhase2(s.boss);
+ const weak=s.enemies.find(e=>e.isWeakRaider);s.enemies=[weak];
+ weak.x=650;weak.prevX=900;weak.y=weak.prevY=350;
+ s.playerBullets.push({x:620,y:350,vx:790,vy:0,radius:5,damage:68});
+ g.updatePlayerBullets(0.1);
+ assert.equal(s.enemies.length,0,'Relative swept hit detection prevents high-speed misses');
+});
+
+test('Phase 2 lifecycle: lethal hit skips Phase 2, pause freezes Phase 2 timers, and boss defeat cleans up all Phase 2 hazards', () => {
+ // 1. Lethal hit from above threshold straight to 0 HP does NOT trigger Phase 2
+ fresh(); g.startTierBoss(6); const b6 = s.boss; b6.entering = false;
+ b6.hp = 0;
+ assert.equal(g.checkAndTriggerBossPhase2(b6), false);
+ assert.equal(s.globalBlastWaves.length, 0);
+
+ // 2. Pause freezes Phase 2 timers
+ fresh(); g.startTierBoss(6); const bPause = s.boss; bPause.entering = false;
+ bPause.hp = 1000; g.checkAndTriggerBossPhase2(bPause);
+ const timerBeforePause = s.globalBlastWaves[0].timer;
+ s.mode = 'PAUSED';
+ g.updateGame(0.5);
+ assert.equal(s.globalBlastWaves[0].timer, timerBeforePause, 'Paused mode freezes Phase 2 hazard timers');
+ s.mode = 'PLAYING';
+
+ // 3. Boss defeat cleans up all Phase 2 hazards, afterimages, and emitters
+ g.handleBossDefeated();
+ assert.equal(s.globalBlastWaves.length, 0);
+ assert.equal(s.afterimages.length, 0);
+ assert.equal(s.enemies.length, 0);
+});
+
+test('Laser art is precomposed into one seamless native-height strip with a bounded reusable cache', () => {
+ fresh();
+ const strip=g.getLaserStrip('Blue',3,1200.4,2);
+ assert.equal(strip.width,1201); assert.equal(strip.height,32);
+ assert.equal(g.getLaserStrip('Blue',3,1200.4,2),strip);
+ imageDraws.length=0;
+ g.renderLaserBeam({stage:3,color:'Blue',scale:2,widthMultiplier:64/24,ox:1200.4,oy:350,
+  angle:Math.PI,length:1200.4,kind:'STANDARD',followEnemyId:'test'});
+ const world=imageDraws.filter(args=>args[0]===strip);
+ assert.equal(world.length,1,'Draw one composed strip in the world, rather than three adjacent sections');
+ for(let i=0;i<60;i++) g.getLaserStrip('Blue',3,500+i,2);
+ assert.notEqual(g.getLaserStrip('Blue',3,1200.4,2),strip,'Old strips are evicted');
+});
+
+test('Restart clears debug invincibility and resets the visible toggle', () => {
+ s.debugInvincible=true;g.resetGame();
+ assert.equal(s.debugInvincible,false);
+ assert.equal(nodes.get('btn-invincible').textContent,'무적: OFF');
+});
+test('Original-size level 4 raid ships deal two damage on high-speed contact', () => {
+ fresh();g.startTierBoss(8);s.boss.entering=false;s.boss.hp=1400;g.checkAndTriggerBossPhase2(s.boss);
+ while(s.boss.p2FormationPending) g.updateGame(1/60);
+ const unit=s.enemies.find(e=>e.enemyIdx===4);
+ unit.x=300;unit.prevX=300;unit.y=unit.homeY;
+ s.player.x=220;s.player.y=unit.homeY;s.player.invulnTimer=0;
+ const hp=s.player.hp;g.updateGame(0.1);
+ assert.equal(s.player.hp,hp-2);
+});
+
+test('Tier 8 boss is protected during the raid and vulnerable again after the six waves', () => {
+ fresh();g.startTierBoss(8);const b=s.boss;b.entering=false;b.hp=1400;g.checkAndTriggerBossPhase2(b);
+ const addShot=()=>{
+  const bounds=g.getRotatedBounds(b.x,b.y,b.spec,false,b.scale);
+  s.playerBullets.push({x:(bounds.left+bounds.right)/2,y:(bounds.top+bounds.bottom)/2,vx:0,vy:0,radius:5,damage:100});
+ };
+ addShot();const hp=b.hp;g.updatePlayerBullets(0);assert.equal(b.hp,hp);
+ s.playerBullets=[];
+ while(b.phase2Active) g.updateGame(1/60);
+ addShot();g.updatePlayerBullets(0);assert.equal(b.hp,hp-100);
+});
+for(const fps of [30,60]) {
+ test(`Tier 5 and Tier 8 awakenings repeat after a long cooldown without re-triggering the HP transition (${fps}fps)`,()=>{
+  for(const tier of [5,8]) {
+   fresh();g.startTierBoss(tier);const b=s.boss;b.entering=false;b.x=b.homeX;
+   b.hp=b.maxHp*g.CONFIG.BOSS_PHASE2_THRESHOLDS[tier];g.checkAndTriggerBossPhase2(b);
+   let elapsed=0;
+   while(b.phase2Active && elapsed<30) {g.updateGame(1/fps);elapsed+=1/fps;}
+   assert.equal(b.phase2Active,false);assert.equal(b.p2RepeatCooldown,20);
+   const before=b.p2RepeatCooldown;s.mode='PAUSED';g.updateGame(5);assert.equal(b.p2RepeatCooldown,before);s.mode='PLAYING';
+   for(let i=0;i<19*fps;i++) {g.updateGame(1/fps);assert.equal(b.phase2Active,false);}
+   let repeated=false;
+   for(let i=0;i<7*fps;i++) {g.updateGame(1/fps);if(b.phase2Active) {repeated=true;break;}}
+   assert.ok(repeated);assert.equal(s.telemetry.bossPhase2Triggered[tier],1);
+   g.handleBossDefeated();assert.ok(!s.boss || s.boss.hp<=0 || s.mode==='REWARD');
+  }
+ });
+}
 
 console.log(`\n${results.length} scenario checks passed.`);
