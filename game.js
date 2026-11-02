@@ -23,7 +23,7 @@
     BOSS_FILL_RECT: { x: 5, y: 16, width: 54, height: 2 },
 
     WAVE_DURATION: 60.0,      // Default 60s wave per tier
-    TOTAL_TIERS: 9,
+    TOTAL_TIERS: 10,
 
     PLAYER_MAX_HP: 5,
     PLAYER_SPEED: 350,
@@ -90,7 +90,7 @@
   // 2. BACKGROUND LAYOUT (from assets/backgrounds/Space_Unique/manifest.json)
   // ============================================================================
   // Keep established pattern/asset IDs stable while inserting electricity at stage 8.
-  const STAGE_ORDER=[1,2,3,4,5,6,7,9,8];
+  const STAGE_ORDER=[1,2,3,4,5,10,6,7,9,8];
   function getStageNumber(patternTier) { return STAGE_ORDER.indexOf(patternTier)+1 || patternTier; }
   function getPatternTier(stageNumber) { return STAGE_ORDER[stageNumber-1] || 1; }
 
@@ -141,6 +141,11 @@
     'enemies/Tier_09/Enemy_03.png': {size:[32,32],visibleBounds:[0,7,32,21],muzzles:[{x:10,y:7},{x:22,y:7}]},
     'enemies/Tier_09/Enemy_04.png': {size:[32,32],visibleBounds:[0,2,32,26],muzzles:[{x:10,y:2},{x:22,y:2}]},
     'enemies/Tier_09/Boss.png': {size:[32,32],visibleBounds:[1,1,30,31],muzzles:[{x:25,y:7},{x:16,y:1},{x:7,y:7}],laserMuzzles:[{x:28,y:24},{x:4,y:24}]},
+    'enemies/Tier_10/Enemy_01.png': {size:[32,32],visibleBounds:[6,9,20,14],muzzles:[{x:16,y:16}]},
+    'enemies/Tier_10/Enemy_02.png': {size:[32,32],visibleBounds:[2,9,28,14],muzzles:[{x:16,y:16}]},
+    'enemies/Tier_10/Enemy_03.png': {size:[32,32],visibleBounds:[2,9,28,19],muzzles:[{x:16,y:16}]},
+    'enemies/Tier_10/Enemy_04.png': {size:[32,32],visibleBounds:[2,2,28,26],muzzles:[{x:16,y:16}]},
+    'enemies/Tier_10/Boss.png': {size:[32,32],visibleBounds:[1,1,30,30],muzzles:[{x:16,y:16}]},
     // Tier 01
     'enemies/Tier_01/Enemy_01.png': { size: [32, 32], visibleBounds: [12, 10, 8, 11], muzzles: [{ x: 16.0, y: 10 }] },
     'enemies/Tier_01/Enemy_02.png': { size: [32, 32], visibleBounds: [12, 8, 8, 15], muzzles: [{ x: 16.0, y: 8 }] },
@@ -369,8 +374,8 @@
     }
 
     // 6. Tier 1-8 Enemies & Bosses
-    for (let t = 1; t <= 9; t++) {
-      const tid = `Tier_0${t}`;
+    for (let t = 1; t <= 10; t++) {
+      const tid = `Tier_${String(t).padStart(2,'0')}`;
       for (let e = 1; e <= 4; e++) {
         paths.add(`enemies/${tid}/Enemy_0${e}.png`);
       }
@@ -478,7 +483,7 @@
   }
 
   function getEnemyMaxHp(tier, enemyIdx) {
-    const t = Math.max(1, Math.min(CONFIG.TOTAL_TIERS, tier));
+    const t = Math.max(1, Math.min(CONFIG.TOTAL_TIERS, tier===10?getStageNumber(tier):tier));
     const idx = Math.max(1, Math.min(4, enemyIdx));
     const base = 34 * Math.pow(1.25, t - 1);
     return 2 * Math.ceil(base * ENEMY_STAGE_HP_MULT[idx - 1]);
@@ -658,6 +663,7 @@
     playerBullets: [],
     enemyBullets: [],
     electricVolleys: [],
+    empWaves: [],
     electricSweeps: [],
     lasers: [],         // Active 3-stage lasers (Tier 07, Tier 08, Final_Revealed escorts)
     missiles: [],       // Active timed wing missiles (Tier 06 4-missile salvos)
@@ -743,7 +749,9 @@
       hitFlashTimer: 0.0,
       stunRemaining: 0.0,
       electrocutionRemaining: 0.0,
-      electrocutionColor: 'Blue'
+      electrocutionColor: 'Blue',
+      empRemaining: 0,
+      empMap: null
     };
   }
 
@@ -759,6 +767,7 @@
     state.enemyBullets = [];
     state.electricVolleys = [];
     state.electricSweeps = [];
+    state.empWaves = [];
     state.lasers = [];
     state.missiles = [];
     state.globalBlastWaves = [];
@@ -839,7 +848,7 @@
   // 7. EVEN-BOSS REWARD SELECTION SYSTEM (Tier 02, 04, 06, 08 ONLY)
   // ============================================================================
   function isEvenRewardTier(tier) {
-    return tier === 2 || tier === 4 || tier === 6 || tier === 8;
+    return tier>=2 && tier<=CONFIG.TOTAL_TIERS && tier%2===0;
   }
 
   function openRewardSelection(defeatedTier) {
@@ -859,7 +868,7 @@
     const statMobEl = document.getElementById('reward-stat-mobility');
 
     if (badgeEl) {
-      badgeEl.textContent = `TIER 0${defeatedTier} BOSS DEFEATED — REWARD (${state.rewardsChosenHistory.length + 1}/4)`;
+      badgeEl.textContent = `TIER ${String(defeatedTier).padStart(2,'0')} BOSS DEFEATED — REWARD (${state.rewardsChosenHistory.length + 1}/${Math.floor(CONFIG.TOTAL_TIERS/2)})`;
     }
     if (p && statVitEl) {
       const nextMax = p.maxHp + 1;
@@ -966,7 +975,7 @@
     state.cumulativeWaveTime = (getStageNumber(nextTier) - 1) * CONFIG.WAVE_DURATION;
     state.enemySpawnTimer = 0.85;
     state.floatingTexts.push({
-      text: `TIER 0${getStageNumber(state.currentTier)} WAVE START!`,
+      text: `TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} WAVE START!`,
       x: CONFIG.CANVAS_WIDTH / 2,
       y: 190,
       color: '#50e5ff',
@@ -980,7 +989,7 @@
   // ============================================================================
   function spawnWaveEnemy(tier, options = {}) {
     const enemyIdx = options.enemyIdx || (1 + Math.floor(Math.random() * 4));
-    const relPath = `enemies/Tier_0${tier}/Enemy_0${enemyIdx}.png`;
+    const relPath = `enemies/Tier_${String(tier).padStart(2,'0')}/Enemy_0${enemyIdx}.png`;
     const spec = SPRITE_SPECS[relPath];
     const scale = CONFIG.SHIP_SCALE;
     const [, H] = spec.size;
@@ -1208,6 +1217,7 @@
     state.phase = 'BOSS';
     state.electricVolleys = [];
     state.electricSweeps = [];
+    state.empWaves = [];
     // Clear previous special hazards and tell remaining wave enemies to retreat
     state.lasers = [];
     state.missiles = [];
@@ -1226,15 +1236,15 @@
     // Tier 04 uses separated Boss_Body.png so rear fighters are not duplicated on the hull
     const relPath = tier === 4
       ? 'bosses/Tier_04/Boss_Body.png'
-      : `enemies/Tier_0${tier}/Boss.png`;
+      : `enemies/Tier_${String(tier).padStart(2,'0')}/Boss.png`;
     const spec = SPRITE_SPECS[relPath];
-    const maxHp = tier === 9 ? 9500 : BOSS_HP_TABLE[tier] || (600 + tier * 500);
+    const maxHp = tier === 10 ? 2300 : tier === 9 ? 9500 : BOSS_HP_TABLE[tier] || (600 + tier * 500);
 
     const boss = {
       id: `tier-boss-${tier}-${Math.random().toString(36).slice(2)}`,
       kind: 'TIER_BOSS',
       tier,
-      barId: tier === 9 ? 'Tier_03' : `Tier_0${tier}`,
+      barId: tier === 10 ? 'Final_Shadow' : tier === 9 ? 'Tier_03' : `Tier_0${tier}`,
       path: relPath,
       spec,
       scale: CONFIG.SHIP_SCALE,
@@ -1774,7 +1784,7 @@
     const ports=getWorldMuzzles(e.x,e.y,e.spec,false,e.scale);
     if(owned.some(b=>b.followEnemyId===e.id) || owned.length+ports.length>CONFIG.ENEMY_SMALL_LASER_LIMIT) return false;
     ports.forEach((m,index)=>spawnLaserBeam({kind:'ELECTRIC_ENEMY',color:'Cyan',scale:1.2,widthMultiplier:0.85,
-      stage1Time:2.4,stage2Time:0.25,stage3Time:0.85,
+      stage1Time:2.4,stage2Time:0.75,aimLockTime:0.5,stage3Time:0.85,
       ox:m.x,oy:m.y,angle:Math.atan2(state.player.y-m.y,state.player.x-m.x),
       followEnemyId:e.id,followEnemyMuzzleIndex:index,damage:1,stunDuration:0.3,
       updateFn:(beam,dt)=>{
@@ -1803,7 +1813,7 @@
       const offset=(2-i)*0.26,index=indices[i],m=ports[index];
       const beam=spawnLaserBeam({kind:'ELECTRIC_BOSS',color:'Cyan',scale:1.2,
         ox:m.x,oy:m.y,angle:aim+offset,followBossMuzzleIndex:index,
-        stage1Time:2.4,stage2Time:0.25,stage3Time:5,
+        stage1Time:2.4,stage2Time:0.75,aimLockTime:0.5,stage3Time:5,
         damage:1,stunDuration:0.3,shakeOnStage3:i===0,
         updateFn:(b,dt)=>{
           const target=Math.atan2(state.player.y-boss.y,state.player.x-boss.x)+offset;
@@ -2003,7 +2013,88 @@
     }
   }
 
+  function firePurpleCoreCurrent(owner,isBoss=false) {
+    if(state.lasers.some(l=>isBoss?l.kind==='EMP_CURRENT'&&l.followBossMuzzleIndex!==null:l.followEnemyId===owner.id)) return false;
+    if(!isBoss&&state.lasers.filter(l=>l.kind==='EMP_CURRENT'&&l.followEnemyId).length>=4) return false;
+    const m=getWorldMuzzles(owner.x,owner.y,owner.spec,false,owner.scale)[0];
+    spawnLaserBeam({kind:'EMP_CURRENT',color:'Violet',empLarge:isBoss,
+      ox:m.x,oy:m.y,angle:Math.atan2(state.player.y-m.y,state.player.x-m.x),
+      followBossMuzzleIndex:isBoss?0:null,followEnemyId:isBoss?null:owner.id,
+      stage1Time:isBoss?1.15:0.85,stage2Time:0.7,aimLockTime:0.5,stage3Time:isBoss?1.5:0.65,
+      damage:1,stunDuration:0,
+      updateFn:(l)=>{if(l.stage<3) l.angle=Math.atan2(state.player.y-l.oy,state.player.x-l.ox);}});
+    return true;
+  }
+
+  function applyEmpScramble() {
+    const p=state.player;
+    if(!p||p.hp<=0||state.mode!=='PLAYING'||p.skills.shield.remaining>0||state.debugInvincible) return false;
+    let map;
+    for(let attempt=0;attempt<32;attempt++) {
+      map=[0,1,2,3];
+      for(let i=3;i>0;i--) {const j=Math.floor(Math.random()*(i+1));[map[i],map[j]]=[map[j],map[i]];}
+      if(map.every((v,i)=>v!==i)) break;
+    }
+    if(map.some((v,i)=>v===i)) map=[1,2,3,0];
+    p.empMap=map;p.empRemaining=8;
+    state.floatingTexts.push({text:'EMP · 이동키 교란!',x:p.x,y:p.y-45,color:'#d39bff',timer:1.5});
+    return true;
+  }
+
+  function emitEmpWave(boss) {
+    const m=getWorldMuzzles(boss.x,boss.y,boss.spec,false,boss.scale)[0];
+    state.empWaves.push({ownerId:boss.id,x:m.x,y:m.y,radius:0,previousRadius:0,speed:1100,hitPlayer:false});
+    boss.empFlashTimer=0.25;triggerCameraShake(0.4,7);
+  }
+
+  function updateEmpWaves(dt) {
+    const p=state.player;
+    for(let i=state.empWaves.length-1;i>=0;i--) {
+      const w=state.empWaves[i];
+      if(state.boss?.id!==w.ownerId) {state.empWaves.splice(i,1);continue;}
+      w.previousRadius=w.radius;w.radius+=w.speed*dt;
+      if(p&&!w.hitPlayer) {
+        const before=Math.hypot((p.prevX??p.x)-w.x,(p.prevY??p.y)-w.y)-w.previousRadius;
+        const now=Math.hypot(p.x-w.x,p.y-w.y)-w.radius;
+        if(before*now<=0 || Math.min(Math.abs(before),Math.abs(now))<=p.hitboxRadius+8) {
+          w.hitPlayer=true;applyEmpScramble();
+        }
+      }
+      if(w.radius>Math.hypot(CONFIG.CANVAS_WIDTH,CONFIG.CANVAS_HEIGHT)+100) state.empWaves.splice(i,1);
+    }
+  }
+
+  function renderEmpWaves() {
+    for(const w of state.empWaves) {
+      ctx.save();
+      for(let i=0;i<3;i++) {
+        const radius=w.radius-i*24;if(radius<=0) continue;
+        ctx.strokeStyle=i===0?'#efc8ff':'#a95aff';ctx.globalAlpha=(1-i*0.25)*Math.max(0.15,1-w.radius/1700);
+        ctx.lineWidth=i===0?6:3;ctx.beginPath();ctx.arc(w.x,w.y,radius,0,Math.PI*2);ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  function renderEmpScreenEffect() {
+    const p=state.player,W=CONFIG.CANVAS_WIDTH,H=CONFIG.CANVAS_HEIGHT;
+    const flash=state.boss?.empFlashTimer || 0;
+    if(flash>0) {ctx.save();ctx.fillStyle=`rgba(191,100,255,${0.23*flash/0.25})`;ctx.fillRect(0,0,W,H);ctx.restore();}
+    if(!p||p.empRemaining<=0) return;
+    ctx.save();ctx.fillStyle='rgba(112,32,175,0.12)';ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(187,95,255,0.8)';ctx.lineWidth=8;ctx.strokeRect(4,4,W-8,H-8);
+    ctx.fillStyle='rgba(141,70,207,0.07)';
+    for(let y=0;y<H;y+=24) ctx.fillRect(0,y,W,2);
+    ctx.fillStyle='#edcdff';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`EMP 이동키 교란 · ${p.empRemaining.toFixed(1)}초`,W/2,H-58);
+    const names=['왼쪽','오른쪽','위','아래'],m=p.empMap;
+    ctx.font='bold 16px sans-serif';
+    ctx.fillText(`W → ${names[m[2]]}   A → ${names[m[0]]}   S → ${names[m[3]]}   D → ${names[m[1]]}`,W/2,H-30);
+    ctx.restore();
+  }
+
   function fireEnemyPattern(enemy) {
+    if(enemy.tier===10) {firePurpleCoreCurrent(enemy,false);return;}
     if (enemy.tier === 9) {
       // Stages 1/2 fire orbs, stage 3 a slow-tracking laser, stage 4 a linked pair.
       if (enemy.enemyIdx === 4) {
@@ -2145,6 +2236,7 @@
       stageTimer: opts.stage1Time ?? CONFIG.LASER_STAGE1_TIME,
       stage1Time: opts.stage1Time ?? CONFIG.LASER_STAGE1_TIME,
       stage2Time: opts.stage2Time ?? CONFIG.LASER_STAGE2_TIME,
+      aimLockTime: opts.aimLockTime || 0,
       stage3Time: opts.stage3Time ?? CONFIG.LASER_STAGE3_TIME,
       ox: opts.ox,
       oy: opts.oy,
@@ -2153,6 +2245,7 @@
       followEscortId: opts.followEscortId ?? null,
       followEnemyId: opts.followEnemyId ?? null,
       followEnemyMuzzleIndex: opts.followEnemyMuzzleIndex ?? 0,
+      empLarge: opts.empLarge===true,
       stunDuration: opts.stunDuration || 0,
       damage: opts.damage ?? CONFIG.LASER_DAMAGE,
       shakeOnStage3: opts.shakeOnStage3 === true,
@@ -3350,6 +3443,7 @@
   }
 
   function getLaserStageThicknessPx(beam, stage = beam.stage) {
+    if(beam.kind==='EMP_CURRENT') return beam.empLarge?12:4;
     if(beam.kind==='ELECTRIC_ENEMY' || beam.kind==='ELECTRIC_BOSS') return 10;
     const nativeThick = LASER_STAGES[stage]?.thickness || 8;
     return nativeThick * (beam.scale || CONFIG.LASER_SCALE) * (beam.widthMultiplier || 1);
@@ -3449,12 +3543,13 @@
       const moveTime = Math.max(0,dt-(p.stunRemaining || 0));
       p.stunRemaining=Math.max(0,(p.stunRemaining || 0)-dt);
       p.electrocutionRemaining=Math.max(0,(p.electrocutionRemaining || 0)-dt);
-      let mx = 0;
-      let my = 0;
-      if (keys.has('ArrowLeft') || keys.has('KeyA')) mx -= 1;
-      if (keys.has('ArrowRight') || keys.has('KeyD')) mx += 1;
-      if (keys.has('ArrowUp') || keys.has('KeyW')) my -= 1;
-      if (keys.has('ArrowDown') || keys.has('KeyS')) my += 1;
+      p.empRemaining=Math.max(0,(p.empRemaining || 0)-dt);
+      if(p.empRemaining===0) p.empMap=null;
+      let mx=0,my=0;
+      const directions=[[-1,0],[1,0],[0,-1],[0,1]],map=p.empMap || [0,1,2,3];
+      const held=[keys.has('ArrowLeft')||keys.has('KeyA'),keys.has('ArrowRight')||keys.has('KeyD'),
+        keys.has('ArrowUp')||keys.has('KeyW'),keys.has('ArrowDown')||keys.has('KeyS')];
+      held.forEach((down,i)=>{if(down) {mx+=directions[map[i]][0];my+=directions[map[i]][1];}});
 
       if (mx !== 0 && my !== 0) {
         const inv = 1 / Math.SQRT2;
@@ -3627,7 +3722,8 @@
       }
       beam.elapsed += dt;
       syncLaserBeamOrigin(beam);
-      if (beam.updateFn) {
+      const aimLocked=beam.aimLockTime>0 && beam.stage===2 && beam.stageTimer<=beam.aimLockTime+1e-9;
+      if (beam.updateFn && !aimLocked) {
         beam.updateFn(beam, dt);
       }
 
@@ -3780,6 +3876,7 @@
 
     updateElectricVolleys(dt);
     updateElectricSweeps(dt);
+    updateEmpWaves(dt);
 
     // 13. Update Enemy Bullets & Player Collision
     for (let i = state.enemyBullets.length - 1; i >= 0; i--) {
@@ -3870,6 +3967,18 @@
         }
       }
       enforceRightThirdBound(boss);
+      return;
+    }
+
+    if(boss.kind==='TIER_BOSS' && boss.tier===10) {
+      boss.empFlashTimer=Math.max(0,(boss.empFlashTimer || 0)-dt);
+      boss.phaseX+=dt*0.7;boss.phaseY+=dt*0.6;
+      boss.x=boss.homeX+Math.sin(boss.phaseX)*35;boss.y=boss.homeY+Math.sin(boss.phaseY)*130;
+      enforceRightThirdBound(boss);
+      boss.attackTimer-=dt;
+      if(boss.attackTimer<=0) {firePurpleCoreCurrent(boss,true);boss.attackTimer=3.8;}
+      boss.empCooldown=(boss.empCooldown ?? 12)-dt;
+      if(boss.empCooldown<=0) {emitEmpWave(boss);boss.empCooldown+=12;}
       return;
     }
 
@@ -4973,6 +5082,7 @@
     renderElectricVolleys();
     renderElectricBossField();
     renderElectricSweeps();
+    renderEmpWaves();
 
     if(state.player?.stunRemaining>0) {
       const p=state.player;
@@ -5189,6 +5299,7 @@
       ctx.save();ctx.fillStyle=`rgba(195,250,255,${0.12*state.player.skills.laser.flashTimer/0.14})`;
       ctx.fillRect(0,0,CONFIG.CANVAS_WIDTH,CONFIG.CANVAS_HEIGHT);ctx.restore();
     }
+    renderEmpScreenEffect();
     ctx.restore(); // Camera vibration never moves health, timer, or boss bar.
 
     // 16. Render Pixel UI (Top-left Player HP, Top-center Timer, Top-center 64x32 Boss Health Bar)
@@ -5299,11 +5410,11 @@
   }
 
   function renderLaserBeam(beam) {
-    if(beam.kind==='ELECTRIC_ENEMY' || beam.kind==='ELECTRIC_BOSS') {
+    if(['ELECTRIC_ENEMY','ELECTRIC_BOSS','EMP_CURRENT'].includes(beam.kind)) {
       ctx.save();ctx.imageSmoothingEnabled=false;
       if(beam.stage<3) {
         const progress=Math.min(1,beam.elapsed/(beam.stage1Time+beam.stage2Time));
-        if(beam.kind==='ELECTRIC_BOSS') {
+        if(['ELECTRIC_BOSS','ELECTRIC_ENEMY','EMP_CURRENT'].includes(beam.kind)) {
           // Telegraph the exact live ray from the moving muzzle; no damage during charge.
           const length=computeRayDistanceToScreenEdge(beam.ox,beam.oy,beam.angle);
           const half=getLaserStageThicknessPx(beam,3)/2;
@@ -5315,14 +5426,16 @@
           ctx.fillStyle='#ffb4c4';ctx.fillRect(0,-0.5,length,1);
           ctx.restore();
         }
-        ctx.strokeStyle='#74f4ff';ctx.lineWidth=2;ctx.beginPath();
+        ctx.strokeStyle=beam.kind==='EMP_CURRENT'?'#cc8bff':'#74f4ff';ctx.lineWidth=2;ctx.beginPath();
         ctx.arc(beam.ox,beam.oy,16-10*progress,0,Math.PI*2);ctx.stroke();
         ctx.fillStyle='#d1ffff';ctx.fillRect(beam.ox-2,beam.oy-2,4,4);
       } else {
         const sheet=assets.images.get('effects/Electric_Laser/Electric_Laser_Spritesheet.png');
         const length=computeRayDistanceToScreenEdge(beam.ox,beam.oy,beam.angle);
         ctx.translate(beam.ox,beam.oy);ctx.rotate(beam.angle);
-        if(sheet) ctx.drawImage(sheet,0,Math.floor(beam.elapsed*12.5)%7*152,1254,152,0,-23,length,46);
+        const height=beam.kind==='EMP_CURRENT'?(beam.empLarge?56:20):46;
+        if(beam.kind==='EMP_CURRENT') ctx.filter='hue-rotate(95deg)';
+        if(sheet) ctx.drawImage(sheet,0,Math.floor(beam.elapsed*12.5)%7*152,1254,152,0,-height/2,length,height);
       }
       ctx.restore();return;
     }
@@ -5884,11 +5997,11 @@
       if (state.mode === 'REWARD') {
         stageEl.textContent = `TIER 0${state.rewardPendingTier} REWARD`;
       } else if (state.phase === 'WAVE') {
-        stageEl.textContent = `TIER 0${getStageNumber(state.currentTier)} WAVE`;
+        stageEl.textContent = `TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} WAVE`;
       } else if (state.phase === 'TEST') {
-        stageEl.textContent = `TIER 0${getStageNumber(state.currentTier)} PATTERN TEST`;
+        stageEl.textContent = `TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} PATTERN TEST`;
       } else if (state.phase === 'BOSS') {
-        stageEl.textContent = `TIER 0${getStageNumber(state.currentTier)} BOSS`;
+        stageEl.textContent = `TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} BOSS`;
       } else if (state.phase === 'FINAL_SHADOW') {
         stageEl.textContent = 'FINAL BOSS (SHADOW)';
       } else if (state.phase === 'FINAL_REVEALED') {
@@ -6329,6 +6442,12 @@
     spawnElectricVolley,
     updateElectricVolleys,
     renderElectricVolleys,
+    firePurpleCoreCurrent,
+    emitEmpWave,
+    applyEmpScramble,
+    updateEmpWaves,
+    renderEmpWaves,
+    renderEmpScreenEffect,
     spawnElectricSweep,
     updateElectricSweepScheduler,
     updateElectricSweeps,
@@ -6396,7 +6515,10 @@
       state.player.mobilityLevel = Math.max(0, Math.min(4, Number(params.get('mob')) || 0));
       syncPlayerUpgradeStats(state.player);
     }
-    if (params.get('electricDemo') === '1') {
+    if(params.get('empDemo')==='1') {
+      state.phase='TEST';state.currentTier=10;
+      for(let i=1;i<=4;i++) {const e=spawnWaveEnemy(10,{enemyIdx:i});e.entering=false;e.x=e.homeX=1060;e.y=e.homeY=100+i*115;e.fireCooldown=0.4+i*0.1;}
+    } else if (params.get('electricDemo') === '1') {
       state.phase='TEST';state.currentTier=9;
       for(let i=1;i<=4;i++) {
         const e=spawnWaveEnemy(9,{enemyIdx:i});
@@ -6414,6 +6536,7 @@
       startTierBoss(t);
       state.boss.entering = false;
       state.boss.x = state.boss.homeX;
+      if(params.get('emp')==='1' && t===10) state.boss.empCooldown=0.25;
       if(params.get('sweeps')==='1' && t===9) {state.boss.hp=state.boss.maxHp*0.60;state.boss.attackTimer=100;}
       if(params.get('electricLaser')==='1' && t===9) startElectricBossLasers(state.boss);
       if (params.get('p2') === '1' && CONFIG.BOSS_PHASE2_THRESHOLDS[t]) {
