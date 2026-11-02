@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 const source = fs.readFileSync(fileURLToPath(new URL('../game.js', import.meta.url)), 'utf8');
 const transforms = [];
 const imageDraws = [];
-const draw = new Proxy({}, { get: (_, key) => (...args) => { if (key === 'scale') transforms.push(args); if (key === 'drawImage') imageDraws.push(args); } });
+const rectDraws = [];
+const draw = new Proxy({}, { get: (_, key) => (...args) => { if (key === 'scale') transforms.push(args); if (key === 'drawImage') imageDraws.push(args); if(key==='fillRect') rectDraws.push(args); } });
 const nodes = new Map();
 const document = {
   hidden: false, addEventListener() {}, createElement: () => ({ getContext: () => draw }),
@@ -147,9 +148,9 @@ test('Pause and rewards freeze special states; restart clears everything', () =>
 test('Each boss heals current HP by one without increasing its maximum', () => {
  for (let tier = 1; tier <= 8; tier++) {
   fresh(); s.player.hp = 2;
-  g.startTierBoss(tier); g.handleBossDefeated();
+  g.startTierBoss(tier); const defeated=s.boss; g.handleBossDefeated();
   assert.equal(s.player.hp, 3); assert.equal(s.player.maxHp, 5);
-  g.handleBossDefeated(); assert.equal(s.player.hp, 3);
+  if(s.boss===defeated) g.handleBossDefeated(); assert.equal(s.player.hp, 3);
  }
  for (const start of [g.startShadowBoss, g.startRevealedFinalBoss]) {
   fresh(); s.player.hp = 2; start(); g.handleBossDefeated();
@@ -617,7 +618,7 @@ for(const fps of [30,60]) {
    let repeated=false;
    for(let i=0;i<7*fps;i++) {g.updateGame(1/fps);if(b.phase2Active) {repeated=true;break;}}
    assert.ok(repeated);assert.equal(s.telemetry.bossPhase2Triggered[tier],1);
-   g.handleBossDefeated();assert.ok(!s.boss || s.boss.hp<=0 || s.mode==='REWARD');
+   g.handleBossDefeated();assert.ok(!s.boss || s.boss.hp<=0 || s.mode==='REWARD' || s.phase==='FINAL_SHADOW');
   }
  });
 }
@@ -789,6 +790,392 @@ test('Reward key 4 upgrades skills while E/R/T remain inactive during the reward
  windowListeners.get('keydown')(event('KeyE'));assert.equal(s.player.skills.laser.cooldown,0);
  windowListeners.get('keydown')(event('Digit4'));assert.equal(s.player.skillLevel,1);
  assert.equal(s.mode,'PLAYING');assert.equal(s.rewardsChosenHistory[0].choice,'skills');
+});
+
+test('Electric tier preserves all four original craft, increasing HP, and three boss ports',()=>{
+ fresh();let hp=0;
+ for(let i=1;i<=4;i++) {
+  const e=g.spawnWaveEnemy(9,{enemyIdx:i});assert.ok(e.path.endsWith(`Enemy_0${i}.png`));
+  assert.ok(e.hp>hp);hp=e.hp;assert.equal(e.scale,3);
+ }
+ g.startTierBoss(9);assert.equal(s.boss.maxHp,9500);
+ assert.equal(s.boss.spec.muzzles.length,3);assert.equal(s.boss.barId,'Tier_03');
+});
+for(const fps of [30,60]) test(`Electric volley launches at the three ports, diverges, and detaches from the boss (${fps}fps)`,()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ const ports=g.getWorldMuzzles(b.x,b.y,b.spec,false,b.scale).sort((a,b)=>a.y-b.y);
+ const v=g.spawnElectricVolley(b);assert.equal(v.orbs.length,3);
+ v.orbs.forEach((o,i)=>{assert.equal(o.x,ports[i].x);assert.equal(o.y,ports[i].y);});
+ g.updateElectricVolleys(0.66);assert.equal(v.active,true);
+ g.updateElectricVolleys(1.5);
+ const first=v.orbs[0],x=first.x,gap=v.orbs[2].y-v.orbs[0].y;b.x+=30;
+ for(let i=0;i<fps;i++) g.updateElectricVolleys(1/fps);
+ assert.ok(Math.abs(first.x-(x+first.vx))<1e-7);
+ assert.ok(v.orbs.every(o=>o.launched));
+ assert.ok(v.orbs[2].y-v.orbs[0].y>gap+60);
+ assert.equal(g.getElectricLinks(v.orbs).length,3);
+});
+test('Electric warning is harmless; live orb and finite links hurt, shield blocks, outside links stay safe',()=>{
+ fresh();g.startTierBoss(9);s.boss.entering=false;s.boss.x=s.boss.homeX;
+ const v=g.spawnElectricVolley(s.boss),p=s.player;p.invulnTimer=0;
+ p.x=v.orbs[1].x;p.y=v.orbs[1].y;
+ g.updateElectricVolleys(0.1);assert.equal(p.hp,5);
+ v.active=true;v.orbs=[{x:300,y:180},{x:260,y:300},{x:300,y:420}].map(o=>({...o,prevX:o.x,prevY:o.y,vx:0,vy:0,launched:true}));
+ p.x=280;p.y=240;g.updateElectricVolleys(0);assert.equal(p.hp,4);
+ p.invulnTimer=0;p.skills.shield.remaining=1;g.updateElectricVolleys(0);assert.equal(p.hp,4);
+ p.skills.shield.remaining=0;p.x=350;p.y=30;g.updateElectricVolleys(0);assert.equal(p.hp,4);
+ p.x=260;p.y=300;p.invulnTimer=0;g.updateElectricVolleys(0);assert.equal(p.hp,3);
+});
+test('Electric volleys freeze while paused, expire offscreen, and clear on restart or boss death',()=>{
+ fresh();g.startTierBoss(9);s.boss.entering=false;s.boss.x=s.boss.homeX;
+ const v=g.spawnElectricVolley(s.boss);s.mode='PAUSED';g.updateGame(1);assert.equal(v.warning,0.65);
+ s.mode='PLAYING';v.active=true;v.orbs.forEach(o=>{o.x=-200;o.launched=true;});g.updateElectricVolleys(0.01);assert.equal(s.electricVolleys.length,0);
+ g.spawnElectricVolley(s.boss);g.resetGame();assert.equal(s.electricVolleys.length,0);
+ g.startTierBoss(9);g.spawnElectricVolley(s.boss);g.handleBossDefeated();
+ assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,8);assert.equal(s.electricVolleys.length,0);
+});
+test('Electricity is stage 8, its reward leads to legacy stage 9, then the final boss',()=>{
+ fresh();g.openRewardSelection(8);g.applyRewardChoice('skills');
+ assert.equal(s.currentTier,8);assert.equal(g.getStageNumber(s.currentTier),9);assert.equal(s.phase,'WAVE');
+ g.startTierBoss(8);g.handleBossDefeated();assert.equal(s.phase,'FINAL_SHADOW');
+ g.jumpToTierWave(g.getPatternTier(8));assert.equal(g.getStageNumber(s.currentTier),8);
+});
+
+test('Electric shots reroll independent bounded speeds and progressively form one point, line, triangle',()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ const v=g.spawnElectricVolley(b),other=g.spawnElectricVolley(b);
+ for(const o of [...v.orbs,...other.orbs]) {
+  assert.ok(o.speed>=215&&o.speed<=285);assert.ok(Math.abs(Math.hypot(o.vx,o.vy)-o.speed)<1e-7);
+ }
+ assert.notEqual(v.orbs[0].speed,v.orbs[1].speed);
+ assert.notEqual(v.orbs[0].speed,other.orbs[0].speed);
+ g.updateElectricVolleys(0.66);g.updateElectricVolleys(0.05);
+ assert.equal(v.orbs.filter(o=>o.launched).length,1);assert.equal(g.getElectricLinks(v.orbs).length,0);
+ g.updateElectricVolleys(0.70);assert.equal(g.getElectricLinks(v.orbs).length,1);
+ g.updateElectricVolleys(0.70);assert.equal(g.getElectricLinks(v.orbs).length,3);
+ assert.ok(g.getElectricLinks(v.orbs).some(([a,b])=>a===v.orbs[2]&&b===v.orbs[0]));
+});
+test('Closed third edge causes boss stun while warning, shield and invulnerability cannot restun',()=>{
+ fresh();g.startTierBoss(9);const v=g.spawnElectricVolley(s.boss),p=s.player;
+ p.invulnTimer=0;v.active=true;
+ v.orbs=[{x:300,y:180},{x:150,y:300},{x:300,y:420}].map(o=>({...o,vx:0,vy:0,launched:true}));
+ p.x=300;p.y=300;g.updateElectricVolleys(0);assert.equal(p.hp,4);assert.equal(p.stunRemaining,0.3);assert.equal(p.electrocutionRemaining,0.3);
+ p.stunRemaining=0.1;g.updateElectricVolleys(0);assert.equal(p.stunRemaining,0.1);
+ p.invulnTimer=0;p.skills.shield.remaining=1;p.stunRemaining=0;
+ g.updateElectricVolleys(0);assert.equal(p.stunRemaining,0);
+});
+test('Stun blocks movement for its actual remaining time, freezes in pause, and resets',()=>{
+ fresh();const p=s.player;p.invulnTimer=0;g.damagePlayer(1,'ELECTRIC',0.5);
+ const x=p.x;windowListeners.get('keydown')({code:'KeyD',repeat:false,preventDefault(){}});
+ g.updateGame(0.2);assert.equal(p.x,x);assert.ok(Math.abs(p.stunRemaining-0.3)<1e-7);
+ s.mode='PAUSED';g.updateGame(1);assert.ok(Math.abs(p.stunRemaining-0.3)<1e-7);
+ s.mode='PLAYING';g.updateGame(0.4);assert.ok(Math.abs(p.x-x-35)<1e-7);
+ windowListeners.get('keyup')({code:'KeyD'});g.resetGame();assert.equal(s.player.stunRemaining,0);
+});
+test('Electric stages 1/2 only shoot stun bullets; stage 3 charges slowly and turns at most 0.2 rad/sec',()=>{
+ for(const stage of [1,2]) {
+  fresh();const e=g.spawnWaveEnemy(9,{enemyIdx:stage});g.fireEnemyPattern(e);
+  assert.ok(s.enemyBullets.length>0);assert.equal(s.lasers.length,0);assert.equal(s.electricVolleys.length,0);
+  assert.ok(s.enemyBullets.every(b=>b.stunDuration===0.3));
+  s.player.invulnTimer=0;const bullet=s.enemyBullets[0];bullet.x=s.player.x;bullet.y=s.player.y;bullet.vx=bullet.vy=0;
+  g.updateGame(0);assert.equal(s.player.stunRemaining,0.3);assert.equal(s.player.electrocutionRemaining,0.3);
+ }
+ fresh();const e=g.spawnWaveEnemy(9,{enemyIdx:3});e.entering=false;e.x=e.homeX;
+ g.fireEnemyPattern(e);assert.equal(s.enemyBullets.length,0);assert.equal(s.lasers.length,2);
+ const b=s.lasers[0];assert.equal(b.stage1Time,2.4);assert.equal(b.stunDuration,0.3);
+ const angle=b.angle;s.player.y=690;b.updateFn(b,0.1);assert.ok(Math.abs(b.angle-angle)<=0.02000001);
+ assert.equal(g.checkLaserHitsPlayer(b,{x:b.ox,y:b.oy,hitboxRadius:8}),false);
+ b.stage=3;b.angle=Math.PI;b.stageTimer=1;s.player.x=b.ox-100;s.player.y=b.oy;s.player.invulnTimer=0;
+ g.updateGame(0);assert.equal(s.player.stunRemaining,0.3);assert.equal(s.player.electrocutionRemaining,0.3);
+});
+test('Electric stage 4 launches just two independently moving linked orbs with 0.3-second stun',()=>{
+ fresh();const e=g.spawnWaveEnemy(9,{enemyIdx:4});e.entering=false;e.x=e.homeX;
+ g.fireEnemyPattern(e);assert.equal(s.lasers.length,0);assert.equal(s.enemyBullets.length,0);
+ const v=s.electricVolleys[0];assert.equal(v.orbs.length,2);assert.equal(v.stunDuration,0.3);
+ g.updateElectricVolleys(0.66);g.updateElectricVolleys(0.7);
+ assert.equal(g.getElectricLinks(v.orbs).length,1);assert.notEqual(v.orbs[0].vx,v.orbs[1].vx);
+ const [a,b]=v.orbs;s.player.x=(a.x+b.x)/2;s.player.y=(a.y+b.y)/2;s.player.invulnTimer=0;
+ g.updateElectricVolleys(0);assert.equal(s.player.stunRemaining,0.3);assert.equal(s.player.electrocutionRemaining,0.3);
+});
+
+test('Central boss gun is always first or last, rear order varies and every gun charges separately',()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ const variants=new Set();
+ for(let i=0;i<64;i++) {
+  const v=g.spawnElectricVolley(b);variants.add(v.order.join(','));
+  assert.ok(v.order[0]===1||v.order[2]===1);
+  const guns=[...v.orbs].sort((a,b)=>a.launchDelay-b.launchDelay);
+  assert.equal(guns[1].launchDelay-guns[0].launchDelay,0.7);
+  assert.equal(guns[2].launchDelay-guns[1].launchDelay,0.7);
+  v.active=true;v.age=0.1;guns[0].launched=true;
+  assert.equal(g.getElectricOrbCharge(v,guns[1]),null);
+  assert.equal(g.getElectricOrbCharge(v,guns[2]),null);
+  v.age=0.3;assert.ok(g.getElectricOrbCharge(v,guns[1])>0);
+  assert.equal(g.getElectricOrbCharge(v,guns[2]),null);
+  v.age=1;guns[1].launched=true;assert.ok(g.getElectricOrbCharge(v,guns[2])>0);
+ }
+ assert.equal(variants.size,4);
+});
+test('Electric minion charging and beams attach to actual gun tips, not the old middle or wing positions',()=>{
+ fresh();const third=g.spawnWaveEnemy(9,{enemyIdx:3});third.entering=false;third.x=third.homeX;
+ assert.equal(third.spec.muzzles.length,2);
+ assert.equal(third.spec.muzzles[0].x,10);assert.equal(third.spec.muzzles[1].x,22);
+ g.fireElectricEnemyLaser(third);assert.equal(s.lasers.length,2);
+ third.homeX+=15;g.updateGame(0);
+ const ports=g.getWorldMuzzles(third.x,third.y,third.spec,false,third.scale);
+ s.lasers.forEach((b,i)=>{assert.equal(b.ox,ports[i].x);assert.equal(b.oy,ports[i].y);});
+ const fourth=g.spawnWaveEnemy(9,{enemyIdx:4});fourth.entering=false;fourth.x=fourth.homeX;
+ assert.equal(fourth.spec.muzzles.length,2);assert.ok(fourth.spec.muzzles.every(m=>m.y===2));
+ const v=g.spawnElectricVolley(fourth,false);fourth.x+=15;g.updateElectricVolleys(0.01);
+ const tips=g.getWorldMuzzles(fourth.x,fourth.y,fourth.spec,false,fourth.scale).sort((a,b)=>a.y-b.y);
+ v.orbs.forEach((o,i)=>{assert.equal(o.x,tips[i].x);assert.equal(o.y,tips[i].y);});
+});
+for(const fps of [30,60]) test(`Two electric lasers finish the long muzzle charge together and immediately use live electric art (${fps}fps)`,()=>{
+ fresh();const e=g.spawnWaveEnemy(9,{enemyIdx:3});e.entering=false;e.x=e.homeX;e.fireCooldown=100;
+ g.fireElectricEnemyLaser(e);const [a,b]=s.lasers;
+ const sheet=g.assets.images.get('effects/Electric_Laser/Electric_Laser_Spritesheet.png');
+ let index=imageDraws.length;g.step(0);
+ assert.equal(imageDraws.slice(index).filter(d=>d[0]===sheet).length,0);
+ let elapsed=0;
+ while(a.stage!==3&&elapsed<4){g.updateGame(1/fps);elapsed+=1/fps;assert.equal(a.stage,b.stage);}
+ assert.ok(elapsed>=2.65-1e-7&&elapsed<2.65+2/fps);
+ index=imageDraws.length;g.step(0);
+ assert.equal(imageDraws.slice(index).filter(d=>d[0]===sheet).length,2);
+ s.player.invulnTimer=0;s.player.x=a.ox+Math.cos(a.angle)*120;s.player.y=a.oy+Math.sin(a.angle)*120;
+ g.updateGame(0);assert.equal(s.player.hp,4);assert.equal(s.player.stunRemaining,0.3);
+});
+test('Story order reaches electricity as stage 8 after stage 7 and awards its even-stage upgrade',()=>{
+ fresh();g.startTierBoss(7);g.handleBossDefeated();
+ assert.equal(g.getStageNumber(s.currentTier),8);assert.equal(s.currentTier,9);
+ s.enemySpawnTimer=100;s.tierWaveElapsed=59.99;g.updateGame(0.02);
+ assert.equal(s.boss.path,'enemies/Tier_09/Boss.png');
+ assert.equal(nodes.get('stage-label').textContent,'TIER 08 BOSS');
+ g.handleBossDefeated();assert.equal(s.rewardPendingTier,8);
+});
+
+for(const fps of [30,60]) test(`Electric boss fires five slow-turning beams for five seconds, with impact effects and no triangle overlap (${fps}fps)`,()=>{
+ fresh();g.startTierBoss(9);const boss=s.boss;boss.entering=false;boss.x=boss.homeX;
+ g.spawnElectricVolley(boss);assert.ok(s.electricVolleys.length);
+ assert.equal(g.startElectricBossLasers(boss),true);assert.equal(s.electricVolleys.length,0);
+ assert.equal(s.lasers.length,5);assert.equal(g.spawnElectricVolley(boss),null);
+ assert.equal(g.startElectricBossLasers(boss),false);
+ const beams=[...s.lasers],x=boss.x,y=boss.y;
+ assert.equal(new Set(beams.map(b=>b.angle)).size,5);
+ beams.forEach(b=>{assert.equal(b.stage3Time,5);assert.equal(b.stunDuration,0.3);});
+ const angle=beams[0].angle;s.player.y=680;beams[0].updateFn(beams[0],0.1);
+ assert.ok(Math.abs(beams[0].angle-angle)<=0.00350001);
+ let elapsed=0;
+ while(beams[0].stage!==3&&elapsed<4) {g.updateGame(1/fps);elapsed+=1/fps;assert.equal(s.electricVolleys.length,0);}
+ assert.ok(elapsed>=2.65-1e-7);assert.notEqual(boss.x,x);assert.notEqual(boss.y,y);
+ const fireX=boss.x,fireY=boss.y;
+ assert.ok(beams.every(b=>b.stage===3));assert.ok(boss.electricFlashTimer>0);assert.ok(s.cameraShake.timer>0);
+ const e=beams[0].elapsed;s.mode='PAUSED';g.updateGame(1);assert.equal(beams[0].elapsed,e);s.mode='PLAYING';
+ let duration=0;
+ while(s.lasers.length&&duration<6){g.updateGame(1/fps);duration+=1/fps;assert.equal(s.electricVolleys.length,0);assert.equal(boss.x,fireX);assert.equal(boss.y,fireY);}
+ assert.ok(duration>=5-2/fps&&duration<=5+2/fps);
+ g.updateGame(1/fps);assert.equal(boss.electricMode,'TRIANGLE');
+ tick(1.6,fps);assert.ok(s.electricVolleys.length>0);
+ g.startElectricBossLasers(boss);g.handleBossDefeated();assert.equal(s.lasers.length,0);
+});
+test('Electric boss naturally alternates two triangle volleys and five-beam attacks',()=>{
+ fresh();g.startTierBoss(9);const boss=s.boss;boss.entering=false;boss.x=boss.homeX;
+ tick(7.8);assert.equal(boss.electricMode,'LASER');assert.equal(s.lasers.length,5);assert.equal(s.electricVolleys.length,0);
+ tick(8);assert.equal(boss.electricMode,'TRIANGLE');
+ tick(7.8);assert.equal(boss.electricMode,'LASER');assert.equal(s.lasers.length,5);
+});
+
+for(const fps of [30,60]) test(`Electric boss shows five harmless full-range warning lanes and moves at 30% speed while charging (${fps}fps)`,()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ g.startElectricBossLasers(b);const phaseX=b.phaseX,phaseY=b.phaseY;
+ tick(1,fps);
+ assert.ok(Math.abs(b.phaseX-phaseX-0.24)<1e-7);
+ assert.ok(Math.abs(b.phaseY-phaseY-0.195)<1e-7);
+ const ports=g.getElectricBossLaserMuzzles(b);
+ for(const beam of s.lasers) {
+  const m=ports[beam.followBossMuzzleIndex];assert.equal(beam.ox,m.x);assert.equal(beam.oy,m.y);
+  assert.equal(g.checkLaserHitsPlayer(beam,{x:beam.ox-50,y:beam.oy,hitboxRadius:8}),false);
+ }
+ const before=rectDraws.length;g.step(0);
+ assert.equal(rectDraws.slice(before).filter(([x,y,w,h])=>x===0&&y===-5&&w>100&&h===10).length,5);
+ s.mode='PAUSED';const x=b.x,y=b.y;g.updateGame(1);assert.equal(b.x,x);assert.equal(b.y,y);
+});
+
+test('Five boss lasers fire once from each of three front guns and two yellow end orbs',()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ assert.equal(b.spec.muzzles.length,3);assert.equal(b.spec.laserMuzzles.length,2);
+ assert.equal(b.spec.laserMuzzles[0].x,28);assert.equal(b.spec.laserMuzzles[1].x,4);
+ assert.ok(b.spec.laserMuzzles.every(m=>m.y===24));
+ g.startElectricBossLasers(b);
+ for(let i=0;i<5;i++) assert.equal(s.lasers.filter(l=>l.followBossMuzzleIndex===i).length,1);
+ assert.equal(new Set(s.lasers.map(l=>`${l.ox},${l.oy}`)).size,5);
+ const fanY=s.lasers.map(l=>l.oy+Math.sin(l.angle)*300);
+ for(let i=1;i<fanY.length;i++) assert.ok(fanY[i]-fanY[i-1]>60);
+ tick(1);
+ const tips=g.getElectricBossLaserMuzzles(b);
+ s.lasers.forEach(l=>{const p=tips[l.followBossMuzzleIndex];assert.equal(l.ox,p.x);assert.equal(l.oy,p.y);});
+ assert.equal(tips[3].x,Math.round(b.x+8*b.scale));
+ assert.equal(tips[3].y,Math.round(b.y-12*b.scale));
+ assert.equal(tips[4].y,Math.round(b.y+12*b.scale));
+ const front=g.getWorldMuzzles(b.x,b.y,b.spec,false,b.scale);
+ for(let i=0;i<3;i++) {assert.equal(tips[i].x,front[i].x);assert.equal(tips[i].y,front[i].y);}
+ tick(2);
+ assert.ok(s.lasers.every(l=>l.stage===3));
+ const live=g.getElectricBossLaserMuzzles(b);
+ s.lasers.forEach(l=>{assert.equal(l.ox,live[l.followBossMuzzleIndex].x);assert.equal(l.oy,live[l.followBossMuzzleIndex].y);});
+});
+
+test('Electric phase 2 places eight even perimeter nodes and seven random interior nodes with at most five links each',()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ b.hp=b.maxHp*0.5+1;assert.equal(g.checkAndTriggerBossPhase2(b),false);
+ b.hp=b.maxHp*0.5;assert.equal(g.checkAndTriggerBossPhase2(b),true);
+ const f=b.electricField;assert.equal(f.nodes.length,15);assert.ok(f.edges.length>=15&&f.edges.length<=37);
+ const degrees=Array(15).fill(0),unique=new Set();
+ for(const [a,c] of f.edges) {assert.notEqual(a,c);degrees[a]++;degrees[c]++;unique.add(`${Math.min(a,c)},${Math.max(a,c)}`);}
+ assert.equal(unique.size,f.edges.length);assert.ok(degrees.every(n=>n>=2&&n<=5));
+ assert.equal(f.nodes.filter(n=>n.perimeter).length,8);
+ assert.equal(f.nodes.filter(n=>!n.perimeter).length,7);
+ const W=g.CONFIG.CANVAS_WIDTH,H=g.CONFIG.CANVAS_HEIGHT;
+ for(const [x,y] of [[12,12],[W/2,12],[W-12,12],[W-12,H/2],[W-12,H-12],[W/2,H-12],[12,H-12],[12,H/2]]) assert.ok(f.nodes.some(n=>n.perimeter&&n.tx===x&&n.ty===y));
+ assert.ok(f.nodes.filter(n=>!n.perimeter).every(n=>n.tx>=W*0.18&&n.tx<=W*0.82&&n.ty>=H*0.18&&n.ty<=H*0.82));
+ const reached=new Set([0]),pending=[0];
+ while(pending.length) {
+  const n=pending.pop();
+  for(const [a,c] of f.edges) {
+   const next=a===n?c:c===n?a:null;
+   if(next!==null&&!reached.has(next)) {reached.add(next);pending.push(next);}
+  }
+ }
+ assert.equal(reached.size,15);
+ assert.equal(Math.min(...f.nodes.map(n=>n.tx)),12);
+ assert.equal(Math.max(...f.nodes.map(n=>n.tx)),g.CONFIG.CANVAS_WIDTH-12);
+ assert.equal(Math.min(...f.nodes.map(n=>n.ty)),12);
+ assert.equal(Math.max(...f.nodes.map(n=>n.ty)),g.CONFIG.CANVAS_HEIGHT-12);
+ assert.ok(Math.min(...f.nodes.map(n=>n.tx))<300);assert.ok(Math.max(...f.nodes.map(n=>n.tx))>900);
+ assert.ok(Math.min(...f.nodes.map(n=>n.ty))<250);assert.ok(Math.max(...f.nodes.map(n=>n.ty))>500);
+ assert.equal(s.enemyBullets.length,0);assert.equal(g.spawnElectricVolley(b),null);assert.equal(g.startElectricBossLasers(b),false);
+ assert.equal(g.checkAndTriggerBossPhase2(b),false);
+});
+for(const fps of [30,60]) test(`Electric network flies out, warns without damage, then damages only links and repeats after cooldown (${fps}fps)`,()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ g.spawnElectricVolley(b);g.startElectricBossLasers(b);b.hp=b.maxHp*0.5;g.checkAndTriggerBossPhase2(b);
+ assert.equal(s.lasers.length,0);assert.equal(s.electricVolleys.length,0);
+ b.electricSweepsUnlocked=true;b.electricSweepCooldowns={Blue:1e6,Red:1e6};
+ const f=b.electricField,p=s.player;p.invulnTimer=0;
+ let elapsed=0;
+ while(f.stage==='DEPLOY'&&elapsed<4) {g.updateGame(1/fps);elapsed+=1/fps;}
+ assert.equal(f.stage,'WARNING');assert.ok(f.nodes.every(n=>n.arrived));assert.equal(p.hp,5);
+ const safeEdge=f.edges.find(([i,j])=>{const x=(f.nodes[i].x+f.nodes[j].x)/2,y=(f.nodes[i].y+f.nodes[j].y)/2;return x>100&&x<1100&&y>130&&y<600;});
+ const [a,c]=safeEdge.map(i=>f.nodes[i]);p.x=(a.x+c.x)/2;p.y=(a.y+c.y)/2;
+ tick(1,fps);assert.equal(p.hp,5);
+ while(f.stage!=='ACTIVE') g.updateGame(1/fps);
+ g.updateGame(1/fps);assert.equal(p.hp,4);assert.ok(p.stunRemaining>0);assert.ok(p.electrocutionRemaining>0);
+ // Occupying an isolated orb never causes contact damage.
+ f.edges=[];p.invulnTimer=0;p.x=f.nodes[0].x;p.y=f.nodes[0].y;g.updateGame(1/fps);assert.equal(p.hp,4);
+ const age=f.age;s.mode='PAUSED';g.updateGame(1);assert.equal(f.age,age);s.mode='PLAYING';p.invulnTimer=1e6;
+ while(b.electricField) g.updateGame(1/fps);
+ assert.equal(b.electricFieldCooldown,20);assert.equal(b.phase2Active,false);
+ tick(20.1,fps);assert.ok(b.electricField);assert.equal(s.telemetry.bossPhase2Triggered[9],1);
+ g.handleBossDefeated();assert.equal(s.boss,null);assert.equal(s.mode,'REWARD');
+ g.resetGame();assert.equal(s.boss,null);
+});
+
+test('Blue and red sweep cooldowns unlock at 60% and independently repeat every six to eight seconds',()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;b.attackTimer=100;
+ b.hp=b.maxHp*0.6+1;g.updateGame(0.01);assert.equal(s.electricSweeps.length,0);
+ b.hp=b.maxHp*0.6;g.updateGame(0.01);assert.equal(s.electricSweeps.length,0);
+ for(const c of ['Blue','Red']) assert.ok(b.electricSweepCooldowns[c]>=6&&b.electricSweepCooldowns[c]<=8);
+ b.electricSweepCooldowns={Blue:0.01,Red:3};g.updateElectricSweepScheduler(b,0.02);
+ assert.equal(s.electricSweeps.length,1);assert.equal(s.electricSweeps[0].color,'Blue');
+ assert.ok(Math.abs(b.electricSweepCooldowns.Red-2.98)<1e-7);
+ assert.ok(b.electricSweepCooldowns.Blue>=5.99&&b.electricSweepCooldowns.Blue<=8);
+ const blue=b.electricSweepCooldowns.Blue;b.electricSweepCooldowns.Red=0.01;
+ g.updateElectricSweepScheduler(b,0.02);assert.equal(s.electricSweeps.length,1);
+ const spacing=b.electricSweepSpacing;assert.ok(spacing>=2.98&&spacing<=4);
+ g.updateElectricSweepScheduler(b,spacing+0.01);assert.equal(s.electricSweeps[1].color,'Red');
+ assert.ok(Math.abs(b.electricSweepCooldowns.Blue-(blue-0.02-spacing-0.01))<1e-7);
+ b.hp=b.maxHp*0.5;g.updateGame(0.01);assert.ok(b.electricField);assert.ok(s.electricSweeps.length);
+});
+for(const fps of [30,60]) test(`Blue hurts only movement, red hurts only stillness, including high-speed crossing (${fps}fps)`,()=>{
+ for(const direction of [1,-1]) for(const color of ['Blue','Red']) for(const moving of [false,true]) {
+  fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+  const p=s.player;p.invulnTimer=0;p.x=300;p.y=350;p.prevX=moving?295:300;p.prevY=350;
+  s.electricSweeps=[{ownerId:b.id,color,delay:0,active:true,age:0,x:300-direction*50,prevX:300-direction*50,tilt:0,speed:direction*6000,hitPlayer:false}];
+  g.updateElectricSweeps(1/fps);
+  const unsafe=color==='Blue'?moving:!moving;
+  assert.equal(p.hp,unsafe?4:5);assert.equal(p.electrocutionRemaining,unsafe?0.3:0);
+  assert.equal(p.stunRemaining,unsafe?0.3:0);
+ }
+});
+test('Colored sweep warnings are harmless; actual wall-blocked movement counts as still, pause and cleanup work',()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ const p=s.player;p.invulnTimer=0;g.spawnElectricSweep(b);
+ const l=s.electricSweeps[0];l.color='Red';l.delay=0;l.warning=0.5;l.x=p.x;
+ g.updateElectricSweeps(0.1);assert.equal(p.hp,5);assert.equal(l.active,false);
+ s.mode='PAUSED';const warning=l.warning;g.updateGame(1);assert.equal(l.warning,warning);s.mode='PLAYING';
+ // A held key at the wall produces no displacement and cannot evade red electricity.
+ p.x=0;g.updateGame(0);l.active=true;l.x=p.x;l.speed=0;l.tilt=0;
+ windowListeners.get('keydown')({code:'KeyA',repeat:false,preventDefault(){}});
+ g.updateGame(1/60);assert.equal(p.hp,4);
+ windowListeners.get('keyup')({code:'KeyA'});
+ g.handleBossDefeated();assert.equal(s.electricSweeps.length,0);
+ g.resetGame();assert.equal(s.electricSweeps.length,0);
+});
+
+test('Sweeps choose both sides and colors, stay vertical, flash and shake on release, and leave either edge',()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;
+ const colors=new Set(),directions=new Set();
+ for(let i=0;i<64;i++) {
+  const l=g.spawnElectricSweep(b);colors.add(l.color);directions.add(l.direction);
+  assert.equal(l.tilt,0);assert.equal(l.delay,0);assert.ok(Math.abs(l.speed)>=700&&Math.abs(l.speed)<=800);
+  assert.equal(Math.sign(l.speed),l.direction);
+  assert.equal(l.x,l.direction===1?-140:g.CONFIG.CANVAS_WIDTH+140);
+ }
+ assert.equal(colors.size,2);assert.equal(directions.size,2);
+ for(const direction of [1,-1]) {
+  s.electricSweeps=[];const l=g.spawnElectricSweep(b);l.direction=direction;
+  l.x=direction===1?-140:g.CONFIG.CANVAS_WIDTH+140;l.speed=direction*750;l.warning=0;
+  g.updateElectricSweeps(0.01);assert.equal(l.active,true);assert.ok(l.flashTimer>0);
+  assert.ok(s.cameraShake.timer>0);assert.ok(s.cameraShake.magnitude>=5);
+  g.updateElectricSweeps(4);assert.equal(s.electricSweeps.length,0);
+ }
+});
+
+test('Boss electric laser applies the same 0.3-second shock and sparks as all other electric attacks',()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
+ g.startElectricBossLasers(b);s.lasers.forEach(l=>{l.stage=3;l.stageTimer=5;});
+ const l=s.lasers.find(l=>l.followBossMuzzleIndex===1),p=s.player;
+ p.x=l.ox+Math.cos(l.angle)*150;p.y=l.oy+Math.sin(l.angle)*150;p.invulnTimer=0;
+ g.updateGame(0);assert.equal(p.hp,4);assert.equal(p.stunRemaining,0.3);assert.equal(p.electrocutionRemaining,0.3);
+ assert.ok(s.particles.some(p=>p.color==='#78d8ff'));
+});
+test('Electric shock lasts 0.3 seconds, freezes in pause, blocks movement and cannot refresh through shields or hit immunity',()=>{
+ fresh();const p=s.player;p.invulnTimer=0;
+ g.damagePlayer(1,'ELECTRIC',0.5,'Cyan');assert.equal(p.stunRemaining,0.3);assert.equal(p.electrocutionRemaining,0.3);
+ const x=p.x;windowListeners.get('keydown')({code:'KeyD',repeat:false,preventDefault(){}});
+ g.updateGame(0.1);assert.equal(p.x,x);assert.ok(Math.abs(p.electrocutionRemaining-0.2)<1e-7);
+ g.damagePlayer(1,'ELECTRIC',0.3,'Red');assert.equal(p.electrocutionColor,'Cyan');
+ s.mode='PAUSED';g.updateGame(1);assert.ok(Math.abs(p.electrocutionRemaining-0.2)<1e-7);
+ s.mode='PLAYING';g.updateGame(0.25);assert.equal(p.electrocutionRemaining,0);assert.ok(p.x>x);
+ windowListeners.get('keyup')({code:'KeyD'});
+ p.invulnTimer=0;p.skills.shield.remaining=1;g.damagePlayer(1,'ELECTRIC',0.3,'Red');assert.equal(p.electrocutionRemaining,0);
+ g.resetGame();assert.equal(s.player.electrocutionRemaining,0);
+});
+test('Non-electric damage does not add an electric stun or sparks',()=>{
+ fresh();s.player.invulnTimer=0;g.damagePlayer(1,'METEOR');
+ assert.equal(s.player.stunRemaining,0);assert.equal(s.player.electrocutionRemaining,0);
+});
+
+for(const fps of [30,60]) test(`Simultaneously ready colored sweeps wait three to four seconds between releases (${fps}fps)`,()=>{
+ fresh();g.startTierBoss(9);const b=s.boss;b.electricSweepsUnlocked=true;b.electricSweepCooldowns={Blue:0,Red:0};
+ g.updateElectricSweepScheduler(b,1/fps);assert.equal(s.electricSweeps.length,1);
+ const gap=b.electricSweepSpacing;assert.ok(gap>=3&&gap<=4);
+ let elapsed=0;
+ while(s.electricSweeps.length===1&&elapsed<5) {
+  g.updateElectricSweepScheduler(b,1/fps);elapsed+=1/fps;
+  if(elapsed<gap-1e-7) assert.equal(s.electricSweeps.length,1);
+ }
+ assert.equal(s.electricSweeps.length,2);assert.ok(elapsed>=gap-1e-7&&elapsed<gap+2/fps);
+ assert.notEqual(s.electricSweeps[0].color,s.electricSweeps[1].color);
 });
 
 console.log(`\n${results.length} scenario checks passed.`);

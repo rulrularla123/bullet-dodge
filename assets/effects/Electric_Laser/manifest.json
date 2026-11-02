@@ -1,0 +1,24 @@
+{
+  "frameCount": 7,
+  "frameWidth": 1254,
+  "frameHeight": 152,
+  "fps": 12.5,
+  "loop": true,
+  "layout": "vertical",
+  "sheet": "Electric_Laser_Spritesheet.png",
+  "anchor": [
+    0,
+    76
+  ],
+  "direction": "horizontal",
+  "rendering": "Draw one full frame from muzzle to viewport edge; no tiling. imageSmoothingEnabled=false.",
+  "frames": [
+    "frames/Electric_Laser_01.png",
+    "frames/Electric_Laser_02.png",
+    "frames/Electric_Laser_03.png",
+    "frames/Electric_Laser_04.png",
+    "frames/Electric_Laser_05.png",
+    "frames/Electric_Laser_06.png",
+    "frames/Electric_Laser_07.png"
+  ]
+}

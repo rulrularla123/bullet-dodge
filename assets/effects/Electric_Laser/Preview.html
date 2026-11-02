@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>전기 레이저 애니메이션</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#060b16;color:#d7f8ff;font-family:system-ui,sans-serif;padding:40px 5vw}main{max-width:1300px;margin:auto}h1{font-size:28px;margin-bottom:8px}p{color:#8eaabf;line-height:1.7}canvas{width:100%;height:auto;border:1px solid #203b50;image-rendering:pixelated;background:#080f20;border-radius:10px}section{margin:28px 0}label{display:inline-flex;align-items:center;gap:10px;margin:10px 22px 10px 0}button,select{background:#173449;border:1px solid #34647f;color:#e3ffff;padding:9px 16px;border-radius:6px;font-size:14px}a{color:#6fe9ff}.frames{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.frames img{width:100%;image-rendering:pixelated;background:#080f20;border:1px solid #203b50}small{color:#8eaabf}
+</style>
+<main><h1>전기 레이저</h1><p>직선으로 뻗는 전기 빔 · 투명 배경 · 7프레임 반복</p>
+<section><canvas id="stage" width="1280" height="360"></canvas>
+<label>재생 속도 <select id="fps"><option value="8">8 FPS</option><option value="12" selected>12 FPS</option><option value="16">16 FPS</option></select></label>
+<label>방향 <select id="direction"><option value="left">오른쪽 → 왼쪽 (보스)</option><option value="right">왼쪽 → 오른쪽</option></select></label>
+<button id="pause">일시정지</button><small id="counter"></small></section>
+<section><a href="Electric_Laser_Loop.gif">움직이는 GIF</a> · <a href="Electric_Laser_Spritesheet.png">투명 스프라이트 시트</a> · <a href="manifest.json">프레임 정보</a></section>
+<h2>프레임</h2><div class="frames" id="frames"></div>
+<p>새 보스에 사용할 이펙트 시안입니다. 기존 게임에는 아직 적용하지 않았습니다.</p></main>
+<script>
+const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),sheet=new Image();
+let paused=false,frame=0,last=0;
+const fps=document.querySelector('#fps'),direction=document.querySelector('#direction');
+document.querySelector('#pause').onclick=()=>{paused=!paused;document.querySelector('#pause').textContent=paused?'재생':'일시정지'};
+for(let i=0;i<7;i++){const img=new Image();img.src=`frames/Electric_Laser_${String(i+1).padStart(2,'0')}.png`;img.alt=`프레임 ${i+1}`;document.querySelector('#frames').append(img)}
+sheet.src='Electric_Laser_Spritesheet.png';
+function draw(t){if(sheet.complete&&sheet.naturalWidth){if(!paused&&t-last>=1000/Number(fps.value)){frame=(frame+1)%7;last=t}ctx.imageSmoothingEnabled=false;ctx.fillStyle='#080f20';ctx.fillRect(0,0,1280,360);ctx.fillStyle='#24455d';for(let i=0;i<45;i++){ctx.fillRect((i*193+47)%1280,(i*83+23)%360,2,2)}ctx.save();if(direction.value==='left'){ctx.translate(1280,0);ctx.scale(-1,1)}ctx.drawImage(sheet,0,frame*(sheet.height/7),sheet.width,sheet.height/7,0,102,1280,152);ctx.restore();document.querySelector('#counter').textContent=`　${frame+1} / 7`}requestAnimationFrame(draw)}requestAnimationFrame(draw);
+</script></html>
