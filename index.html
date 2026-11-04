@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bullet Hell Dodging — Pixel Space Shooter V4</title>
-  <link rel="stylesheet" href="style.css?v=20261102-emp-twelve-seconds" />
+  <link rel="stylesheet" href="style.css?v=20261104-chain-flow-ports" />
 </head>
 <body>
   <div id="app">
@@ -115,7 +115,7 @@
         <button type="button" data-action="v4-enemy-demo" data-tier="5">T5 3·4단계 돌진</button>
         <button type="button" data-action="v4-enemy-demo" data-tier="6">T7 단계별 자폭</button>
         <button type="button" data-action="v4-enemy-demo" data-tier="7">T8 소형 레이저</button>
-        <button type="button" data-action="v4-enemy-demo" data-tier="8">T10 단계별 고속 입장</button>
+        <button type="button" data-action="v4-enemy-demo" data-tier="8">T11 단계별 고속 입장</button>
       </div>
       <div class="debug-row">
         <span class="debug-label">웨이브(60초):</span>
@@ -127,8 +127,9 @@
         <button type="button" data-action="jump-tier" data-tier="5">T5</button>
         <button type="button" data-action="jump-tier" data-tier="6">T7</button>
         <button type="button" data-action="jump-tier" data-tier="7">T8</button>
-        <button type="button" data-action="jump-tier" data-tier="8">T10</button>
-        <button type="button" data-action="jump-tier" data-tier="9">T9(전기)</button>
+        <button type="button" data-action="jump-tier" data-tier="8">T11</button>
+        <button type="button" data-action="jump-tier" data-tier="11">T9(연결형 생존)</button>
+        <button type="button" data-action="jump-tier" data-tier="9">T10(전기)</button>
         <span class="debug-sep">|</span>
         <span class="debug-label">보스 직행:</span>
         <button type="button" data-action="jump-boss" data-tier="1">B1</button>
@@ -140,9 +141,10 @@
         <button type="button" data-action="jump-boss" data-tier="5">B5(돌진)</button>
         <button type="button" data-action="jump-boss" data-tier="6">B7(미사일)</button>
         <button type="button" data-action="jump-boss" data-tier="7">B8(레이저)</button>
-        <button type="button" data-action="jump-boss" data-tier="8">B10(4레이저/돌진)</button>
-        <button type="button" data-action="jump-boss" data-tier="9">B9(전류 구체)</button>
-        <button type="button" data-action="v4-enemy-demo" data-tier="9">T9 잡몹 4종</button>
+        <button type="button" data-action="jump-boss" data-tier="8">B11(4레이저/돌진)</button>
+        <button type="button" data-action="jump-boss" data-tier="11">B9(연결형)</button>
+        <button type="button" data-action="jump-boss" data-tier="9">B10(전류 구체)</button>
+        <button type="button" data-action="v4-enemy-demo" data-tier="9">T10 잡몹 4종</button>
         <button type="button" data-action="jump-shadow">그림자</button>
         <button type="button" data-action="jump-revealed">최종보스</button>
       </div>
@@ -151,13 +153,14 @@
         <button type="button" data-action="trigger-b5-dash">T5 수평돌진</button>
         <button type="button" data-action="trigger-b6-missiles">T7 4발미사일</button>
         <button type="button" data-action="trigger-b7-laser">T8 2배레이저</button>
-        <button type="button" data-action="trigger-b8-ult">T10 4레이저 궁극기</button>
-        <button type="button" data-action="trigger-b8-dash">T10 돌진묶음</button>
+        <button type="button" data-action="trigger-b8-ult">T11 4레이저 궁극기</button>
+        <button type="button" data-action="trigger-b8-dash">T11 돌진묶음</button>
         <button type="button" data-action="trigger-b5-p2">B5 2페이즈(5돌진)</button>
         <button type="button" data-action="trigger-b6-p2">B7 2페이즈(전맵폭발)</button>
         <button type="button" data-action="trigger-b7-p2">B8 2페이즈(순간이동레이저)</button>
-        <button type="button" data-action="trigger-electric-p2">B9 2페이즈(전류망)</button>
-        <button type="button" data-action="trigger-b8-p2">B10 2페이즈(돌진편대)</button>
+        <button type="button" data-action="trigger-chain-p2">B9 2페이즈(똬리/3돌진)</button>
+        <button type="button" data-action="trigger-electric-p2">B10 2페이즈(전류망)</button>
+        <button type="button" data-action="trigger-b8-p2">B11 2페이즈(돌진편대)</button>
         <button type="button" data-action="trigger-final-rush">최종 무지개 4레이저</button>
         <button type="button" data-action="trigger-escort-laser">호위기 레이저</button>
         <button type="button" data-action="open-reward">짝수보스 보상창</button>
@@ -174,6 +177,6 @@
     </section>
   </div>
 
-  <script src="game.js?v=20261102-emp-twelve-seconds"></script>
+  <script src="game.js?v=20261104-chain-flow-ports"></script>
 </body>
 </html>

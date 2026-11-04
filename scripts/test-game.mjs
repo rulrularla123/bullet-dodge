@@ -361,7 +361,7 @@ test('Weapon forms 1 to 3 retain their previous non-piercing volleys', () => {
  for (const level of [0, 1, 2]) {
   fresh(); s.player.weaponLevel = level; g.firePlayerWeapon(s.player);
   assert.equal(s.playerBullets.length, [1, 2, 4][level]);
-  assert.ok(s.playerBullets.every(b => !b.piercing && b.path === 'bullets/Needle_Cyan.png'));
+  assert.ok(s.playerBullets.every(b => !b.piercing && b.path === 'bullets/Colors/Cyan/Needle.png'));
  }
 });
 
@@ -799,7 +799,7 @@ test('Electric tier preserves all four original craft, increasing HP, and three 
   assert.ok(e.hp>hp);hp=e.hp;assert.equal(e.scale,3);
  }
  g.startTierBoss(9);assert.equal(s.boss.maxHp,9500);
- assert.equal(s.boss.spec.muzzles.length,3);assert.equal(s.boss.barId,'Tier_03');
+ assert.equal(s.boss.spec.muzzles.length,3);assert.equal(s.boss.barId,'Tier_09');
 });
 for(const fps of [30,60]) test(`Electric volley launches at the three ports, diverges, and detaches from the boss (${fps}fps)`,()=>{
  fresh();g.startTierBoss(9);const b=s.boss;b.entering=false;b.x=b.homeX;
@@ -832,14 +832,13 @@ test('Electric volleys freeze while paused, expire offscreen, and clear on resta
  s.mode='PLAYING';v.active=true;v.orbs.forEach(o=>{o.x=-200;o.launched=true;});g.updateElectricVolleys(0.01);assert.equal(s.electricVolleys.length,0);
  g.spawnElectricVolley(s.boss);g.resetGame();assert.equal(s.electricVolleys.length,0);
  g.startTierBoss(9);g.spawnElectricVolley(s.boss);g.handleBossDefeated();
- assert.equal(s.mode,'PLAYING');assert.equal(g.getStageNumber(s.currentTier),10);assert.equal(s.electricVolleys.length,0);
+ assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);assert.equal(s.electricVolleys.length,0);
 });
-test('Electricity is stage 9, followed by stage 10 and its final upgrade before the final boss',()=>{
- fresh();g.startTierBoss(9);g.handleBossDefeated();
- assert.equal(s.currentTier,8);assert.equal(g.getStageNumber(s.currentTier),10);assert.equal(s.phase,'WAVE');
- g.startTierBoss(8);g.handleBossDefeated();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);
- g.applyRewardChoice('skills');assert.equal(s.phase,'FINAL_SHADOW');
- g.jumpToTierWave(g.getPatternTier(9));assert.equal(g.getStageNumber(s.currentTier),9);
+test('Electricity is stage 10 with a reward, followed by stage 11 and the final boss',()=>{
+ fresh();g.startTierBoss(9);g.handleBossDefeated();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);
+ g.applyRewardChoice('skills');assert.equal(s.currentTier,8);assert.equal(g.getStageNumber(s.currentTier),11);assert.equal(s.phase,'WAVE');
+ g.startTierBoss(8);g.handleBossDefeated();assert.equal(s.phase,'FINAL_SHADOW');
+ g.jumpToTierWave(g.getPatternTier(9));assert.equal(s.currentTier,11);assert.equal(s.boss.kind,'CHAIN_BOSS');
 });
 
 test('Electric shots reroll independent bounded speeds and progressively form one point, line, triangle',()=>{
@@ -945,14 +944,16 @@ for(const fps of [30,60]) test(`Two electric lasers finish the long muzzle charg
  s.player.invulnTimer=0;s.player.x=a.ox+Math.cos(a.angle)*120;s.player.y=a.oy+Math.sin(a.angle)*120;
  g.updateGame(0);assert.equal(s.player.hp,4);assert.equal(s.player.stunRemaining,0.3);
 });
-test('Story order reaches electricity at stage 9 after the stage 8 reward',()=>{
+test('Stage 8 reward leads to chain survival, chain boss, then electricity at stage 10',()=>{
  fresh();g.startTierBoss(7);g.handleBossDefeated();assert.equal(s.rewardPendingTier,8);
- g.applyRewardChoice('skills');assert.equal(g.getStageNumber(s.currentTier),9);assert.equal(s.currentTier,9);
- s.enemySpawnTimer=100;s.tierWaveElapsed=59.99;g.updateGame(0.02);
- assert.equal(s.boss.path,'enemies/Tier_09/Boss.png');
- assert.equal(nodes.get('stage-label').textContent,'TIER 09 BOSS');
- g.handleBossDefeated();assert.equal(g.getStageNumber(s.currentTier),10);
+ g.applyRewardChoice('skills');assert.equal(s.currentTier,11);assert.equal(s.boss.kind,'CHAIN_BOSS');assert.equal(s.boss.combat,false);
+ const chain=s.boss;s.tierWaveElapsed=59.99;g.updateGame(0.02);
+ assert.equal(s.boss,chain);assert.equal(chain.combat,true);assert.equal(s.phase,'BOSS');
+ g.handleBossDefeated();assert.equal(s.currentTier,9);assert.equal(g.getStageNumber(s.currentTier),10);
+ s.enemySpawnTimer=100;s.tierWaveElapsed=59.99;g.updateGame(0.02);assert.equal(s.boss.path,'enemies/Tier_09/Boss.png');
+ assert.equal(nodes.get('stage-label').textContent,'TIER 10 BOSS');
 });
+
 for(const fps of [30,60]) test(`Electric boss fires five slow-turning beams for five seconds, with impact effects and no triangle overlap (${fps}fps)`,()=>{
  fresh();g.startTierBoss(9);const boss=s.boss;boss.entering=false;boss.x=boss.homeX;
  g.spawnElectricVolley(boss);assert.ok(s.electricVolleys.length);
@@ -1075,7 +1076,7 @@ for(const fps of [30,60]) test(`Electric network flies out, warns without damage
  while(b.electricField) g.updateGame(1/fps);
  assert.equal(b.electricFieldCooldown,20);assert.equal(b.phase2Active,false);
  tick(20.1,fps);assert.ok(b.electricField);assert.equal(s.telemetry.bossPhase2Triggered[9],1);
- g.handleBossDefeated();assert.equal(s.boss,null);assert.equal(s.mode,'PLAYING');assert.equal(g.getStageNumber(s.currentTier),10);
+ g.handleBossDefeated();assert.equal(s.boss,null);assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);
  g.resetGame();assert.equal(s.boss,null);
 });
 
@@ -1180,7 +1181,7 @@ for(const fps of [30,60]) test(`Simultaneously ready colored sweeps wait three t
 
 test('Purple EMP is stage 6 after the original stage 5 dash boss, preserving pattern IDs',()=>{
  fresh();assert.equal(g.getPatternTier(6),10);assert.equal(g.getStageNumber(5),5);
- assert.equal(g.getStageNumber(9),9);assert.equal(g.getStageNumber(8),10);
+ assert.equal(g.getStageNumber(9),10);assert.equal(g.getStageNumber(8),11);
  for(let i=1;i<=4;i++) {const e=g.spawnWaveEnemy(10,{enemyIdx:i});assert.ok(e.path.endsWith(`Tier_10/Enemy_0${i}.png`));assert.equal(e.spec.muzzles[0].x,16);}
  g.startTierBoss(4);g.handleBossDefeated();g.applyRewardChoice('skills');assert.equal(s.currentTier,5);
  g.startTierBoss(5);g.handleBossDefeated();assert.equal(s.currentTier,10);
@@ -1255,6 +1256,260 @@ for(const type of ['purple-minion','purple-boss','electric-minion','electric-bos
  g.updateGame(0.1);assert.equal(l.stage,2);assert.equal(l.angle,angle);
  g.updateGame(0.38);assert.equal(l.stage,2);assert.equal(l.angle,angle);
  g.updateGame(0.02);assert.equal(l.stage,3);
+});
+
+test('Every regular boss has a dedicated health bar, including EMP and electric', () => {
+ const ids=new Set();
+ for(let tier=1;tier<=10;tier++) {fresh();g.startTierBoss(tier);const id=s.boss.barId;
+  assert.equal(id,`Tier_${String(tier).padStart(2,'0')}`);assert.ok(!ids.has(id));ids.add(id);
+  for(const part of ['Full','Fill','Empty','Frame']) {
+   const file=new URL(`../assets/ui/boss_bars/${id}_${part}.png`,import.meta.url);
+   const b=fs.readFileSync(file);assert.equal(b.readUInt32BE(16),64);assert.equal(b.readUInt32BE(20),32);
+  }
+ }
+});
+test('All ordinary projectile paths use the new color-classified shapes', () => {
+ for(const tier of [1,2,3,4,5,7,9]) {fresh();
+  for(let stage=1;stage<=4;stage++) {const e=g.spawnWaveEnemy(tier,{enemyIdx:stage});e.entering=false;e.fireCooldown=0;}
+  tick(0.1);
+  for(const b of s.enemyBullets) {
+   assert.match(b.path,/^bullets\/Colors\/(Red|Orange|Yellow|Lime|Cyan|Blue|Violet|Pink)\/(Orb|Needle)\.png$/);
+   assert.ok(fs.existsSync(new URL(`../assets/${b.path}`,import.meta.url)));
+  }
+ }
+});
+
+for(const fps of [30,60]) test(`Chain boss follows a continuous 82-part trail across the map (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});assert.equal(b.segments.length,82);assert.equal(b.segments[0].kind,'HEAD');
+ assert.equal(b.segments.filter(p=>p.kind==='GUN').length,41);assert.equal(b.segments.filter(p=>p.kind==='BLADE').length,40);
+ let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+ for(let n=0;n<30*fps;n++) {
+  g.updateGame(1/fps);minX=Math.min(minX,b.x);maxX=Math.max(maxX,b.x);minY=Math.min(minY,b.y);maxY=Math.max(maxY,b.y);
+  for(let i=1;i<b.segments.length;i++) {const p=b.segments[i],q=b.segments[i-1],d=Math.hypot(p.x-q.x,p.y-q.y);assert.ok(Number.isFinite(d) && d>=0 && d<=42.01,`connected gap ${d}`);}
+ }
+ assert.ok(maxX-minX>750);assert.ok(maxY-minY>350);assert.equal(b.barId,'Chain_Boss');
+ assert.ok(s.enemyBullets.every(b=>b.path==='bullets/Colors/Red/Orb.png'));
+ assert.equal(g.getChainBladeCapsules(b).length,82);
+});
+test('Chain body takes shared HP damage once per piercing projectile',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true}),part=b.segments[10],hp=b.hp;b.segments.forEach(p=>{p.x=1000;p.y=600;});part.x=700;part.y=300;
+ const shot={x:part.x,y:part.y,vx:0,vy:0,radius:6,damage:25,piercing:true,hitTargets:new Set()};
+ s.playerBullets.push(shot);g.updatePlayerBullets(0);g.updatePlayerBullets(0);assert.equal(b.hp,hp-12.5);
+});
+test('Chain blades have contact damage and the encounter resets cleanly',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true}),blade=g.getChainBladeCapsules(b).find(c=>c.b.x>100&&c.b.x<1180&&c.b.y>100&&c.b.y<620);s.player.x=blade.b.x;s.player.y=blade.b.y;s.player.invulnTimer=0;
+ g.updateGame(0);assert.equal(s.player.hp,3);g.resetGame();assert.equal(s.boss,null);assert.equal(s.enemyBullets.length,0);
+});
+test('Skill laser can damage a chain body independently of the head',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true}),part=b.segments[12];part.x=700;part.y=300;s.player.x=40;s.player.y=part.y;
+ const hp=b.hp;g.applyPlayerSkillLaserTick();assert.ok(b.hp<hp);
+});
+
+test('Chain exits all four edges during survival, attacks at lower density, and remains invulnerable',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true,combat:false,campaign:true});let left=false,right=false,top=false,bottom=false,returned=false,wasOutside=false,sawOrb=false,sawHead=false,sawCurrent=false;
+ for(let i=0;i<50*60;i++){g.updateGame(1/60);left ||= b.x<0;right ||= b.x>g.CONFIG.CANVAS_WIDTH;top ||= b.y<0;bottom ||= b.y>g.CONFIG.CANVAS_HEIGHT;
+  sawOrb ||= s.enemyBullets.length>0;sawHead ||= s.lasers.some(l=>l.kind==='CHAIN_HEAD');sawCurrent ||= s.lasers.some(l=>l.kind==='CHAIN_CURRENT');assert.equal(new Set(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').map(l=>l.chainSegmentIndex)).size,s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length);
+  const outside=b.x<0||b.x>g.CONFIG.CANVAS_WIDTH||b.y<0||b.y>g.CONFIG.CANVAS_HEIGHT;if(wasOutside&&!outside)returned=true;wasOutside=outside;
+ }
+ assert.ok(left&&right&&top&&bottom&&returned);assert.equal(s.enemies.length,0);assert.ok(sawOrb&&sawHead&&sawCurrent);
+ const part=b.segments[4],hp=b.hp;s.playerBullets=[{x:part.x,y:part.y,vx:0,vy:0,radius:6,damage:100}];g.updatePlayerBullets(0);g.applyPlayerSkillLaserTick();assert.equal(b.hp,hp);
+ s.tierWaveElapsed=59.99;g.updateGame(0.02);assert.equal(s.boss,b);assert.equal(s.phase,'BOSS');assert.equal(b.combat,true);
+});
+test('Chain head takes three times body damage for ordinary and skill attacks',()=>{
+ for(const head of [false,true]) {
+  fresh();const b=g.startChainBoss({skipEntrance:true});b.segments.forEach(p=>{p.x=1000;p.y=650;});const part=b.segments[head?0:5];part.x=700;part.y=300;
+  s.playerBullets=[{x:700,y:300,vx:0,vy:0,radius:6,damage:20}];g.updatePlayerBullets(0);assert.equal(b.hp,12000-(head?30:10));
+  b.hp=12000;s.player.x=100;s.player.y=300;s.player.skills.laser.damagePerTick=20;g.applyPlayerSkillLaserTick();assert.equal(b.hp,12000-(head?30:10));
+ }
+});
+test('Chain forward head laser and thin red core currents follow their moving emitters',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true}),head=g.fireChainLaser(b,0),core=g.fireChainLaser(b,4),angle=head.angle,coreAngle=core.angle;
+ assert.equal(head.kind,'CHAIN_HEAD');assert.equal(core.kind,'CHAIN_CURRENT');assert.equal(core.color,'Red');assert.equal(g.getLaserStageThicknessPx(core,3),2);
+ assert.equal(core.stage,1);assert.equal(core.damage,1);assert.equal(core.stunDuration,0.3);assert.equal(core.length,2200);
+ g.updateGame(0.1);assert.equal(core.ox,b.segments[4].x);assert.equal(core.oy,b.segments[4].y);assert.equal(head.angle,b.segments[0].angle);assert.equal(core.angle,coreAngle);
+});
+test('Chain saws sway side to side locally, and body bullets travel at 220 pixels per second',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true}),part=b.segments[0];part.x=800;part.y=300;part.angle=-Math.PI/2;
+ b.age=0;const a=g.getChainSawPoses(b);b.age=0.2;const c=g.getChainSawPoses(b);
+ assert.equal(a[0].y,c[0].y);assert.notEqual(a[0].x,c[0].x);assert.notEqual(a[0].rotation,c[0].rotation);
+ b.segments[1].fireCooldown=0;g.updateGame(0);assert.ok(s.enemyBullets.length);assert.ok(s.enemyBullets.every(p=>Math.abs(Math.hypot(p.vx,p.vy)-220)<1e-6));
+});
+
+test('Aimed chain rays lock their launch direction while the player moves',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});s.player.x=350;s.player.y=300;
+ for(const index of [5]) {
+  const l=g.fireChainLaser(b,index),angle=l.angle;
+  assert.ok(Math.abs(angle-Math.atan2(s.player.y-l.oy,s.player.x-l.ox))<1e-9);
+  s.player.x=650;s.player.y=600;g.updateGame(0.2);assert.equal(l.angle,angle);
+  l.stage=3;g.updateGame(0.1);assert.equal(l.angle,angle);
+ }
+});
+test('Chain rays render above the complete body and use the separate knife halves',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true}),l=g.fireChainLaser(b,5);l.stage=3;
+ const offset=imageDraws.length;g.step(0);const draws=imageDraws.slice(offset);
+ const body=g.assets.images.get('bosses/Chain_Boss/Body_Blade.png'),knife=g.assets.images.get('bosses/Chain_Boss/Blade.png');
+ const sheet=g.assets.images.get('effects/Electric_Laser/Electric_Laser_Red_Spritesheet.png');
+ assert.ok(draws.findIndex(d=>d[0]===sheet)>draws.findLastIndex(d=>d[0]===body));
+ const cuts=draws.filter(d=>d[0]===knife);assert.ok(cuts.length>0&&cuts.length%2===0);assert.ok(cuts.every(d=>d[1]===8||d[1]===17));assert.ok(cuts.every(d=>d[3]===8));
+});
+
+test('Head ray fires forward without aiming at the player; core rays alone aim at the player',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});s.player.x=300;s.player.y=600;
+ const head=g.fireChainLaser(b,0);assert.equal(head.angle,b.segments[0].angle);
+ s.player.y=100;g.updateGame(0.1);assert.equal(head.angle,b.segments[0].angle);
+});
+
+test('Each chain body has independent cooldowns and a full-path harmless electric warning',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});
+ const parts=b.segments.slice(1);assert.equal(new Set(parts.map(p=>p.currentBossInterval)).size,81);
+ assert.ok(parts.every(p=>p.currentBossInterval===p.currentWaveInterval&&p.currentWaveInterval>=24&&p.currentWaveInterval<=36));
+ parts.forEach(p=>p.currentCooldown=100);parts[3].currentCooldown=0;g.updateGame(0);
+ const beam=s.lasers.find(l=>l.chainSegmentIndex===4);assert.ok(beam);assert.equal(b.segments[4].currentCooldown,b.segments[4].currentBossInterval);assert.equal(b.segments[5].currentCooldown,100);
+ assert.ok(beam.stage1Time+beam.stage2Time>=1.4-1e-8);assert.equal(beam.stage,1);
+ const offset=rectDraws.length;g.renderLaserBeam(beam);assert.ok(rectDraws.slice(offset).some(r=>r[3]===14));assert.equal(g.getLaserStageThicknessPx(beam,3),2);
+});
+
+for(const combat of [false,true])for(const fps of [30,60]) test(`Chain charges start individually with a real gap and independent cooldowns (${combat?'boss':'wave'}, ${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true,combat});b.headLaserCooldown=100;
+ b.segments.slice(1).forEach(p=>p.currentCooldown=100);b.segments[1].currentCooldown=-2;b.segments[2].currentCooldown=-3;
+ g.updateGame(0);assert.equal(s.lasers.length,1);assert.equal(s.lasers[0].chainSegmentIndex,2);
+ assert.equal(b.segments[2].currentCooldown,combat?b.segments[2].currentBossInterval:b.segments[2].currentWaveInterval);
+ assert.equal(b.segments[1].currentCooldown,-2);const gap=b.laserStartGap;
+ assert.ok(gap>=1.3&&gap<=1.7);
+ let elapsed=0;while(elapsed+1/fps<gap-1e-9){g.updateGame(1/fps);elapsed+=1/fps;assert.ok(!s.lasers.some(l=>l.chainSegmentIndex===1));}
+ g.updateGame(1/fps);assert.ok(s.lasers.some(l=>l.chainSegmentIndex===1));
+ const cooldown=b.segments[1].currentCooldown,delay=b.laserStartGap;s.mode='PAUSED';g.updateGame(5);
+ assert.equal(b.segments[1].currentCooldown,cooldown);assert.equal(b.laserStartGap,delay);
+});
+
+for(const fps of [30,60])test(`Chain first enters from the front, fully retreats, then re-enters for combat (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({combat:false,campaign:true});
+ assert.equal(b.pathState,'WAVE_ENTER');assert.ok(b.segments.every(p=>p.x>g.CONFIG.CANVAS_WIDTH));assert.equal(b.entering,true);
+ tick(1.3,fps);assert.equal(b.pathState,'ROAM');assert.ok(b.segments.some(p=>p.x<g.CONFIG.CANVAS_WIDTH));
+ s.tierWaveElapsed=59.99;g.updateGame(0.02);assert.equal(b.pathState,'RETREAT');assert.equal(b.entering,true);
+ assert.equal(s.phase,'BOSS');assert.equal(s.lasers.length,0);const hp=b.hp;g.applyPlayerSkillLaserTick();assert.equal(b.hp,hp);
+ let elapsed=0;while(b.pathState==='RETREAT'&&elapsed<12){g.updateGame(1/fps);elapsed+=1/fps;}
+ assert.equal(b.pathState,'BOSS_ENTER');assert.ok(b.segments.every(p=>p.x>g.CONFIG.CANVAS_WIDTH));
+ tick(1.3,fps);assert.equal(b.pathState,'ROAM');assert.equal(b.entering,false);assert.equal(b.combat,true);assert.equal(b.hp,hp);
+});
+for(const fps of [30,60])test(`Chain phase two retreats invulnerably at 30%, grows offscreen, and starts from the front (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.301;g.updateGame(0);assert.equal(b.phase2Triggered,false);
+ b.hp=b.maxHp*0.3;g.updateGame(0);assert.equal(b.pathState,'P2_RETREAT');assert.equal(b.entering,true);assert.equal(b.segments.length,82);
+ const hp=b.hp;s.player.x=b.x-100;s.player.y=b.y;g.applyPlayerSkillLaserTick();assert.equal(b.hp,hp);
+ let time=0;while(!b.growthDone&&time<35){const x=b.x,y=b.y;g.updateGame(1/fps);time+=1/fps;
+  if(!b.growthDone){assert.equal(b.segments.length,82);assert.ok(Math.hypot(b.x-x,b.y-y)<=420/fps+0.1);}
+ }
+ assert.equal(b.growthDone,true);assert.equal(b.segments.length,900);assert.ok(b.segments.every(p=>p.x>g.CONFIG.CANVAS_WIDTH));
+ assert.equal(b.pathState,'P2_TRANSIT');assert.equal(b.usedRushZones[0],1);assert.equal(b.entering,true);
+ while(b.pathState!=='P2_AIM'&&time<45){g.updateGame(1/fps);time+=1/fps;}
+ assert.equal(b.pathState,'P2_AIM');assert.equal(b.entering,false);assert.equal(b.rushSource.x,g.CONFIG.CANVAS_WIDTH+180);
+});
+for(const fps of [30,60])test(`Three continuous corridors survive the return, then the head starts lasers (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.updateGame(0);
+ let elapsed=0;
+ while(b.pathState!=='P2_LASER'&&elapsed<150){
+  const x=b.x,y=b.y,phase=b.pathState,grown=b.growthDone;g.updateGame(1/fps);elapsed+=1/fps;
+  if(phase!==b.pathState&&['P2_TRANSIT','P2_RETURN'].includes(b.pathState)&&b.rushCount>0){const end=b.travelCurve.at(-1);for(const point of b.travelCurve)if(point.x>0&&point.x<g.CONFIG.CANVAS_WIDTH&&point.y>0&&point.y<g.CONFIG.CANVAS_HEIGHT)assert.ok(Math.hypot(point.x-end.x,point.y-end.y)<280,'return crossed the arena');}
+  if(grown===b.growthDone)assert.ok(Math.hypot(b.x-x,b.y-y)<=(['P2_DASH','P2_EXIT'].includes(phase)?1500:phase==='P2_RETREAT'?420:560)/fps+0.1,`head jumped during ${phase}`);
+  for(let i=1;i<b.segments.length;i++)assert.ok(Math.abs(Math.hypot(b.segments[i].x-b.segments[i-1].x,b.segments[i].y-b.segments[i-1].y)-42)<0.02,`joint spacing changed at ${i}`);
+ }
+ assert.equal(b.pathState,'P2_LASER');assert.equal(b.rushCount,3);assert.equal(b.corridors.length,3);assert.equal(new Set(b.usedRushZones).size,3);assert.equal(b.usedRushZones[0],1);
+ for(const corridor of b.corridors){const dx=corridor.end.x-corridor.start.x,dy=corridor.end.y-corridor.start.y,len=dx*dx+dy*dy;
+  const count=b.segments.slice(1).filter(p=>{const t=((p.x-corridor.start.x)*dx+(p.y-corridor.start.y)*dy)/len;return t>=0&&t<=1&&Math.hypot(p.x-corridor.start.x-t*dx,p.y-corridor.start.y-t*dy)<2;}).length;
+  assert.ok(count>=4,`corridor disappeared: ${count} joints`);
+ }
+ assert.ok(s.enemyBullets.length<=8);assert.ok(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length<=1);
+ tick(4,fps);assert.equal(b.rushCount,3);assert.ok(s.lasers.some(l=>l.kind==='CHAIN_HEAD')||b.headLaserCooldown<10);
+ g.handleBossDefeated();assert.equal(s.boss,null);assert.equal(s.lasers.length,0);
+});
+test('Phase two body corridors pass ordinary and piercing shots without damaging boss health',()=>{
+ for(const piercing of [false,true]){
+  fresh();const b=g.startChainBoss({skipEntrance:true});b.phase2Triggered=true;b.pathState='P2_LASER';
+  b.segments.forEach(p=>{p.x=1100;p.y=650;});b.segments[0].x=900;b.segments[0].y=150;b.segments[1].x=700;b.segments[1].y=300;
+  const hp=b.hp,shot={x:650,y:300,vx:100,vy:0,radius:6,damage:20,piercing,hitTargets:new Set()};s.playerBullets=[shot];
+  g.updatePlayerBullets(0.5);assert.equal(b.hp,hp);assert.ok(s.playerBullets.includes(shot));assert.equal(shot.hitTargets.size,0);
+  s.player.x=100;s.player.y=300;s.player.skills.laser.damagePerTick=20;g.applyPlayerSkillLaserTick();assert.equal(b.hp,hp);
+  shot.x=900;shot.y=150;g.updatePlayerBullets(0);assert.equal(b.hp,hp-30);
+ }
+});
+test('Chain normal movement replans different player-relative routes instead of repeating a fixed orbit',()=>{
+ fresh();let b=g.startChainBoss({skipEntrance:true});g.updateGame(0);const first=JSON.stringify(b.travelCurve);
+ fresh();b=g.startChainBoss({skipEntrance:true});g.updateGame(0);assert.notEqual(JSON.stringify(b.travelCurve),first);
+ const routes=b.roamRoutes;tick(25);assert.ok(b.roamRoutes>routes);
+});
+test('Phase two aim locks before the rush and pauses without advancing',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.updateGame(0);
+ for(let t=0;t<45&&b.pathState!=='P2_AIM';t+=1/60)g.updateGame(1/60);
+ while(b.pathState==='P2_AIM'&&!b.rushAimLocked)g.updateGame(1/60);
+ assert.equal(b.pathState,'P2_AIM');const angle=b.segments[0].angle;s.player.y=650;g.updateGame(0.1);assert.equal(b.segments[0].angle,angle);
+ const timer=b.rushTimer,x=b.x;s.mode='PAUSED';g.updateGame(5);assert.equal(b.rushTimer,timer);assert.equal(b.x,x);
+});
+
+test('Completed-corridor preview restores normal player damage and a safe playable starting point',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);
+ assert.equal(b.pathState,'P2_LASER');assert.equal(s.player.hp,s.player.maxHp);assert.equal(s.player.invulnTimer,0);assert.equal(s.debugInvincible,false);
+ assert.ok(b.segments.every(part=>Math.hypot(s.player.x-part.x,s.player.y-part.y)>=42));assert.equal(s.player.fireCooldown,0.15);
+});
+
+test('Completed phase two has straight visible corridors and a long offscreen neck for vertical head movement',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
+ assert.equal(b.pathState,'P2_LASER');assert.ok(b.frontJoint.x>=g.CONFIG.CANVAS_WIDTH+1500);
+ let minY=b.y,maxY=b.y;
+ for(let frame=0;frame<12*60;frame++) {
+  g.updateGame(1/60);minY=Math.min(minY,b.y);maxY=Math.max(maxY,b.y);
+  for(let i=1;i<b.segments.length-1;i++) {
+   const p=b.segments[i];if(p.x<0||p.x>g.CONFIG.CANVAS_WIDTH||p.y<0||p.y>g.CONFIG.CANVAS_HEIGHT)continue;
+   const a=b.segments[i-1],c=b.segments[i+1],dot=((a.x-p.x)*(p.x-c.x)+(a.y-p.y)*(p.y-c.y))/(42*42);
+   assert.ok(dot>0.9999,`visible bend at ${i}: ${dot}`);
+  }
+ }
+ assert.ok(maxY-minY>150);assert.equal(b.corridors.length,3);
+});
+test('Phase two restores sparse visible-body bullets and independently charged thin currents',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;
+ s.enemyBullets=[];s.lasers=[];b.headLaserCooldown=100;b.laserStartGap=0;b.p2BulletGap=0;b.p2BodyLaserGap=0;
+ const gun=b.segments.find((p,i)=>p.kind==='GUN'&&p.x>50&&p.x<g.CONFIG.CANVAS_WIDTH-50&&p.y>50&&p.y<g.CONFIG.CANVAS_HEIGHT-50&&g.isChainCorridorPart(b,p,i));assert.ok(gun);
+ b.segments.forEach(p=>{p.fireCooldown=100;p.currentCooldown=100;});gun.fireCooldown=0;gun.currentCooldown=0;
+ g.updateGame(0);assert.equal(s.enemyBullets.length,2);assert.equal(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length,1);
+ assert.ok(b.p2BulletGap>=1.8&&b.p2BulletGap<=2.6);assert.ok(b.p2BodyLaserGap>=3.2&&b.p2BodyLaserGap<=4.8);
+ const beam=s.lasers[0];assert.equal(beam.stage,1);assert.equal(beam.stunDuration,0.3);assert.equal(g.getLaserStageThicknessPx(beam,3),2);
+ tick(1);assert.ok(s.enemyBullets.length<=2);assert.equal(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length,1);
+});
+
+test('The front head continuously bobs while attacking, without target-wait pauses',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
+ let stalled=0,maxStalled=0,sign=0,reversals=0,movedDuringBeam=false;
+ for(let i=0;i<13*60;i++){const y=b.y;g.updateGame(1/60);const dy=b.y-y;
+  if(Math.abs(dy)<0.01){stalled++;maxStalled=Math.max(maxStalled,stalled);}else{stalled=0;const next=Math.sign(dy);if(sign&&next!==sign)reversals++;sign=next;}
+  if(s.lasers.some(l=>l.kind==='CHAIN_HEAD'&&l.stage===3)&&Math.abs(dy)>0.05)movedDuringBeam=true;
+ }
+ assert.ok(maxStalled<=4);assert.ok(reversals>=2);assert.ok(movedDuringBeam);
+});
+test('Phase-two bullets and current originate from actual corridor hull ports, not spare neck segments',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;
+ s.enemyBullets=[];s.lasers=[];b.headLaserCooldown=100;b.laserStartGap=0;b.p2BulletGap=0;b.p2BodyLaserGap=0;
+ const visible=p=>p.x>30&&p.x<g.CONFIG.CANVAS_WIDTH-30&&p.y>30&&p.y<g.CONFIG.CANVAS_HEIGHT-30;
+ const corridor=b.segments.find((p,i)=>p.kind==='GUN'&&visible(p)&&g.isChainCorridorPart(b,p,i));
+ const neck=b.segments.find((p,i)=>i>0&&i<=b.frontNeckCount&&p.kind==='GUN'&&visible(p));assert.ok(corridor&&neck);
+ b.segments.forEach(p=>{p.fireCooldown=100;p.currentCooldown=100;});neck.fireCooldown=-1000;neck.currentCooldown=-1000;corridor.fireCooldown=0;corridor.currentCooldown=0;
+ g.updateGame(0);assert.equal(s.enemyBullets.length,2);
+ const [a,c]=s.enemyBullets;assert.ok(Math.abs((a.x+c.x)/2-corridor.x)<1);assert.ok(Math.abs((a.y+c.y)/2-corridor.y)<1);
+ for(const bullet of s.enemyBullets){assert.ok(Math.abs(Math.hypot(bullet.x-corridor.x,bullet.y-corridor.y)-30)<1);assert.ok((bullet.x-corridor.x)*bullet.vx+(bullet.y-corridor.y)*bullet.vy>0);}
+ const beam=s.lasers.find(l=>l.kind==='CHAIN_CURRENT');assert.ok(beam);assert.equal(beam.chainSegmentIndex,b.segments.indexOf(corridor));assert.equal(beam.ox,corridor.x);assert.equal(beam.oy,corridor.y);
+ assert.equal(neck.currentCooldown,-1000);
+});
+test('Post-rush spare neck prevents an aim-transition snap and dash speed eases down continuously',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);
+ let aims=0,checkedSecondAim=false,exitFrames=0,previousSpeed=1501,firstSpeed=0,lastSpeed=0;
+ for(let t=0;t<100&&!checkedSecondAim;t+=1/60){
+  const phase=b.pathState,x=b.x,y=b.y,newAim=phase==='P2_AIM'&&b.rushTimer===0;
+  const visible=(phase==='P2_TRANSIT'||newAim)?b.segments.map((p,i)=>({i,x:p.x,y:p.y})).filter(p=>p.x>0&&p.x<g.CONFIG.CANVAS_WIDTH&&p.y>0&&p.y<g.CONFIG.CANVAS_HEIGHT):[];
+  g.updateGame(1/60);
+  if(phase==='P2_EXIT'){const speed=Math.hypot(b.x-x,b.y-y)*60;if(!exitFrames)firstSpeed=speed;assert.ok(speed<=previousSpeed+0.01);previousSpeed=speed;lastSpeed=speed;exitFrames++;}
+  if(phase==='P2_TRANSIT'&&b.pathState==='P2_AIM'){aims++;assert.ok(b.aimNeckCount>=12);assert.ok(Math.hypot(b.x-x,b.y-y)*60<120);if(aims===2)for(const p of visible)assert.ok(Math.hypot(b.segments[p.i].x-p.x,b.segments[p.i].y-p.y)<20,'corridor body snapped during aim entry');}
+  if(newAim&&aims===2){for(const p of visible)assert.ok(Math.hypot(b.segments[p.i].x-p.x,b.segments[p.i].y-p.y)<20,'corridor body snapped when the spare neck engaged');checkedSecondAim=true;}
+ }
+ assert.equal(aims,2);assert.ok(checkedSecondAim);assert.ok(exitFrames>30);assert.ok(firstSpeed>1400&&lastSpeed<570);
 });
 
 console.log(`\n${results.length} scenario checks passed.`);
