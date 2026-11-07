@@ -6,7 +6,8 @@ const source = fs.readFileSync(fileURLToPath(new URL('../game.js', import.meta.u
 const transforms = [];
 const imageDraws = [];
 const rectDraws = [];
-const draw = new Proxy({}, { get: (_, key) => (...args) => { if (key === 'scale') transforms.push(args); if (key === 'drawImage') imageDraws.push(args); if(key==='fillRect') rectDraws.push(args); } });
+const paintOrder = [];
+const draw = new Proxy({}, { get: (_, key) => (...args) => { if (key === 'scale') transforms.push(args); if (key === 'drawImage') {imageDraws.push(args);paintOrder.push({kind:'image',args});} if(key==='lineTo'&&args[0]===2200)paintOrder.push({kind:'ray-end',args}); if(key==='fillRect') rectDraws.push(args); } });
 const nodes = new Map();
 const document = {
   hidden: false, addEventListener() {}, createElement: () => ({ getContext: () => draw }),
@@ -28,7 +29,7 @@ vm.runInContext(source, context);
 await new Promise(resolve => setTimeout(resolve, 0));
 const g = window.__GAME_DEBUG__, s = g.state;
 function fresh() {
-  g.resetGame(); s.phase = 'TEST'; s.player.fireCooldown = 1e6;
+  g.resetGame(); g.CONFIG.SUPPLY_DROP_CHANCE=0; s.phase = 'TEST'; s.player.fireCooldown = 1e6;
   s.player.invulnTimer = 1e6; s.meteorSpawnTimer = 1e6;
 }
 function tick(seconds, fps = 60) { for (let i = 0; i < seconds * fps; i++) g.updateGame(1 / fps); }
@@ -1346,10 +1347,10 @@ test('Aimed chain rays lock their launch direction while the player moves',()=>{
 });
 test('Chain rays render above the complete body and use the separate knife halves',()=>{
  fresh();const b=g.startChainBoss({skipEntrance:true}),l=g.fireChainLaser(b,5);l.stage=3;
- const offset=imageDraws.length;g.step(0);const draws=imageDraws.slice(offset);
+ const offset=imageDraws.length,paintOffset=paintOrder.length;g.step(0);const draws=imageDraws.slice(offset);
  const body=g.assets.images.get('bosses/Chain_Boss/Body_Blade.png'),knife=g.assets.images.get('bosses/Chain_Boss/Blade.png');
- const sheet=g.assets.images.get('effects/Electric_Laser/Electric_Laser_Red_Spritesheet.png');
- assert.ok(draws.findIndex(d=>d[0]===sheet)>draws.findLastIndex(d=>d[0]===body));
+ const ordered=paintOrder.slice(paintOffset);
+ assert.ok(ordered.findIndex(d=>d.kind==='ray-end')>ordered.findLastIndex(d=>d.kind==='image'&&d.args[0]===body));
  const cuts=draws.filter(d=>d[0]===knife);assert.ok(cuts.length>0&&cuts.length%2===0);assert.ok(cuts.every(d=>d[1]===8||d[1]===17));assert.ok(cuts.every(d=>d[3]===8));
 });
 
@@ -1392,34 +1393,38 @@ for(const fps of [30,60])test(`Chain first enters from the front, fully retreats
  assert.equal(b.pathState,'BOSS_ENTER');assert.ok(b.segments.every(p=>p.x>g.CONFIG.CANVAS_WIDTH));
  tick(1.3,fps);assert.equal(b.pathState,'ROAM');assert.equal(b.entering,false);assert.equal(b.combat,true);assert.equal(b.hp,hp);
 });
-for(const fps of [30,60])test(`Chain phase two retreats invulnerably at 30%, grows offscreen, and starts from the front (${fps}fps)`,()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.301;g.updateGame(0);assert.equal(b.phase2Triggered,false);
- b.hp=b.maxHp*0.3;g.updateGame(0);assert.equal(b.pathState,'P2_RETREAT');assert.equal(b.entering,true);assert.equal(b.segments.length,82);
+for(const fps of [30,60])test(`Chain phase two retreats invulnerably at 40%, grows offscreen, and starts from the front (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.401;g.updateGame(0);assert.equal(b.phase2Triggered,false);
+ b.hp=b.maxHp*0.4;g.updateGame(0);assert.equal(b.pathState,'P2_RETREAT');assert.equal(b.entering,true);assert.equal(b.segments.length,82);
  const hp=b.hp;s.player.x=b.x-100;s.player.y=b.y;g.applyPlayerSkillLaserTick();assert.equal(b.hp,hp);
  let time=0;while(!b.growthDone&&time<35){const x=b.x,y=b.y;g.updateGame(1/fps);time+=1/fps;
   if(!b.growthDone){assert.equal(b.segments.length,82);assert.ok(Math.hypot(b.x-x,b.y-y)<=420/fps+0.1);}
  }
- assert.equal(b.growthDone,true);assert.equal(b.segments.length,900);assert.ok(b.segments.every(p=>p.x>g.CONFIG.CANVAS_WIDTH));
+ assert.equal(b.growthDone,true);assert.equal(b.segments.length,1400);assert.ok(b.segments.every(p=>p.x>g.CONFIG.CANVAS_WIDTH));
  assert.equal(b.pathState,'P2_TRANSIT');assert.equal(b.usedRushZones[0],1);assert.equal(b.entering,true);
  while(b.pathState!=='P2_AIM'&&time<45){g.updateGame(1/fps);time+=1/fps;}
  assert.equal(b.pathState,'P2_AIM');assert.equal(b.entering,false);assert.equal(b.rushSource.x,g.CONFIG.CANVAS_WIDTH+180);
 });
-for(const fps of [30,60])test(`Three continuous corridors survive the return, then the head starts lasers (${fps}fps)`,()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.updateGame(0);
+for(const fps of [30,60])test(`Five continuous corridors survive the return, then the head starts lasers (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.updateGame(0);
  let elapsed=0;
  while(b.pathState!=='P2_LASER'&&elapsed<150){
   const x=b.x,y=b.y,phase=b.pathState,grown=b.growthDone;g.updateGame(1/fps);elapsed+=1/fps;
   if(phase!==b.pathState&&['P2_TRANSIT','P2_RETURN'].includes(b.pathState)&&b.rushCount>0){const end=b.travelCurve.at(-1);for(const point of b.travelCurve)if(point.x>0&&point.x<g.CONFIG.CANVAS_WIDTH&&point.y>0&&point.y<g.CONFIG.CANVAS_HEIGHT)assert.ok(Math.hypot(point.x-end.x,point.y-end.y)<280,'return crossed the arena');}
   if(grown===b.growthDone)assert.ok(Math.hypot(b.x-x,b.y-y)<=(['P2_DASH','P2_EXIT'].includes(phase)?1500:phase==='P2_RETREAT'?420:560)/fps+0.1,`head jumped during ${phase}`);
-  for(let i=1;i<b.segments.length;i++)assert.ok(Math.abs(Math.hypot(b.segments[i].x-b.segments[i-1].x,b.segments[i].y-b.segments[i-1].y)-42)<0.02,`joint spacing changed at ${i}`);
+  for(let i=1;i<b.segments.length;i++) {
+    const p=b.segments[i],a=b.segments[i-1],distance=Math.hypot(p.x-a.x,p.y-a.y);
+    assert.ok(distance<=42.02&&distance>1,`offscreen bend collapsed at ${i}: ${distance}`);
+    if(p.x>60&&p.x<g.CONFIG.CANVAS_WIDTH-60&&p.y>60&&p.y<g.CONFIG.CANVAS_HEIGHT-60)assert.ok(Math.abs(distance-42)<0.02,`straight corridor spacing changed at ${i}: ${distance}`);
+  }
  }
- assert.equal(b.pathState,'P2_LASER');assert.equal(b.rushCount,3);assert.equal(b.corridors.length,3);assert.equal(new Set(b.usedRushZones).size,3);assert.equal(b.usedRushZones[0],1);
+ assert.equal(b.pathState,'P2_LASER');assert.equal(b.rushCount,5);assert.equal(b.corridors.length,5);assert.equal(new Set(b.usedRushZones).size,4);assert.equal(b.usedRushZones[0],1);
  for(const corridor of b.corridors){const dx=corridor.end.x-corridor.start.x,dy=corridor.end.y-corridor.start.y,len=dx*dx+dy*dy;
   const count=b.segments.slice(1).filter(p=>{const t=((p.x-corridor.start.x)*dx+(p.y-corridor.start.y)*dy)/len;return t>=0&&t<=1&&Math.hypot(p.x-corridor.start.x-t*dx,p.y-corridor.start.y-t*dy)<2;}).length;
   assert.ok(count>=4,`corridor disappeared: ${count} joints`);
  }
- assert.ok(s.enemyBullets.length<=8);assert.ok(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length<=1);
- tick(4,fps);assert.equal(b.rushCount,3);assert.ok(s.lasers.some(l=>l.kind==='CHAIN_HEAD')||b.headLaserCooldown<10);
+ assert.ok(s.enemyBullets.length<=16);assert.ok(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length<=2);
+ tick(4,fps);assert.equal(b.rushCount,5);assert.ok(s.lasers.some(l=>l.kind==='CHAIN_HEAD')||b.headLaserCooldown<10);
  g.handleBossDefeated();assert.equal(s.boss,null);assert.equal(s.lasers.length,0);
 });
 test('Phase two body corridors pass ordinary and piercing shots without damaging boss health',()=>{
@@ -1438,7 +1443,7 @@ test('Chain normal movement replans different player-relative routes instead of 
  const routes=b.roamRoutes;tick(25);assert.ok(b.roamRoutes>routes);
 });
 test('Phase two aim locks before the rush and pauses without advancing',()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.updateGame(0);
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.updateGame(0);
  for(let t=0;t<45&&b.pathState!=='P2_AIM';t+=1/60)g.updateGame(1/60);
  while(b.pathState==='P2_AIM'&&!b.rushAimLocked)g.updateGame(1/60);
  assert.equal(b.pathState,'P2_AIM');const angle=b.segments[0].angle;s.player.y=650;g.updateGame(0.1);assert.equal(b.segments[0].angle,angle);
@@ -1446,14 +1451,14 @@ test('Phase two aim locks before the rush and pauses without advancing',()=>{
 });
 
 test('Completed-corridor preview restores normal player damage and a safe playable starting point',()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);g.previewChainCorridors(b);
  assert.equal(b.pathState,'P2_LASER');assert.equal(s.player.hp,s.player.maxHp);assert.equal(s.player.invulnTimer,0);assert.equal(s.debugInvincible,false);
  assert.ok(b.segments.every(part=>Math.hypot(s.player.x-part.x,s.player.y-part.y)>=42));assert.equal(s.player.fireCooldown,0.15);
 });
 
 test('Completed phase two has straight visible corridors and a long offscreen neck for vertical head movement',()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
- assert.equal(b.pathState,'P2_LASER');assert.ok(b.frontJoint.x>=g.CONFIG.CANVAS_WIDTH+1500);
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
+ assert.equal(b.pathState,'P2_LASER');b.frontStrikeCooldown=100;assert.ok(b.frontJoint.x>=g.CONFIG.CANVAS_WIDTH+1500);
  let minY=b.y,maxY=b.y;
  for(let frame=0;frame<12*60;frame++) {
   g.updateGame(1/60);minY=Math.min(minY,b.y);maxY=Math.max(maxY,b.y);
@@ -1463,21 +1468,22 @@ test('Completed phase two has straight visible corridors and a long offscreen ne
    assert.ok(dot>0.9999,`visible bend at ${i}: ${dot}`);
   }
  }
- assert.ok(maxY-minY>150);assert.equal(b.corridors.length,3);
+ assert.ok(maxY-minY>150);assert.equal(b.corridors.length,5);
 });
 test('Phase two restores sparse visible-body bullets and independently charged thin currents',()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;
  s.enemyBullets=[];s.lasers=[];b.headLaserCooldown=100;b.laserStartGap=0;b.p2BulletGap=0;b.p2BodyLaserGap=0;
  const gun=b.segments.find((p,i)=>p.kind==='GUN'&&p.x>50&&p.x<g.CONFIG.CANVAS_WIDTH-50&&p.y>50&&p.y<g.CONFIG.CANVAS_HEIGHT-50&&g.isChainCorridorPart(b,p,i));assert.ok(gun);
  b.segments.forEach(p=>{p.fireCooldown=100;p.currentCooldown=100;});gun.fireCooldown=0;gun.currentCooldown=0;
  g.updateGame(0);assert.equal(s.enemyBullets.length,2);assert.equal(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length,1);
- assert.ok(b.p2BulletGap>=1.8&&b.p2BulletGap<=2.6);assert.ok(b.p2BodyLaserGap>=3.2&&b.p2BodyLaserGap<=4.8);
+ assert.ok(b.p2BulletGap>=0.8&&b.p2BulletGap<=1.2);assert.ok(b.p2BodyLaserGap>=1.6&&b.p2BodyLaserGap<=2.2);
  const beam=s.lasers[0];assert.equal(beam.stage,1);assert.equal(beam.stunDuration,0.3);assert.equal(g.getLaserStageThicknessPx(beam,3),2);
- tick(1);assert.ok(s.enemyBullets.length<=2);assert.equal(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length,1);
+ tick(0.6);assert.ok(s.enemyBullets.length<=2);assert.equal(s.lasers.filter(l=>l.kind==='CHAIN_CURRENT').length,1);
 });
 
-test('The front head continuously bobs while attacking, without target-wait pauses',()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
+test('The front head continuously bobs between lunges while attacking, without target-wait pauses',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
+ b.frontStrikeCooldown=100;
  let stalled=0,maxStalled=0,sign=0,reversals=0,movedDuringBeam=false;
  for(let i=0;i<13*60;i++){const y=b.y;g.updateGame(1/60);const dy=b.y-y;
   if(Math.abs(dy)<0.01){stalled++;maxStalled=Math.max(maxStalled,stalled);}else{stalled=0;const next=Math.sign(dy);if(sign&&next!==sign)reversals++;sign=next;}
@@ -1486,7 +1492,7 @@ test('The front head continuously bobs while attacking, without target-wait paus
  assert.ok(maxStalled<=4);assert.ok(reversals>=2);assert.ok(movedDuringBeam);
 });
 test('Phase-two bullets and current originate from actual corridor hull ports, not spare neck segments',()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);g.previewChainCorridors(b);s.player.invulnTimer=1e6;
  s.enemyBullets=[];s.lasers=[];b.headLaserCooldown=100;b.laserStartGap=0;b.p2BulletGap=0;b.p2BodyLaserGap=0;
  const visible=p=>p.x>30&&p.x<g.CONFIG.CANVAS_WIDTH-30&&p.y>30&&p.y<g.CONFIG.CANVAS_HEIGHT-30;
  const corridor=b.segments.find((p,i)=>p.kind==='GUN'&&visible(p)&&g.isChainCorridorPart(b,p,i));
@@ -1499,7 +1505,7 @@ test('Phase-two bullets and current originate from actual corridor hull ports, n
  assert.equal(neck.currentCooldown,-1000);
 });
 test('Post-rush spare neck prevents an aim-transition snap and dash speed eases down continuously',()=>{
- fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.3;g.beginChainPhase2(b);
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);
  let aims=0,checkedSecondAim=false,exitFrames=0,previousSpeed=1501,firstSpeed=0,lastSpeed=0;
  for(let t=0;t<100&&!checkedSecondAim;t+=1/60){
   const phase=b.pathState,x=b.x,y=b.y,newAim=phase==='P2_AIM'&&b.rushTimer===0;
@@ -1510,6 +1516,242 @@ test('Post-rush spare neck prevents an aim-transition snap and dash speed eases 
   if(newAim&&aims===2){for(const p of visible)assert.ok(Math.hypot(b.segments[p.i].x-p.x,b.segments[p.i].y-p.y)<20,'corridor body snapped when the spare neck engaged');checkedSecondAim=true;}
  }
  assert.equal(aims,2);assert.ok(checkedSecondAim);assert.ok(exitFrames>30);assert.ok(firstSpeed>1400&&lastSpeed<570);
+});
+
+for(const fps of [30,60])test(`Five-rush body motion stays continuous through returns and aiming (${fps}fps)`,()=>{
+ vm.runInContext(`globalThis.motionSeed=${fps===30?1:8};globalThis.savedMotionRandom=Math.random;Math.random=()=>{motionSeed=(motionSeed*1664525+1013904223)>>>0;return motionSeed/4294967296}`,context);
+ try {
+  fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);
+  let frontFrames=0;
+  for(let t=0;t<130&&frontFrames<fps*3;t+=1/fps) {
+   const phase=b.pathState,old=b.growthDone?b.segments.map(p=>({x:p.x,y:p.y})):[];
+   g.updateGame(1/fps);
+   const maximum=['P2_DASH','P2_EXIT'].includes(phase)?1500:phase==='P2_AIM'?80:phase==='P2_LASER'?450:560;
+   if(old.length&&b.growthDone)for(let i=1;i<old.length;i++) {
+    const p=old[i];if(p.x<0||p.x>1284||p.y<0||p.y>724)continue;
+    assert.ok(Math.hypot(b.segments[i].x-p.x,b.segments[i].y-p.y)<=maximum/fps+0.6,`visible hull jumped in ${phase} at ${i}`);
+   }
+   if(b.pathState==='P2_LASER')frontFrames++;
+  }
+  assert.equal(b.rushCount,5);assert.equal(b.corridors.length,5);assert.ok(frontFrames>=fps*3);
+  assert.equal(new Set(b.usedRushZones.slice(0,4)).size,4);
+  assert.notEqual(b.usedRushZones[3],b.usedRushZones[4]);
+ } finally {vm.runInContext('Math.random=globalThis.savedMotionRandom',context);}
+});
+test('Completed corridors attack at a measured moderate rate with bullet limits and visible laser warnings',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);g.previewChainCorridors(b);
+ s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;s.enemyBullets=[];s.lasers=[];b.headLaserCooldown=100;
+ b.segments.forEach(p=>{p.fireCooldown=0;p.currentCooldown=0;});b.p2BulletGap=b.p2BodyLaserGap=b.laserStartGap=0;
+ b.frontStrikeCooldown=100;
+ const shots=new Set(),beams=new Set();
+ for(let i=0;i<20*30;i++) {
+  g.updateGame(1/30);assert.ok(s.enemyBullets.length<=16);
+  for(const shot of s.enemyBullets)shots.add(shot);
+  for(const beam of s.lasers.filter(l=>l.kind==='CHAIN_CURRENT')){if(!beams.has(beam))assert.equal(beam.stage,1);beams.add(beam);}
+ }
+ assert.ok(shots.size>=28&&shots.size<=52,`20-second bullet count: ${shots.size}`);
+ assert.ok(beams.size>=8&&beams.size<=14,`20-second current count: ${beams.size}`);
+});
+
+test('Chain current draws one uninterrupted full-length electric path without sprite seams',()=>{
+ fresh();const points=g.getChainCurrentPoints(2200,1.4);
+ assert.equal(points[0].x,0);assert.equal(points.at(-1).x,2200);
+ for(let i=1;i<points.length;i++){assert.ok(points[i].x>points[i-1].x);assert.ok(points[i].x-points[i-1].x<=12);assert.ok(Math.abs(points[i].y)<=2);}
+ assert.notEqual(JSON.stringify(points),JSON.stringify(g.getChainCurrentPoints(2200,1.6)));
+ const before=imageDraws.length;g.renderLaserBeam({kind:'CHAIN_CURRENT',stage:3,length:2200,elapsed:1.4,ox:900,oy:300,angle:Math.PI});
+ assert.equal(imageDraws.length,before,'thin current must not tile or squash sprite strips');
+});
+for(const fps of [30,60])test(`Front head telegraphs a locked short lunge, returns smoothly and repeats (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);g.previewChainCorridors(b);
+ s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;s.enemyBullets=[];s.lasers=[];
+ s.player.x=180;s.player.y=100;const x=b.x,y=b.y;
+ g.fireChainLaser(b);assert.ok(s.lasers.some(l=>l.kind==='CHAIN_HEAD'));
+ assert.equal(g.beginChainFrontStrike(b),true);assert.equal(g.beginChainFrontStrike(b),false);
+ assert.equal(b.frontStrike.phase,'WARN');assert.ok(b.frontStrike.distance<=650);assert.equal(s.lasers.filter(l=>l.kind==='CHAIN_HEAD').length,0);
+ const end={...b.frontStrike.end};s.player.y=650;
+ tick(0.5,fps);assert.equal(b.x,x);assert.equal(b.y,y);assert.equal(b.frontStrike.end.y,end.y);
+ const timer=b.frontStrike.timer;s.mode='PAUSED';g.updateGame(3);assert.equal(b.frontStrike.timer,timer);s.mode='PLAYING';
+ let furthest=0,seenOut=false,seenRecoil=false,recoilSeconds=0,peakRecoil=0,peakOut=0,lastOut=0;
+ for(let t=0;t<10&&b.frontStrike;t+=1/fps){
+  const phase=b.frontStrike.phase,oldX=b.x,oldY=b.y;g.updateGame(1/fps);const speed=Math.hypot(b.x-oldX,b.y-oldY)*fps;
+  if(phase==='RECOIL'){recoilSeconds+=1/fps;peakRecoil=Math.max(peakRecoil,speed);}
+  if(phase==='OUT'){peakOut=Math.max(peakOut,speed);lastOut=speed;}
+  furthest=Math.max(furthest,Math.hypot(b.x-x,b.y-y));
+  assert.ok(Math.hypot(b.x-oldX,b.y-oldY)<=1100/fps+0.1);
+  seenOut ||= b.frontStrike?.phase==='OUT';seenRecoil ||= b.frontStrike?.phase==='RECOIL';
+  assert.equal(s.lasers.filter(l=>l.kind==='CHAIN_HEAD').length,0);
+ }
+ assert.ok(seenOut&&seenRecoil&&furthest>400);assert.equal(b.frontStrike,null);
+ assert.ok(recoilSeconds>3&&peakRecoil<=340.1&&peakOut>700&&lastOut<peakOut*.5);
+ assert.ok(Math.hypot(b.x-x,b.y-y)<0.01);assert.ok(b.frontStrikeCooldown>=11&&b.frontStrikeCooldown<=14);
+ assert.equal(b.rushCount,5);assert.equal(b.corridors.length,5);
+ b.frontStrikeCooldown=0;g.updateGame(1/fps);assert.equal(b.frontStrike.phase,'WARN');
+});
+
+for(const fps of [30,60])test(`Chain whip bends with inertia and sweeps both vertical edges around its hidden pivot (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*0.4;g.beginChainPhase2(b);g.previewChainCorridors(b);
+ s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
+ g.beginChainFrontStrike(b,'WHIP');assert.equal(b.frontStrike.type,'WHIP');assert.equal(b.frontStrike.phase,'WARN');
+ tick(1.15,fps);assert.equal(b.frontStrike.phase,'SWING');
+ const strike=b.frontStrike,index=strike.pivotIndex,pivot={...strike.pivot},tail=b.segments.slice(index).map(p=>({x:p.x,y:p.y}));
+ assert.ok(pivot.x>g.CONFIG.CANVAS_WIDTH);assert.ok(index>3);
+ let minY=b.y,maxY=b.y,maxLag=0,swingSeconds=0;
+ while(b.frontStrike?.phase==='SWING') {
+  swingSeconds+=1/fps;g.updateGame(1/fps);minY=Math.min(minY,b.y);maxY=Math.max(maxY,b.y);
+  maxLag=Math.max(maxLag,Math.abs(strike.whipAngles[0]-strike.whipAngles.at(-1)));
+  assert.ok(Math.hypot(b.segments[index].x-pivot.x,b.segments[index].y-pivot.y)<0.001);
+  for(let i=0;i<tail.length;i++)assert.ok(Math.hypot(b.segments[index+i].x-tail[i].x,b.segments[index+i].y-tail[i].y)<0.001);
+  for(let i=1;i<=index;i++)assert.ok(Math.abs(Math.hypot(b.segments[i].x-b.segments[i-1].x,b.segments[i].y-b.segments[i-1].y)-42)<0.05);
+ }
+ assert.ok(swingSeconds>2.7&&swingSeconds<3.3);
+ assert.ok(minY<70&&maxY>g.CONFIG.CANVAS_HEIGHT-70,`vertical sweep ${minY}..${maxY}`);assert.ok(maxLag>0.15);assert.equal(b.rushCount,5);assert.equal(b.corridors.length,5);
+ tick(9,fps);assert.equal(b.frontStrike,null);assert.equal(b.nextFrontAttack,'LUNGE');
+});
+
+for(const fps of [30,60])test(`Lunge and whip restore a straight canonical front neck without accumulating folds (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*.5;g.beginChainPhase2(b);g.previewChainCorridors(b);
+ s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
+ for(const type of ['LUNGE','WHIP','LUNGE']) {
+  g.beginChainFrontStrike(b,type);const rest=b.frontNeck.rest.map(p=>({x:p.x,y:p.y})),n=b.frontNeck.count;
+  let elapsed=0,lastReturnSpeed=0;
+  while(b.frontStrike&&elapsed<14) {
+   const phase=b.frontStrike.phase,x=b.x,y=b.y;g.updateGame(1/fps);elapsed+=1/fps;
+   if(phase==='RECOIL') {const speed=Math.hypot(b.x-x,b.y-y)*fps;assert.ok(speed<=340.1);lastReturnSpeed=speed;}
+   assert.notEqual(b.frontStrike?.phase,'RETURN');
+  }
+  assert.equal(b.frontStrike,null);assert.equal(b.frontNeck,null);assert.ok(lastReturnSpeed<100);
+  for(let i=0;i<=n;i++)assert.ok(Math.hypot(b.segments[i].x-rest[i].x,b.segments[i].y-rest[i].y)<0.001,`neck did not restore at ${i}`);
+  const head=b.segments[0],first=b.segments[1],dx=first.x-head.x,dy=first.y-head.y;
+  for(let i=2;i<=b.frontNeckCount;i++)if(b.segments[i].x<g.CONFIG.CANVAS_WIDTH)assert.ok(Math.abs((b.segments[i].x-head.x)*dy-(b.segments[i].y-head.y)*dx)<0.01);
+ }
+});
+
+test('Whip spring simulation is stable across frame rates, keeps link length, and dissipates recoil energy',()=>{
+ const snapshots=[];
+ for(const fps of [30,60]) {
+  const segments=Array.from({length:17},(_,i)=>({x:900+i*42,y:362,angle:Math.PI}));
+  const boss={segments},strike={pivotIndex:16,pivot:{x:segments[16].x,y:362},poses:segments.map(p=>({...p}))};
+  g.initializeChainWhipPhysics(strike);
+  let minY=362,maxY=362;
+  for(let frame=0;frame<4.2*fps;frame++) {
+   g.advanceChainWhipPhysics(boss,strike,1/fps);minY=Math.min(minY,segments[0].y);maxY=Math.max(maxY,segments[0].y);
+   for(let i=1;i<segments.length;i++)assert.ok(Math.abs(Math.hypot(segments[i].x-segments[i-1].x,segments[i].y-segments[i-1].y)-42)<1e-7);
+  }
+  assert.ok(minY<70&&maxY>654);assert.ok(Math.abs(strike.whipAngles.at(-1))>0.01,'tip should retain inertia when the root stops');
+  snapshots.push(segments.map(p=>({x:p.x,y:p.y})));
+  const energy=()=>{
+   let sum=0;for(let j=1;j<strike.whipAngles.length;j++){const mass=1+j/(strike.whipAngles.length-1);sum+=.5*mass*strike.whipVelocity[j]**2+600*(strike.whipAngles[j]-strike.whipAngles[j-1])**2;}return sum;
+  };
+  const before=energy();for(let i=0;i<2*fps;i++)g.advanceChainWhipPhysics(boss,strike,1/fps);
+  assert.ok(energy()<before*.8,'damping should remove residual swing energy');
+ }
+ for(let i=0;i<snapshots[0].length;i++)assert.ok(Math.hypot(snapshots[0][i].x-snapshots[1][i].x,snapshots[0][i].y-snapshots[1][i].y)<0.1);
+});
+
+for(const fps of [30,60])test(`Whip settles in place without a turn-around and dash spare links stay hidden (${fps}fps)`,()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*.4;g.beginChainPhase2(b);g.previewChainCorridors(b);
+ s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;
+ for(const type of ['WHIP','LUNGE']) {
+  g.beginChainFrontStrike(b,type);let settled=false;
+  for(let time=0;b.frontStrike&&time<14;time+=1/fps) {
+   const phase=b.frontStrike.phase,old=b.segments.map(p=>({x:p.x,y:p.y}));
+   g.updateGame(1/fps);assert.notEqual(b.frontStrike?.phase,'RETURN');
+   if(type==='WHIP')settled ||= b.frontStrike?.phase==='SETTLE';
+   if(type==='LUNGE'&&b.frontNeck&&['OUT','RECOIL'].includes(b.frontStrike?.phase)) {
+    for(let i=b.frontNeck.visibleRootIndex+1;i<=b.frontNeck.count;i++)assert.ok(b.segments[i].x>=g.CONFIG.CANVAS_WIDTH+100,'offscreen reserve protruded into the arena');
+   }
+   if(phase==='RECOVER')for(let i=0;i<old.length;i++)if(old[i].x>0&&old[i].x<1284&&old[i].y>0&&old[i].y<724)assert.ok(Math.hypot(b.segments[i].x-old[i].x,b.segments[i].y-old[i].y)<1500/fps+1,'recovery visibly popped');
+  }
+  assert.equal(b.frontStrike,null);if(type==='WHIP')assert.ok(settled);
+ }
+});
+test('Front patrol reaches both vertical ends quickly with changing speed, and pauses cleanly',()=>{
+ fresh();const b=g.startChainBoss({skipEntrance:true});b.hp=b.maxHp*.4;g.beginChainPhase2(b);g.previewChainCorridors(b);
+ s.player.invulnTimer=1e6;s.player.fireCooldown=1e6;b.frontStrikeCooldown=100;
+ let min=b.y,max=b.y,peakSpeed=0;const speeds=new Set();
+ for(let i=0;i<12*60;i++){const y=b.y,oldSpeed=b.frontPatrol.speed;g.updateGame(1/60);assert.ok(Math.abs(b.frontPatrol.speed-oldSpeed)<6,'patrol speed changed abruptly');min=Math.min(min,b.y);max=Math.max(max,b.y);peakSpeed=Math.max(peakSpeed,Math.abs(b.y-y)*60);speeds.add(Math.round(b.frontPatrol.speed));}
+ assert.equal(min,76);assert.equal(max,648);assert.ok(peakSpeed>260&&peakSpeed<=380.1);assert.ok(speeds.size>4);
+ const y=b.y,velocity=b.frontPatrol.velocity;s.mode='PAUSED';g.updateGame(3);assert.equal(b.y,y);assert.equal(b.frontPatrol.velocity,velocity);
+});
+
+function fixedDropRoll(value,fn) {
+ vm.runInContext(`globalThis.savedSupplyRandom=Math.random;Math.random=()=>${value}`,context);
+ try{return fn();}finally{vm.runInContext('Math.random=globalThis.savedSupplyRandom',context);}
+}
+test('Supply drops once on a projectile kill, once on suicide initiation, never on retreat',()=>{
+ for(const tier of [1,6]) {
+  fresh();g.CONFIG.SUPPLY_DROP_CHANCE=0.1;
+  const e=g.spawnWaveEnemy(tier,{enemyIdx:1});e.x=900;e.y=320;e.entering=false;
+  s.playerBullets.push({x:e.x,y:e.y,vx:0,vy:0,radius:6,damage:e.hp+1});
+  fixedDropRoll(0.099,()=>g.updatePlayerBullets(0));
+  assert.equal(s.supplies.length,1);assert.equal(s.supplies[0].x,900);assert.equal(s.supplies[0].y,320);
+  fixedDropRoll(0,()=>{g.maybeDropSupply(e);if(tier===6)g.beginEnemySuicide(e);});
+  assert.equal(s.supplies.length,1);
+ }
+ fresh();g.CONFIG.SUPPLY_DROP_CHANCE=0.1;
+ const e=g.spawnWaveEnemy(1,{enemyIdx:1});e.x=900;e.entering=false;
+ s.playerBullets.push({x:e.x,y:e.y,vx:0,vy:0,radius:6,damage:e.hp+1});
+ fixedDropRoll(0.1,()=>g.updatePlayerBullets(0));assert.equal(s.supplies.length,0);
+ const retreat=g.spawnWaveEnemy(1,{enemyIdx:1});retreat.retreating=true;retreat.hp=0;retreat.x=1400;
+ fixedDropRoll(0,()=>g.updateGame(0.1));assert.equal(s.supplies.length,0);
+});
+test('Skill laser kills also roll supply drops at the killed enemy position',()=>{
+ fresh();g.CONFIG.SUPPLY_DROP_CHANCE=0.1;
+ const e=g.spawnWaveEnemy(1,{enemyIdx:1}),m=g.getPlayerSkillLaserOrigin();
+ e.entering=false;e.x=900;e.y=m.y;e.hp=0.1;
+ fixedDropRoll(0,()=>g.applyPlayerSkillLaserTick());
+ assert.equal(s.supplies.length,1);assert.equal(s.supplies[0].x,e.x);assert.equal(s.supplies[0].y,e.y);
+});
+test('Supply table has exact 33/33/33/1 bands, caps HP, and subtracts 30 from all cooldowns',()=>{
+ const counts={heal:0,cooldown:0,upgrade:0,all:0};
+ for(let i=0;i<100;i++){fresh();counts[g.grantSupplyReward((i+0.5)/100)]++;}
+ assert.deepEqual(counts,{heal:33,cooldown:33,upgrade:33,all:1});
+ fresh();const p=s.player;p.hp=p.maxHp-0.5;g.grantSupplyReward(0);assert.equal(p.hp,p.maxHp);
+ p.skills.laser.cooldown=70;p.skills.heal.cooldown=15;p.skills.shield.cooldown=0;
+ p.skills.shield.remaining=3;g.grantSupplyReward(0.5);
+ assert.equal(p.skills.laser.cooldown,40);assert.equal(p.skills.heal.cooldown,0);assert.equal(p.skills.shield.cooldown,0);assert.equal(p.skills.shield.remaining,3);
+ p.hp=1;p.skills.laser.cooldown=60;g.grantSupplyReward(0.995);
+ assert.equal(p.hp,2);assert.equal(p.skills.laser.cooldown,30);assert.equal(s.pendingSupplyUpgrades,1);
+});
+test('Supply upgrade pauses and resumes the same combat without advancing or deleting hazards',()=>{
+ fresh();g.startTierBoss(3);const boss=s.boss;boss.entering=false;
+ const enemy=g.spawnWaveEnemy(3,{enemyIdx:2});const stage=s.currentTier,elapsed=s.tierWaveElapsed;
+ g.spawnEnemyBullet(1000,100,-200,0);const bullet=s.enemyBullets[0];
+ const p=s.player;p.weaponLevel=4;g.grantSupplyReward(0.8);g.updateSupplies(0);
+ assert.equal(s.mode,'REWARD');assert.equal(s.rewardSource,'supply');assert.ok(nodes.get('reward-card-2').hidden);
+ const x=boss.x;g.updateGame(1);assert.equal(boss.x,x);
+ g.applyRewardChoice('equipment');assert.equal(s.mode,'REWARD');
+ g.applyRewardChoice('skills');assert.equal(s.mode,'PLAYING');assert.equal(p.skillLevel,1);
+ assert.equal(s.boss,boss);assert.ok(s.enemies.includes(enemy));assert.ok(s.enemyBullets.includes(bullet));
+ assert.equal(s.currentTier,stage);assert.equal(s.tierWaveElapsed,elapsed);assert.equal(s.rewardsChosenHistory.length,0);assert.equal(s.telemetry.rewardsOpenedForTiers.length,0);
+});
+test('Supply pickup uses swept contact, cannot be claimed twice, and respects pause/reset',()=>{
+ fresh();const p=s.player;p.hp=1;p.prevX=p.x;p.prevY=p.y;
+ const item=g.spawnSupply(p.x+150,p.y);item.vx=-1000;
+ fixedDropRoll(0,()=>g.updateSupplies(0.3));assert.equal(p.hp,2);assert.equal(s.supplies.length,0);
+ fixedDropRoll(0,()=>g.updateSupplies(0.3));assert.equal(p.hp,2);
+ const other=g.spawnSupply(100,p.y);s.mode='PAUSED';g.updateSupplies(5);assert.equal(other.x,100);
+ g.resetGame();assert.equal(s.supplies.length,0);assert.equal(s.pendingSupplyUpgrades,0);
+});
+test('Multiple upgrade crates queue and maxed players can continue without stage changes',()=>{
+ fresh();const p=s.player;p.vitalityLevel=p.weaponLevel=p.mobilityLevel=p.skillLevel=4;
+ g.grantSupplyReward(0.8);g.grantSupplyReward(0.8);g.updateSupplies(0);
+ assert.equal(s.mode,'REWARD');assert.equal(s.pendingSupplyUpgrades,1);
+ for(let i=1;i<=4;i++)assert.ok(nodes.get(`reward-card-${i}`).hidden);
+ assert.equal(nodes.get('reward-continue').hidden,false);
+ g.applyRewardChoice('continue');assert.equal(s.mode,'REWARD');assert.equal(s.pendingSupplyUpgrades,0);
+ g.applyRewardChoice('continue');assert.equal(s.mode,'PLAYING');assert.equal(s.currentTier,1);
+});
+test('New neon bullets, supply crate and single-rim half-size meteors ship with matching geometry',()=>{
+ fresh();for(const color of ['Red','Orange','Yellow','Lime','Cyan','Blue','Violet','Pink'])for(const [shape,w,h] of [['Orb',5,5],['Needle',9,3]]){
+  const png=fs.readFileSync(fileURLToPath(new URL(`../assets/bullets/Colors/${color}/${shape}.png`,import.meta.url)));
+  assert.equal(png.readUInt32BE(16),w);assert.equal(png.readUInt32BE(20),h);
+ }
+ const crate=fs.readFileSync(fileURLToPath(new URL('../assets/pickups/Space_Supply.png',import.meta.url)));
+ assert.equal(crate.readUInt32BE(16),7);assert.equal(crate.readUInt32BE(20),7);
+ g.spawnMeteorFromWarning({y:300,speed:500});const m=s.meteors[0];
+ assert.equal(m.scale,4.5);assert.equal(m.radius,40.5);assert.equal(m.spec.size[0],36);assert.equal(m.path,'extras/Meteor_Outlined.png');
+ g.spawnEnemyBullet(900,300,-200,0,'Orb');assert.equal(s.enemyBullets[0].collision.radius,2.5);
 });
 
 console.log(`\n${results.length} scenario checks passed.`);

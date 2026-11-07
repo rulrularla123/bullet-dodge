@@ -35,17 +35,30 @@ function pixel(im,x,y,c){if(x<0||y<0||x>=im.w||y>=im.h)return;im.data.set([...c,
 function rect(im,x,y,w,h,c){for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)pixel(im,xx,yy,c);}
 function save(rel,im){fs.mkdirSync(path.dirname(at(rel)),{recursive:true});fs.writeFileSync(at(rel),png(im));}
 const COLORS={Red:'#ed1c24',Orange:'#ff7e00',Yellow:'#fff200',Lime:'#a8e61d',Cyan:'#00eeff',Blue:'#0033ff',Violet:'#9900ff',Pink:'#ff55b5'};
-const source=decode(at('bullets/source/User_Bullets.png'));
-for(const [name,color] of Object.entries(COLORS))for(const shape of ['Orb','Needle']){
-  const im=image(shape==='Orb'?8:12,shape==='Orb'?8:6),base=rgb(color),light=mix(base,[255,255,255],0.52);
-  // Source round bullet: x23..26/y13..16. Straight: x5..8/y10..19, rotated to face right.
-  for(let y=0;y<source.h;y++)for(let x=0;x<source.w;x++){
-    if(shape==='Orb'?(x<23||x>26||y<13||y>16):(x<5||x>8||y<10||y>19))continue;
-    const i=(y*source.w+x)*4;if(!source.data[i+3])continue;
-    const p=[...source.data.subarray(i,i+3)],c=p[0]===255?[255,255,255]:p[0]>0?light:base;
-    if(shape==='Orb')pixel(im,x-23+2,y-13+2,c);else pixel(im,y-10+1,8-x+1,c);
-  }save(`bullets/Colors/${name}/${shape}.png`,im);
+// Compact neon pixel grid: 5×5 round, 3×9 upright needle stored facing right.
+for(const [name,color] of Object.entries(COLORS)) {
+  const base=rgb(color),light=mix(base,[255,255,255],0.65),white=[245,255,255];
+  const orb=image(5,5);
+  for(let y=0;y<5;y++)for(let x=0;x<5;x++) {
+    if((x===0||x===4)&&(y===0||y===4))continue;
+    pixel(orb,x,y,x===2&&y===2?white:x>0&&x<4&&y>0&&y<4?light:base);
+  }
+  save(`bullets/Colors/${name}/Orb.png`,orb);
+  const needle=image(9,3);
+  for(let x=0;x<9;x++)for(let y=0;y<3;y++)pixel(needle,x,y,y===1?(x>=2&&x<=6?white:light):base);
+  save(`bullets/Colors/${name}/Needle.png`,needle);
 }
+// One thin red pixel rim follows the meteor's opaque silhouette.
+const meteor=decode(at('extras/Single_Sprite.png')),outlined=image(meteor.w+4,meteor.h+4);
+for(let y=0;y<meteor.h;y++)for(let x=0;x<meteor.w;x++)if(meteor.data[(y*meteor.w+x)*4+3]) {
+  for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++)pixel(outlined,x+2+xx,y+2+yy,[255,65,82]);
+}
+for(let y=0;y<meteor.h;y++)for(let x=0;x<meteor.w;x++){const i=(y*meteor.w+x)*4;if(meteor.data[i+3])meteor.data.copy(outlined.data,((y+2)*outlined.w+x+2)*4,i,i+4);}
+save('extras/Meteor_Outlined.png',outlined);
+// Seven-pixel space cargo crate: armored corners, gold lid, cyan sealed core.
+const crate=image(7,7),palette={N:[25,42,66],B:[69,102,143],G:[255,197,56],L:[255,244,171],C:[86,241,255]};
+[' NGGGN ','NGLGLGN','GBNNNBG','GBC CBG','GBNCNBG','NBGGGBN',' NBBBN '].forEach((row,y)=>[...row].forEach((c,x)=>{if(palette[c])pixel(crate,x,y,palette[c]);}));
+pixel(crate,3,3,[225,255,255]);save('pickups/Space_Supply.png',crate);
 // Extract every opaque model color, including neutral armor, for an inspectable palette catalog.
 const files=[];
 function scan(dir){for(const e of fs.readdirSync(at(dir),{withFileTypes:true})){const rel=`${dir}/${e.name}`;if(e.isDirectory())scan(rel);else if(e.name.endsWith('.png'))files.push(rel);}}
@@ -91,12 +104,12 @@ for(const {t,id,model} of bossDefinitions){
   for(const [part,im] of Object.entries(layers))save(`ui/boss_bars/${id}_${part}.png`,im);
   bars.push({id,displayStage:stageOrder.indexOf(t)+1,model,primary:hex(base),secondary:hex(secondary),size:[64,32],fillRect:[5,16,54,2]});
 }
-const manifest={colors:COLORS,bulletShapes:{Orb:{size:[8,8],source:[23,13,4,4],replaces:['Orb','Diamond']},Needle:{size:[12,6],source:[5,10,4,10],rotation:'clockwise-to-right'}},bars,models:catalog};
+const manifest={colors:COLORS,bulletShapes:{Orb:{size:[5,5],replaces:['Orb','Diamond']},Needle:{size:[9,3],uprightSize:[3,9],rotation:'clockwise-to-right'}},bars,models:catalog};
 fs.writeFileSync(at('bullets/Colors/manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 // One preview for inspecting the exact game assets at integer pixel scale.
 const img=(src,style='')=>`<img src="${src}" style="${style}" loading="lazy">`;
-const cards=Object.entries(COLORS).map(([name,c])=>`<article><h2 style="color:${c}">${name} ${c}</h2>${img(`Colors/${name}/Orb.png`,'width:48px;height:48px')}${img(`Colors/${name}/Needle.png`,'width:72px;height:36px')}</article>`).join('');
+const cards=Object.entries(COLORS).map(([name,c])=>`<article><h2 style="color:${c}">${name} ${c}</h2>${img(`Colors/${name}/Orb.png`,'width:60px;height:60px')}${img(`Colors/${name}/Needle.png`,'width:108px;height:36px')}</article>`).join('');
 const barCards=bars.sort((a,b)=>(a.displayStage??99)-(b.displayStage??99)).map(b=>`<article><h2>${b.displayStage?'T'+b.displayStage:'CHAIN · 구현 테스트'} · ${b.primary}</h2>${img('../'+b.model,'width:96px;height:96px')}${img(`../ui/boss_bars/${b.id}_Full.png`,'width:256px;height:128px')}</article>`).join('');
 const modelCards=Object.entries(catalog).map(([file,colors])=>`<article><h3>${file}</h3>${img('../'+file,'width:96px;height:96px')}<div>${Object.entries(colors).map(([c,n])=>`<span title="${c} (${n}px)" style="display:inline-block;background:${c};width:18px;height:18px"></span>`).join('')}</div></article>`).join('');
-fs.writeFileSync(at('bullets/Preview.html'),`<!doctype html><meta charset="utf-8"><title>탄환 · 보스바 · 모델 색상</title><style>body{background:#080e20;color:#edf4ff;font:14px system-ui;margin:32px}section{display:flex;flex-wrap:wrap;gap:16px}article{background:#131e35;padding:16px;border:1px solid #2d3d59;border-radius:8px}img{image-rendering:pixelated;object-fit:contain;vertical-align:middle;margin:8px}h2{font-size:16px}h3{font-size:12px;max-width:320px}</style><h1>새 탄환 · 8색</h1><section>${cards}</section><h1>전용 보스바 · 실제 진행 순서</h1><section>${barCards}</section><h1>모델별 전체 색상 · 투명 제외</h1><section>${modelCards}</section>`);
+fs.writeFileSync(at('bullets/Preview.html'),`<!doctype html><meta charset="utf-8"><title>탄환 · 보스바 · 모델 색상</title><style>body{background:#080e20;color:#edf4ff;font:14px system-ui;margin:32px}section{display:flex;flex-wrap:wrap;gap:16px}article{background:#131e35;padding:16px;border:1px solid #2d3d59;border-radius:8px}img{image-rendering:pixelated;object-fit:contain;vertical-align:middle;margin:8px}h2{font-size:16px}h3{font-size:12px;max-width:320px}</style><h1>보급품 · 7×7</h1><section><article>${img('../pickups/Space_Supply.png','width:112px;height:112px')}</article></section><h1>네온 탄환 · 5×5 / 3×9 · 8색</h1><section>${cards}</section><h1>전용 보스바 · 실제 진행 순서</h1><section>${barCards}</section><h1>모델별 전체 색상 · 투명 제외</h1><section>${modelCards}</section>`);
 console.log(`Compiled 16 bullet sprites, ${bars.length} dedicated boss bars, ${files.length} model palettes.`);

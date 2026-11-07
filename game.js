@@ -10,9 +10,9 @@
     ENEMY_MIN_X: 856,     // Math.ceil(1284 * 2 / 3) - rightmost 1/3 boundary
 
     // V2 Visibility & Scale Increase (3x ships & bullets, 2x lasers)
-    SHIP_SCALE: 3,            // 3x base scale for player, regular enemies, tier bosses, escorts, meteors
+    SHIP_SCALE: 3,            // 3x base scale for player, regular enemies, tier bosses, escorts; meteors use METEOR_SCALE
     FINAL_BOSS_SCALE: 2.6,    // 70x50 Final Boss scaled to 182x130 so it fits comfortably inside 428px right-third
-    BULLET_SCALE: 3,          // 3x scale for regular bullets (8x8 -> 24x24, 12x6 -> 36x18)
+    BULLET_SCALE: 3,          // 3x scale: round 5×5 -> 15×15, needle 9×3 -> 27×9
     LASER_SCALE: 2,           // 2x scale for 32px-tall laser (Stage 1/2/3 visible thickness = 8/16/24px)
     HEART_SCALE: 4,           // 4x integer scale for 8x8 heart (32x32)
     FONT_SCALE: 4,            // 4x integer scale for 3x5 glyphs (12x20, advance 16)
@@ -36,6 +36,10 @@
     MISSILE_DAMAGE: 2,
     DASH_DAMAGE: 2,
     METEOR_DAMAGE: 2,
+    METEOR_SCALE: 4.5, // Half the previous meteor scale of 9
+    SUPPLY_DROP_CHANCE: 0.10,
+    SUPPLY_SCALE: 4,
+    SUPPLY_SPEED: 180,
 
     METEOR_MIN_INTERVAL: 7.5,
     METEOR_MAX_INTERVAL: 14.0,
@@ -247,9 +251,9 @@
 
   const BULLET_COLORS = ['Red', 'Orange', 'Yellow', 'Lime', 'Cyan', 'Blue', 'Violet', 'Pink'];
   const BULLET_SHAPES = {
-    Orb:     { size: [8, 8],  collision: { type: 'circle', radius: 2.0 }, forward: 'radial' },
-    Diamond: { size: [8, 8],  collision: { type: 'circle', radius: 2.0 }, forward: 'radial' },
-    Needle:  { size: [12, 6], collision: { type: 'capsule', radius: 1.0, length: 7.0 }, forward: 'right' }
+    Orb:     { size: [5, 5],  collision: { type: 'circle', radius: 2.5 }, forward: 'radial' },
+    Diamond: { size: [5, 5],  collision: { type: 'circle', radius: 2.5 }, forward: 'radial' },
+    Needle:  { size: [9, 3], collision: { type: 'capsule', radius: 1.5, length: 6.0 }, forward: 'right' }
   };
 
   // Laser metadata matching assets/lasers/manifest.json
@@ -338,7 +342,8 @@
 
     // 1. Player & Meteor
     paths.add('player/주인공.png');
-    paths.add('extras/Single_Sprite.png');
+    paths.add('extras/Meteor_Outlined.png');
+    paths.add('pickups/Space_Supply.png');
     paths.add('bullets/Player_Piercing_Crescent.png');
 
     // 2. UI Hearts & Font Glyphs
@@ -650,6 +655,9 @@
 
     // Reward Selection State (Even Bosses: Tier 02, 04, 06, 08)
     rewardPendingTier: null,
+    rewardSource: null,
+    pendingSupplyUpgrades: 0,
+    supplies: [],
     rewardKeyLock: false,
     rewardsChosenHistory: [],
 
@@ -799,6 +807,9 @@
     state.enemySpawnTimer = 0.7;
     state.meteorSpawnTimer = 7.5;
     state.rewardPendingTier = null;
+    state.rewardSource = null;
+    state.pendingSupplyUpgrades = 0;
+    state.supplies = [];
     state.rewardKeyLock = false;
     state.rewardsChosenHistory = [];
 
@@ -851,14 +862,16 @@
     return tier>=2 && tier<=CONFIG.TOTAL_TIERS && tier%2===0;
   }
 
-  function openRewardSelection(defeatedTier) {
+  function openRewardSelection(defeatedTier, source = 'boss') {
     if (state.mode === 'REWARD') return;
-    clearAllCombatHazards();
-    state.boss = null;
+    if(source==='boss') {clearAllCombatHazards();state.boss=null;}
+    state.rewardSource=source;
     state.mode = 'REWARD';
     state.rewardPendingTier = defeatedTier;
     state.rewardKeyLock = false;
-    state.telemetry.rewardsOpenedForTiers.push(defeatedTier);
+    if(source==='boss')state.telemetry.rewardsOpenedForTiers.push(defeatedTier);
+    const title=document.getElementById('reward-title');
+    if(title)title.textContent=source==='supply'?'보급품 강화 선택':'보스 격파 보상 선택';
 
     const p = state.player;
     const badgeEl = document.getElementById('reward-tier-badge');
@@ -868,7 +881,7 @@
     const statMobEl = document.getElementById('reward-stat-mobility');
 
     if (badgeEl) {
-      badgeEl.textContent = `TIER ${String(defeatedTier).padStart(2,'0')} BOSS DEFEATED — REWARD (${state.rewardsChosenHistory.length + 1}/${Math.floor(CONFIG.TOTAL_TIERS/2)})`;
+      badgeEl.textContent = source==='supply'?'SPACE SUPPLY — 강화 후 전투 재개':`TIER ${String(defeatedTier).padStart(2,'0')} BOSS DEFEATED — REWARD (${state.rewardsChosenHistory.length + 1}/${Math.floor(CONFIG.TOTAL_TIERS/2)})`;
     }
     if (p && statVitEl) {
       const nextMax = p.maxHp + 1;
@@ -916,6 +929,7 @@
     state.rewardKeyLock = true;
     const p = state.player;
     const defeatedTier = state.rewardPendingTier;
+    const source=state.rewardSource;
 
     if (p) {
       if (choiceType === 'vitality') {
@@ -953,10 +967,13 @@
       }
     }
 
-    state.rewardsChosenHistory.push({ tier: defeatedTier, choice: choiceType });
+    if(source==='boss')state.rewardsChosenHistory.push({ tier: defeatedTier, choice: choiceType });
     state.rewardPendingTier = null;
     hideRewardModal();
     state.mode = 'PLAYING';
+
+    state.rewardSource=null;
+    if(source==='supply') {openPendingSupplyUpgrade();updateHudBadges();return;}
 
     // Proceed to the next stage after reward selection
     if (defeatedTier && defeatedTier < CONFIG.TOTAL_TIERS) {
@@ -1087,6 +1104,7 @@
   function beginEnemySuicide(e) {
     if (e.deathHandled) return;
     e.deathHandled = true;
+    maybeDropSupply(e);
     state.score += 100 * e.tier + 25 * e.enemyIdx;
     e.specialState = 'SUICIDE_APPROACH';
     e.specialTimer = 0;
@@ -1101,6 +1119,7 @@
   }
 
   function removeEnemy(e) {
+    if(e.hp<=0 && !e.retreating)maybeDropSupply(e);
     state.lasers = state.lasers.filter(b => b.followEnemyId !== e.id);
     const index = state.enemies.indexOf(e);
     if (index !== -1) state.enemies.splice(index, 1);
@@ -1223,6 +1242,29 @@
   function sampleChainBody(boss) {
     const trail=boss.trail,head=boss.segments[0];Object.assign(head,trail[0]);
     head.angle=Math.atan2(trail[0].y-trail[1].y,trail[0].x-trail[1].x);
+    if(boss.phase2Triggered && boss.growthDone) {
+      // Keep each hull at a fixed travelled distance. Re-solving circle intersections
+      // through every offscreen bend re-phased the whole tail by a joint at a time.
+      // Straight rush corridors retain exactly 42px center spacing.
+      let cursor=0,along=0;
+      for(let i=1;i<boss.segments.length;i++) {
+        let remaining=42;
+        while(remaining>1e-8) {
+          if(cursor>=trail.length-1) {
+            const last=trail.at(-1),before=trail.at(-2),angle=Math.atan2(last.y-before.y,last.x-before.x);
+            trail.push({x:last.x+Math.cos(angle)*84,y:last.y+Math.sin(angle)*84});
+          }
+          const a=trail[cursor],b=trail[cursor+1],length=Math.hypot(b.x-a.x,b.y-a.y),available=length-along;
+          if(available<remaining+1e-8){remaining-=Math.max(0,available);cursor++;along=0;}
+          else {along+=remaining;remaining=0;}
+        }
+        const a=trail[cursor],b=trail[cursor+1]||a,length=Math.hypot(b.x-a.x,b.y-a.y)||1;
+        const part=boss.segments[i],previous=boss.segments[i-1];
+        part.x=a.x+(b.x-a.x)*along/length;part.y=a.y+(b.y-a.y)*along/length;
+        part.angle=Math.atan2(previous.y-part.y,previous.x-part.x);
+      }
+      boss.x=head.x;boss.y=head.y;boss.rotation=head.angle+Math.PI/2;return;
+    }
     let cursor=0,fraction=0;
     // Intersect the travelled path with a 42px circle around the preceding joint.
     // Arc-length sampling shortened the chord on turns; this keeps actual spacing rigid.
@@ -1308,7 +1350,9 @@
     if(boss.phase2Triggered || !boss.combat || boss.pathState!=='ROAM')return false;
     boss.phase2Triggered=true;boss.pathState='P2_RETREAT';boss.entering=true;boss.rushCount=0;
     const other=[0,2,3];for(let i=2;i>0;i--){const j=Math.floor(Math.random()*(i+1));[other[i],other[j]]=[other[j],other[i]];}
-    boss.rushZones=[1,...other.slice(0,2)];boss.usedRushZones=[];boss.corridors=[];boss.growthDone=false;
+    // Front first, then every other edge; the fifth entry never repeats the previous edge.
+    const fifth=[0,1,2,3].filter(edge=>edge!==other[2]);
+    boss.rushZones=[1,...other,fifth[Math.floor(Math.random()*fifth.length)]];boss.usedRushZones=[];boss.corridors=[];boss.growthDone=false;
     planChainRetreat(boss);
     state.lasers=state.lasers.filter(l=>l.chainOwnerId!==boss.id);state.enemyBullets=[];
     triggerCameraShake(0.25,4);return true;
@@ -1334,7 +1378,7 @@
       rounded.push(v);
       if(incoming>1&&outgoing>1) {
         const ux=(v.x-a.x)/incoming,uy=(v.y-a.y)/incoming,vx=(b.x-v.x)/outgoing,vy=(b.y-v.y)/outgoing;
-        if(ux*vx+uy*vy<-0.85 && (!boss.phase2Triggered || outsideDistance(v)===0)) {
+        if(ux*vx+uy*vy<-0.85) {
           const r=200,one={x:v.x-uy*r,y:v.y+ux*r},two={x:v.x+uy*r,y:v.y-ux*r};
           const side=outsideDistance(one)>outsideDistance(two)?one:two;
           rounded.push(side,{x:side.x+vx*r,y:side.y+vy*r});
@@ -1366,6 +1410,7 @@
   }
 
   function placeChainFrontHead(boss,point) {
+    if(boss.frontNeck){moveChainFrontNeck(boss,point);return;}
     // A long straight neck reaches an offscreen joint; all spare bends stay outside.
     boss.trail=[{x:point.x,y:point.y},...boss.slackTrail];sampleChainBody(boss);
     boss.frontNeckCount=Math.ceil(Math.hypot(point.x-boss.slackTrail[0].x,point.y-boss.slackTrail[0].y)/42);
@@ -1396,9 +1441,267 @@
   }
 
   function beginChainFrontBob(boss) {
-    const head=boss.segments[0];boss.frontBobCenterY=Math.max(250,Math.min(CONFIG.CANVAS_HEIGHT-250,head.y));
-    const phase=Math.asin(Math.max(-1,Math.min(1,(head.y-boss.frontBobCenterY)/150)));
-    boss.frontBobPhase=Math.random()<0.5?phase:Math.PI-phase;
+    const head=boss.segments[0];
+    boss.frontPatrol={goal:head.y<CONFIG.CANVAS_HEIGHT/2?CONFIG.CANVAS_HEIGHT-76:76,
+      velocity:0,speed:300,targetSpeed:260+Math.random()*120,changeTimer:.8+Math.random()*.7};
+  }
+
+  function updateChainFrontPatrol(boss,dt) {
+    if(!boss.frontPatrol)beginChainFrontBob(boss);
+    const patrol=boss.frontPatrol,head=boss.segments[0],distance=Math.abs(patrol.goal-head.y),direction=Math.sign(patrol.goal-head.y);
+    patrol.changeTimer-=dt;
+    if(patrol.changeTimer<=0){patrol.targetSpeed=240+Math.random()*140;patrol.changeTimer=.8+Math.random()*.8;}
+    patrol.speed+=(patrol.targetSpeed-patrol.speed)*(1-Math.exp(-2.2*dt));
+    const desired=direction*Math.min(patrol.speed,Math.sqrt(2*700*distance));
+    patrol.velocity+=Math.max(-700*dt,Math.min(700*dt,desired-patrol.velocity));
+    const movement=direction*Math.max(0,direction*patrol.velocity*dt),y=distance<=Math.abs(movement)+1e-6?patrol.goal:head.y+movement;
+    placeChainFrontHead(boss,{x:boss.frontAnchor.x,y});head.angle=Math.PI;
+    if(y===patrol.goal){patrol.goal=patrol.goal===76?CONFIG.CANVAS_HEIGHT-76:76;patrol.velocity=0;patrol.targetSpeed=250+Math.random()*130;}
+  }
+
+  function reserveChainFrontNeck(boss) {
+    if(boss.frontNeck)return;
+    const head=boss.segments[0],first=(boss.frontNeckCount||48)+20;
+    let count=first;
+    for(;count<Math.min(boss.segments.length-1,first+180);count++) {
+      const p=boss.segments[count];
+      if(p.x>CONFIG.CANVAS_WIDTH+160 && count*42-Math.hypot(p.x-head.x,p.y-head.y)>850)break;
+    }
+    count=Math.min(count,boss.segments.length-1);
+    boss.frontNeck={baseCount:boss.frontNeckCount,count,anchor:{x:boss.segments[count].x,y:boss.segments[count].y},
+      rest:boss.segments.slice(0,count+1).map(p=>({x:p.x,y:p.y})),origin:{x:head.x,y:head.y}};
+    boss.frontNeckCount=count;
+  }
+
+  function moveChainFrontNeck(boss,point) {
+    const neck=boss.frontNeck,n=neck.count,parts=boss.segments;
+    if(boss.frontStrike?.phase==='RECOVER'){restoreChainFrontNeck(boss);return;}
+    // Guide the visible neck smoothly; solve the spare links only behind the screen.
+    let bridgeIndex=1;while(bridgeIndex<n&&neck.rest[bridgeIndex].x<CONFIG.CANVAS_WIDTH+300)bridgeIndex++;
+    const bridge=neck.rest[bridgeIndex],strike=boss.frontStrike,back=(strike?.recoilFacing??strike?.neckAimAngle??strike?.angle??Math.PI)+Math.PI;
+    const control1={x:point.x+Math.cos(back)*170,y:point.y+Math.sin(back)*170};
+    const control2={x:bridge.x-170,y:bridge.y},guide=[{...point,distance:0}];
+    for(let step=1;step<=100;step++) {
+      const t=step/100,u=1-t,x=u*u*u*point.x+3*u*u*t*control1.x+3*u*t*t*control2.x+t*t*t*bridge.x,
+        y=u*u*u*point.y+3*u*u*t*control1.y+3*u*t*t*control2.y+t*t*t*bridge.y,previous=guide.at(-1);
+      guide.push({x,y,distance:previous.distance+Math.hypot(x-previous.x,y-previous.y)});
+    }
+    Object.assign(parts[0],point);let cursor=0,rootIndex=1;
+    for(let i=1;i<n;i++) {
+      const targetDistance=i*42;
+      while(cursor<guide.length-2&&guide[cursor+1].distance<targetDistance)cursor++;
+      const a=guide[cursor],b=guide[cursor+1],fraction=(targetDistance-a.distance)/(b.distance-a.distance||1),previous=parts[i-1];
+      const x=a.x+(b.x-a.x)*fraction,y=a.y+(b.y-a.y)*fraction,d=Math.hypot(x-previous.x,y-previous.y)||1;
+      parts[i].x=previous.x+(x-previous.x)*42/d;parts[i].y=previous.y+(y-previous.y)*42/d;rootIndex=i;
+      if(parts[i].x>=CONFIG.CANVAS_WIDTH+180)break;
+    }
+    const root={x:parts[rootIndex].x,y:parts[rootIndex].y};
+    for(let i=rootIndex+1;i<n;i++)parts[i].x=Math.max(CONFIG.CANVAS_WIDTH+120,parts[i].x);
+    for(let iteration=0;iteration<120;iteration++) {
+      Object.assign(parts[n],neck.anchor);
+      for(let i=n-1;i>=rootIndex;i--) {
+        const a=parts[i+1],b=parts[i],d=Math.hypot(b.x-a.x,b.y-a.y)||1;
+        b.x=a.x+(b.x-a.x)*42/d;b.y=a.y+(b.y-a.y)*42/d;
+        if(i>rootIndex)b.x=Math.max(CONFIG.CANVAS_WIDTH+120,b.x);
+      }
+      Object.assign(parts[rootIndex],root);
+      for(let i=rootIndex+1;i<=n;i++) {
+        const a=parts[i-1],b=parts[i],d=Math.hypot(b.x-a.x,b.y-a.y)||1;
+        b.x=Math.max(CONFIG.CANVAS_WIDTH+120,a.x+(b.x-a.x)*42/d);b.y=a.y+(b.y-a.y)*42/d;
+      }
+      if(Math.hypot(parts[n].x-neck.anchor.x,parts[n].y-neck.anchor.y)<.001)break;
+    }
+    for(let i=1;i<=n;i++)parts[i].angle=Math.atan2(parts[i-1].y-parts[i].y,parts[i-1].x-parts[i].x);
+    boss.x=point.x;boss.y=point.y;neck.visibleRootIndex=rootIndex;
+  }
+
+  function restoreChainFrontNeck(boss) {
+    const strike=boss.frontStrike,neck=boss.frontNeck,parts=boss.segments,n=neck.count;
+    if(!strike.recoveryPoses)strike.recoveryPoses=parts.slice(0,n+1).map(p=>({x:p.x,y:p.y}));
+    const t=Math.min(1,strike.elapsed),ease=t*t*(3-2*t),rest=neck.rest;
+    let visibleEnd=1;
+    while(visibleEnd<n&&rest[visibleEnd].x<CONFIG.CANVAS_WIDTH+180)visibleEnd++;
+    Object.assign(parts[0],strike.start);
+    // Restore the visible joints by angle, so links stay 42px and cannot fold up.
+    for(let i=1;i<=visibleEnd;i++) {
+      const oldA=strike.recoveryPoses[i-1],oldB=strike.recoveryPoses[i];
+      const from=Math.atan2(oldB.y-oldA.y,oldB.x-oldA.x),to=Math.atan2(rest[i].y-rest[i-1].y,rest[i].x-rest[i-1].x);
+      const delta=(to-from+Math.PI*3)%(Math.PI*2)-Math.PI,angle=from+delta*ease;
+      parts[i].x=parts[i-1].x+Math.cos(angle)*42;parts[i].y=parts[i-1].y+Math.sin(angle)*42;
+    }
+    // The offscreen reserve absorbs the restoration while the laid corridors stay fixed.
+    for(let i=visibleEnd+1;i<=n;i++) {
+      parts[i].x=strike.recoveryPoses[i].x+(rest[i].x-strike.recoveryPoses[i].x)*ease;
+      parts[i].y=strike.recoveryPoses[i].y+(rest[i].y-strike.recoveryPoses[i].y)*ease;
+    }
+    const root={x:parts[visibleEnd].x,y:parts[visibleEnd].y};
+    for(let iteration=0;iteration<120;iteration++) {
+      Object.assign(parts[n],neck.anchor);
+      for(let i=n-1;i>=visibleEnd;i--) {
+        const a=parts[i+1],b=parts[i],d=Math.hypot(b.x-a.x,b.y-a.y)||1;
+        b.x=a.x+(b.x-a.x)*42/d;b.y=a.y+(b.y-a.y)*42/d;if(i>visibleEnd)b.x=Math.max(CONFIG.CANVAS_WIDTH+120,b.x);
+      }
+      Object.assign(parts[visibleEnd],root);
+      for(let i=visibleEnd+1;i<=n;i++) {
+        const a=parts[i-1],b=parts[i],d=Math.hypot(b.x-a.x,b.y-a.y)||1;
+        b.x=a.x+(b.x-a.x)*42/d;b.y=a.y+(b.y-a.y)*42/d;if(i>visibleEnd)b.x=Math.max(CONFIG.CANVAS_WIDTH+120,b.x);
+      }
+      if(Math.hypot(parts[n].x-neck.anchor.x,parts[n].y-neck.anchor.y)<0.001)break;
+    }
+    if(t>=1)for(let i=0;i<=n;i++)Object.assign(parts[i],rest[i]);
+    for(let i=1;i<=n;i++)parts[i].angle=Math.atan2(parts[i-1].y-parts[i].y,parts[i-1].x-parts[i].x);
+    boss.x=parts[0].x;boss.y=parts[0].y;
+  }
+
+  function beginChainRecoil(boss,strike) {
+    strike.phase='RECOIL';strike.elapsed=0;
+    strike.recoilFacing=boss.segments[0].angle;
+    strike.recoilVelocity={x:0,y:0};
+  }
+
+  function finishChainFrontAttack(boss,strike) {
+    boss.frontNeckCount=boss.frontNeck.baseCount;boss.frontNeck=null;boss.segments[0].angle=Math.PI;
+    boss.nextFrontAttack=strike.type==='WHIP'?'LUNGE':'WHIP';boss.frontStrike=null;
+    boss.frontStrikeCooldown=11+Math.random()*3;boss.headLaserCooldown=Math.max(1,boss.headLaserCooldown);
+    if(boss.frontPatrol)boss.frontPatrol.velocity=0;
+  }
+
+  function beginChainFrontStrike(boss,type=boss.nextFrontAttack||'LUNGE') {
+    if(boss.pathState!=='P2_LASER'||boss.frontStrike)return false;
+    reserveChainFrontNeck(boss);
+    const head=boss.segments[0],p=state.player||{x:200,y:360},dx=p.x-head.x,dy=p.y-head.y,d=Math.hypot(dx,dy)||1;
+    const distance=Math.max(0,Math.min(650,d-100));
+    boss.frontStrike={type,neckAimAngle:Math.PI,phase:'WARN',timer:1.1,elapsed:0,speed:350,travelled:0,start:{x:head.x,y:head.y},
+      end:{x:head.x+dx/d*distance,y:head.y+dy/d*distance},angle:Math.atan2(dy,dx),distance};
+    if(type==='WHIP') {
+      const strike=boss.frontStrike;strike.prepared={x:head.x-360,y:head.y};
+      const pivot=boss.segments.find((part,i)=>i>0&&i<boss.frontNeck.count&&part.x>CONFIG.CANVAS_WIDTH+120)||boss.frontNeck.anchor;
+      strike.previewPivot={x:pivot.x,y:pivot.y};strike.direction=head.y<CONFIG.CANVAS_HEIGHT/2?1:-1;
+    }
+    state.lasers=state.lasers.filter(l=>!(l.chainOwnerId===boss.id&&l.kind==='CHAIN_HEAD'));
+    return true;
+  }
+
+  function getChainWhipDrive(strike,time) {
+    const smooth=u=>{u=Math.max(0,Math.min(1,u));return u*u*(3-2*u);};
+    if(time<0.45)return -0.16*smooth(time/0.45);
+    if(time<1.35)return -0.16+(strike.topDrive+0.16)*smooth((time-0.45)/0.9);
+    if(time<1.7)return strike.topDrive;
+    if(time<2.9)return strike.topDrive+(strike.bottomDrive-strike.topDrive)*smooth((time-1.7)/1.2);
+    if(time<3.25)return strike.bottomDrive;
+    return strike.bottomDrive*(1-smooth((time-3.25)/0.95));
+  }
+
+  function initializeChainWhipPhysics(strike) {
+    const count=strike.pivotIndex;
+    strike.whipAngles=new Float64Array(count);strike.whipVelocity=new Float64Array(count);strike.whipAcceleration=new Float64Array(count);
+    strike.whipBaseAngles=new Float64Array(count);
+    for(let j=0;j<count;j++) {
+      const i=count-1-j,a=strike.poses[i+1],b=strike.poses[i];
+      strike.whipBaseAngles[j]=Math.atan2(b.y-a.y,b.x-a.x);
+    }
+    const length=count*42,pivotY=strike.pivot.y;
+    // Drive past both playable edges. Inertia may carry the tip farther, naturally.
+    strike.topDrive=Math.min(1.1,Math.asin(Math.min(.9,Math.max(.1,(pivotY-32)/length)))+0.30);
+    strike.bottomDrive=-Math.min(1.1,Math.asin(Math.min(.9,Math.max(.1,(CONFIG.CANVAS_HEIGHT-32-pivotY)/length)))+0.30);
+    strike.whipClock=0;
+  }
+
+  function advanceChainWhipPhysics(boss,strike,dt) {
+    const count=strike.pivotIndex,angle=strike.whipAngles,velocity=strike.whipVelocity;
+    // Torsional springs exchange torque between neighbors. The free, heavier tip
+    // lags and rebounds; only the hidden root is driven directly.
+    let remaining=dt;
+    while(remaining>1e-9) {
+      const h=Math.min(1/240,remaining);strike.whipClock+=h;
+      angle[0]=getChainWhipDrive(strike,strike.whipClock);velocity[0]=0;
+      const acceleration=strike.whipAcceleration;
+      for(let j=1;j<count;j++) {
+        const settling=strike.phase==='SETTLE',pull=settling?65*Math.min(1,strike.elapsed/.4):0;
+        const torque=1200*(angle[j-1]-angle[j])+(j<count-1?1200*(angle[j+1]-angle[j]):0)-pull*angle[j];
+        acceleration[j]=(torque-(settling?22:3.8)*velocity[j])/(1+j/Math.max(1,count-1));
+      }
+      for(let j=1;j<count;j++) {
+        velocity[j]=Math.max(-5.5,Math.min(5.5,velocity[j]+acceleration[j]*h));angle[j]+=velocity[j]*h;
+        const delta=angle[j]-angle[j-1];
+        if(Math.abs(delta)>0.65){angle[j]=angle[j-1]+Math.sign(delta)*0.65;velocity[j]*=0.6;}
+      }
+      remaining-=h;
+    }
+    for(let j=0;j<count;j++) {
+      const i=count-1-j,next=boss.segments[i+1],rotation=strike.whipBaseAngles[j]+angle[j];
+      boss.segments[i].x=next.x+Math.cos(rotation)*42;boss.segments[i].y=next.y+Math.sin(rotation)*42;
+    }
+    for(let i=0;i<count;i++) {
+      const a=boss.segments[i],b=boss.segments[i+1];a.angle=Math.atan2(a.y-b.y,a.x-b.x);
+    }
+  }
+
+  function updateChainFrontStrike(boss,dt) {
+    const strike=boss.frontStrike,head=boss.segments[0];if(!strike)return;
+    if(strike.phase==='WARN') {
+      strike.timer=Math.max(0,strike.timer-dt);
+      const progress=1-strike.timer/1.1,easeAim=progress*progress*(3-2*progress);
+      const aimDelta=(strike.angle-Math.PI+Math.PI*3)%(Math.PI*2)-Math.PI;
+      strike.neckAimAngle=strike.type==='WHIP'?Math.PI:Math.PI+aimDelta*easeAim;head.angle=strike.neckAimAngle;
+      if(strike.type!=='WHIP')placeChainFrontHead(boss,strike.start);
+      if(strike.type==='WHIP') {
+        const t=1-strike.timer/1.1,ease=t*t*(3-2*t);
+        placeChainFrontHead(boss,{x:strike.start.x+(strike.prepared.x-strike.start.x)*ease,y:strike.start.y});head.angle=Math.PI;
+      }
+      if(strike.timer<=0){
+        strike.elapsed=0;triggerCameraShake(0.18,4);
+        if(strike.type==='WHIP') {
+          strike.phase='SWING';strike.pivotIndex=boss.segments.findIndex((part,i)=>i>0&&i<boss.frontNeck.count&&part.x>CONFIG.CANVAS_WIDTH+120);
+          if(strike.pivotIndex<1)strike.pivotIndex=boss.frontNeck.count;
+          const pivot=boss.segments[strike.pivotIndex];strike.pivot={x:pivot.x,y:pivot.y};
+          strike.poses=boss.segments.slice(0,strike.pivotIndex+1).map(part=>({x:part.x,y:part.y,angle:part.angle}));
+          initializeChainWhipPhysics(strike);
+        } else strike.phase='OUT';
+      }
+      return;
+    }
+    if(strike.phase==='SWING') {
+      const u=Math.max(0,Math.min(1,(strike.whipClock-3.5)/.7)),ease=u*u*(3-2*u),speedScale=1.45-.45*ease;
+      const step=Math.min(dt,Math.max(0,(4.2-strike.whipClock)/speedScale));strike.elapsed+=step;
+      advanceChainWhipPhysics(boss,strike,step*speedScale);
+      if(!strike.crackShake&&strike.whipClock>=1.0){strike.crackShake=true;triggerCameraShake(0.16,5);}
+      if(!strike.recoilShake&&strike.whipClock>=2.4){strike.recoilShake=true;triggerCameraShake(0.12,3);}
+      boss.x=head.x;boss.y=head.y;
+      if(strike.whipClock>=4.2-1e-9){strike.phase='SETTLE';strike.elapsed=0;}
+      return;
+    }
+    if(strike.phase==='OUT') {
+      const remaining=Math.max(0,strike.distance-strike.travelled),desired=Math.min(1100,Math.sqrt(2*3400*remaining));
+      strike.speed+=Math.max(-4000*dt,Math.min(4000*dt,desired-strike.speed));
+      strike.travelled=Math.min(strike.distance,strike.travelled+strike.speed*dt);
+      placeChainFrontHead(boss,{x:strike.start.x+Math.cos(strike.angle)*strike.travelled,y:strike.start.y+Math.sin(strike.angle)*strike.travelled});head.angle=strike.angle;
+      if(strike.travelled>=strike.distance){triggerCameraShake(0.12,2);beginChainRecoil(boss,strike);}
+      return;
+    }
+    if(strike.phase==='SETTLE') {
+      strike.elapsed+=dt;advanceChainWhipPhysics(boss,strike,dt);boss.x=head.x;boss.y=head.y;
+      // Let the same chain settle under damping; never send it into a separate loop.
+      const error=Math.hypot(head.x-strike.prepared.x,head.y-strike.prepared.y),speed=Math.max(...Array.from(strike.whipVelocity,Math.abs));
+      if(error<.35&&speed<.015)beginChainRecoil(boss,strike);
+      return;
+    }
+    if(strike.phase==='RECOIL') {
+      strike.elapsed+=dt;let remaining=dt;
+      while(remaining>1e-9) {
+        const h=Math.min(1/120,remaining),v=strike.recoilVelocity;
+        const u=Math.min(1,strike.elapsed/.45),pull=u*u*(3-2*u);
+        v.x+=(12*pull*(strike.start.x-head.x)-8*v.x)*h;v.y+=(12*pull*(strike.start.y-head.y)-8*v.y)*h;
+        const speed=Math.hypot(v.x,v.y);if(speed>340){v.x*=340/speed;v.y*=340/speed;}
+        head.x+=v.x*h;head.y+=v.y*h;remaining-=h;
+      }
+      placeChainFrontHead(boss,{x:head.x,y:head.y});head.angle=strike.recoilFacing??strike.angle;
+      if(Math.hypot(head.x-strike.start.x,head.y-strike.start.y)<.35&&Math.hypot(strike.recoilVelocity.x,strike.recoilVelocity.y)<3){strike.phase='RECOVER';strike.elapsed=0;}
+      return;
+    }
+    strike.elapsed+=dt;placeChainFrontHead(boss,strike.start);
+    let delta=(Math.PI-head.angle+Math.PI*3)%(Math.PI*2)-Math.PI;head.angle+=delta*Math.min(1,dt*8);
+    if(strike.elapsed>=1)finishChainFrontAttack(boss,strike);
   }
 
   function followChainCurve(boss,dt,speed,brake=false) {
@@ -1421,7 +1724,11 @@
     const count=Math.min(clockwise,counterclockwise);
     const points=[{x:h.x,y:h.y},{x:h.x+Math.cos(h.angle)*180,y:h.y+Math.sin(h.angle)*180}];
     for(let i=0;i<=count;i++)points.push(corners[(start+direction*i+8)%4]);
-    points.push(goal,target);setChainCurve(boss,points);
+    // Approach the far arrival from the side, never double back along the same line.
+    const dx=target.x-goal.x,dy=target.y-goal.y,d=Math.hypot(dx,dy)||1;
+    const left={x:goal.x-dy/d*600,y:goal.y+dx/d*600},right={x:goal.x+dy/d*600,y:goal.y-dx/d*600};
+    const last=points.at(-1),elbow=Math.hypot(left.x-last.x,left.y-last.y)<Math.hypot(right.x-last.x,right.y-last.y)?left:right;
+    points.push(elbow,goal,target);setChainCurve(boss,points);
   }
 
 
@@ -1437,6 +1744,7 @@
   }
 
   function updateChainMotion(boss,dt) {
+    boss.motionDt=dt;
     const head=boss.segments[0],phase=boss.pathState;
     if(phase==='WAVE_ENTER' || phase==='BOSS_ENTER') {
       pushChainHead(boss,{x:head.x-420*dt,y:CONFIG.CANVAS_HEIGHT/2});
@@ -1450,7 +1758,7 @@
     } else if(phase==='P2_RETREAT') {
       followChainCurve(boss,dt,420);
       if(boss.segments.every(p=>p.x>CONFIG.CANVAS_WIDTH+110)) {
-        while(boss.segments.length<900){const part=makeChainSegment(boss.segments.length);part.fireCooldown=3+Math.random()*8;part.currentCooldown=6+Math.random()*24;boss.segments.push(part);}
+        while(boss.segments.length<1400){const part=makeChainSegment(boss.segments.length);part.fireCooldown=3+Math.random()*8;part.currentCooldown=6+Math.random()*24;boss.segments.push(part);}
         boss.growthDone=true;boss.p2BulletGap=2.2;boss.p2BodyLaserGap=3.2;seedChainEntry(boss);prepareChainRush(boss);
       }
     } else if(phase==='P2_TRANSIT') {
@@ -1472,27 +1780,32 @@
     } else if(phase==='P2_DASH') {
       pushChainHead(boss,{x:head.x+Math.cos(boss.rushAngle)*1500*dt,y:head.y+Math.sin(boss.rushAngle)*1500*dt});head.angle=boss.rushAngle;boss.rushDistance+=1500*dt;
       if(boss.rushDistance>boss.rushLength+320) {
-        boss.rushCount++;boss.pathState=boss.rushCount<3?'P2_EXIT':'P2_RETURN';boss.rushTimer=0;
-        if(boss.rushCount===3){
-          boss.frontAnchor={x:CONFIG.CANVAS_WIDTH-140,y:Math.max(140,Math.min(CONFIG.CANVAS_HEIGHT-140,(state.player?.y||360)+(Math.random()-0.5)*180))};
-          boss.frontJoint={x:CONFIG.CANVAS_WIDTH+1800,y:CONFIG.CANVAS_HEIGHT/2};
-          setChainTransit(boss,boss.frontJoint,{arrival:{x:boss.frontJoint.x+400,y:boss.frontJoint.y}});
-        }
+        boss.rushCount++;boss.pathState='P2_EXIT';boss.rushTimer=0;
       }
     } else if(phase==='P2_EXIT') {
       const a=Math.max(0,1-boss.rushTimer/0.65),b=Math.max(0,1-(boss.rushTimer+dt)/0.65),speed=560+940*(a*a+a*b+b*b)/3;
       pushChainHead(boss,{x:head.x+Math.cos(head.angle)*speed*dt,y:head.y+Math.sin(head.angle)*speed*dt});
-      boss.rushTimer+=dt;if(boss.rushTimer>=0.65)prepareChainRush(boss);
+      boss.rushTimer+=dt;
+      if(boss.rushTimer>=0.65) {
+        if(boss.rushCount===5){
+          boss.pathState='P2_RETURN';
+          boss.frontAnchor={x:CONFIG.CANVAS_WIDTH-140,y:Math.max(140,Math.min(CONFIG.CANVAS_HEIGHT-140,(state.player?.y||360)+(Math.random()-0.5)*180))};
+          boss.frontJoint={x:CONFIG.CANVAS_WIDTH+1800,y:CONFIG.CANVAS_HEIGHT/2};
+          setChainTransit(boss,boss.frontJoint,{arrival:{x:boss.frontJoint.x+400,y:boss.frontJoint.y}});
+        } else prepareChainRush(boss);
+      }
     } else if(phase==='P2_RETURN') {
-      if(followChainCurve(boss,dt,560)){boss.pathState='P2_FRONT_ENTER';boss.slackTrail=boss.trail.map(p=>({x:p.x,y:p.y}));}
+      if(followChainCurve(boss,dt,560,true)){boss.pathState='P2_FRONT_ENTER';boss.slackTrail=boss.trail.map(p=>({x:p.x,y:p.y}));}
     } else if(phase==='P2_FRONT_ENTER') {
       const dx=boss.frontAnchor.x-head.x,dy=boss.frontAnchor.y-head.y,d=Math.hypot(dx,dy),speed=Math.min(560,Math.sqrt(2*700*d)),t=d?Math.min(1,speed*dt/d):1;
       placeChainFrontHead(boss,{x:head.x+dx*t,y:head.y+dy*t});
-      if(t===1){boss.pathState='P2_LASER';boss.headLaserCooldown=1.5;beginChainFrontBob(boss);}
+      if(t===1){boss.pathState='P2_LASER';boss.headLaserCooldown=1.5;boss.frontStrikeCooldown=7;beginChainFrontBob(boss);}
     } else if(phase==='P2_LASER') {
-      if(!Number.isFinite(boss.frontBobPhase))beginChainFrontBob(boss);
-      boss.frontBobPhase+=dt*85/150;
-      placeChainFrontHead(boss,{x:boss.frontAnchor.x,y:boss.frontBobCenterY+150*Math.sin(boss.frontBobPhase)});head.angle=Math.PI;
+      if(!boss.frontStrike) {
+        updateChainFrontPatrol(boss,dt);
+        boss.frontStrikeCooldown=(boss.frontStrikeCooldown??7)-dt;
+        if(boss.frontStrikeCooldown<=0)beginChainFrontStrike(boss);
+      } else updateChainFrontStrike(boss,dt);
     }
     boss.x=head.x;boss.y=head.y;boss.rotation=head.angle+Math.PI/2;
     return !boss.entering;
@@ -1509,12 +1822,12 @@
     for(let i=2;i<boss.segments.length;i+=2) {
       const part=boss.segments[i],extension=18+2*Math.sin(boss.age*5+i*0.7);
       if(visibleOnly&&(part.x<-100||part.x>CONFIG.CANVAS_WIDTH+100||part.y<-100||part.y>CONFIG.CANVAS_HEIGHT+100))continue;
-      for(const side of [-1,1])blades.push({a:chainLocal(part,side*(extension-10),0),
+      for(const side of [-1,1])blades.push({segmentIndex:i,a:chainLocal(part,side*(extension-10),0),
         b:chainLocal(part,side*(extension+10),0),radius:4});
     }
     for(const pose of getChainSawPoses(boss)) {
       const dx=Math.sin(pose.rotation)*16,dy=-Math.cos(pose.rotation)*16;
-      blades.push({a:{x:pose.x-dx,y:pose.y-dy},b:{x:pose.x+dx,y:pose.y+dy},radius:5});
+      blades.push({segmentIndex:0,a:{x:pose.x-dx,y:pose.y-dy},b:{x:pose.x+dx,y:pose.y+dy},radius:5});
     }
     return blades;
   }
@@ -1543,7 +1856,7 @@
   }
 
   function updateChainBoss(boss,dt) {
-    if(boss.combat && boss.hp>0 && boss.hp<=boss.maxHp*0.3)beginChainPhase2(boss);
+    if(boss.combat && boss.hp>0 && boss.hp<=boss.maxHp*0.4)beginChainPhase2(boss);
     const canAttack=updateChainMotion(boss,dt),phase2=boss.phase2Triggered;
     const visible=part=>part.x>=0&&part.x<=CONFIG.CANVAS_WIDTH&&part.y>=0&&part.y<=CONFIG.CANVAS_HEIGHT;
     for(let i=1;i<boss.segments.length;i+=2) {
@@ -1561,18 +1874,18 @@
     if(phase2&&canAttack) {
       boss.p2BulletGap=Math.max(0,(boss.p2BulletGap||0)-dt);
       boss.p2BodyLaserGap=Math.max(0,(boss.p2BodyLaserGap||0)-dt);
-      if(boss.p2BulletGap<=0 && state.enemyBullets.length<=6) {
+      if(boss.p2BulletGap<=0 && state.enemyBullets.length<=14) {
         const gun=boss.segments.slice(1).filter((p,n)=>p.kind==='GUN'&&visible(p)&&isChainCorridorPart(boss,p,n+1)&&p.fireCooldown<=0).sort((a,b)=>a.fireCooldown-b.fireCooldown)[0];
         if(gun) {
           for(const side of [-1,1]) {const m=chainLocal(gun,side*10,0),angle=gun.angle+Math.PI/2+(side<0?Math.PI:0);spawnEnemyBullet(m.x,m.y,Math.cos(angle)*220,Math.sin(angle)*220,'Orb','Red');}
-          gun.fireCooldown=16+Math.random()*8;boss.p2BulletGap=1.8+Math.random()*0.8;
+          gun.fireCooldown=9+Math.random()*5;boss.p2BulletGap=0.8+Math.random()*0.4;
         }
       }
     }
-    const headCanAttack=canAttack && (!phase2 || boss.pathState==='P2_LASER');
+    const headCanAttack=canAttack && (!phase2 || (boss.pathState==='P2_LASER'&&!boss.frontStrike));
     if(headCanAttack)boss.headLaserCooldown-=dt;
     boss.laserStartGap=Math.max(0,boss.laserStartGap-dt);
-    const nextGap=()=>1.3+Math.random()*0.4;
+    const nextGap=()=>phase2?0.85+Math.random()*0.25:1.3+Math.random()*0.4;
     if(headCanAttack && boss.headLaserCooldown<=0 && boss.laserStartGap<=1e-9) {
       fireChainLaser(boss,0);boss.headLaserCooldown=10;boss.laserStartGap=nextGap();
     }
@@ -1580,23 +1893,24 @@
     for(let i=1;i<boss.segments.length;i++) {
       if(canAttack)boss.segments[i].currentCooldown-=dt;
     }
-    if(canAttack && (!phase2||boss.p2BodyLaserGap<=0) && boss.laserStartGap<=1e-9) {
+    if(canAttack && (!phase2||boss.p2BodyLaserGap<=0) && !['OUT','RECOIL','SWING','SETTLE'].includes(boss.frontStrike?.phase) && boss.laserStartGap<=1e-9) {
       let ready=-1;
       for(let i=1;i<boss.segments.length;i++)if((!phase2||(visible(boss.segments[i])&&isChainCorridorPart(boss,boss.segments[i],i))) && boss.segments[i].currentCooldown<=0 &&
           (ready<0 || boss.segments[i].currentCooldown<boss.segments[ready].currentCooldown))ready=i;
       if(ready>=0) {
         const part=boss.segments[ready];fireChainLaser(boss,ready);
-        part.currentCooldown=boss.combat?part.currentBossInterval:part.currentWaveInterval;
-        if(phase2)boss.p2BodyLaserGap=3.2+Math.random()*1.6;
+        part.currentCooldown=phase2?10+Math.random()*6:boss.combat?part.currentBossInterval:part.currentWaveInterval;
+        if(phase2)boss.p2BodyLaserGap=1.6+Math.random()*0.6;
         boss.laserStartGap=nextGap();
       }
     }
     const p=state.player;
     if(p) {
-      const bladeHit=getChainBladeCapsules(boss,true).some(blade=>distSqPointToSegment(p.x,p.y,blade.a.x,blade.a.y,blade.b.x,blade.b.y)<(blade.radius+p.hitboxRadius)**2);
+      const harmlessNeck=boss.frontStrike?.phase==='WARN'?(boss.frontNeck?.count||0):-1;
+      const bladeHit=getChainBladeCapsules(boss,true).some(blade=>blade.segmentIndex>harmlessNeck&&distSqPointToSegment(p.x,p.y,blade.a.x,blade.a.y,blade.b.x,blade.b.y)<(blade.radius+p.hitboxRadius)**2);
       if(bladeHit)damagePlayer(2,'CHAIN BLADE');
-      else if(boss.segments.some(part=>Math.hypot(p.x-part.x,p.y-part.y)<21+p.hitboxRadius) ||
-          (boss.pathState==='P2_DASH' && distSqPointToSegment(p.x,p.y,boss.prevX,boss.prevY,boss.x,boss.y)<(21+p.hitboxRadius)**2))damagePlayer(1,'CHAIN BODY');
+      else if(boss.segments.some((part,i)=>i>harmlessNeck&&Math.hypot(p.x-part.x,p.y-part.y)<21+p.hitboxRadius) ||
+          ((boss.pathState==='P2_DASH'||['OUT','SWING'].includes(boss.frontStrike?.phase)) && distSqPointToSegment(p.x,p.y,boss.prevX,boss.prevY,boss.x,boss.y)<(21+p.hitboxRadius)**2))damagePlayer(1,'CHAIN BODY');
     }
   }
 
@@ -1635,6 +1949,21 @@
       ctx.fillStyle=boss.rushAimLocked?'rgba(255,45,70,0.32)':'rgba(255,65,85,0.17)';ctx.fillRect(0,-35,length,70);
       ctx.strokeStyle='#ff6279';ctx.lineWidth=2;ctx.strokeRect(0,-35,length,70);ctx.fillStyle='#ffc3ca';ctx.fillRect(0,-1,length,2);ctx.restore();
       ctx.save();ctx.strokeStyle='#ff667c';ctx.lineWidth=3;ctx.beginPath();ctx.arc(h.x,h.y,40-12*Math.min(1,boss.rushTimer/1.6),0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+    if(boss.frontStrike?.phase==='WARN'&&boss.frontStrike.type==='WHIP') {
+      const strike=boss.frontStrike,pivot=strike.previewPivot,radius=Math.hypot(strike.prepared.x-pivot.x,strike.prepared.y-pivot.y)+90;
+      const angle=Math.atan2(strike.prepared.y-pivot.y,strike.prepared.x-pivot.x);
+      ctx.save();ctx.fillStyle='rgba(255,55,80,0.15)';ctx.strokeStyle='#ff697f';ctx.lineWidth=2;ctx.beginPath();
+      ctx.moveTo(pivot.x,pivot.y);ctx.arc(pivot.x,pivot.y,radius,angle-1.3,angle+1.3);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+    }
+    if(boss.frontStrike?.phase==='WARN'&&boss.frontStrike.type!=='WHIP') {
+      const strike=boss.frontStrike,progress=1-strike.timer/1.1;
+      ctx.save();ctx.translate(strike.start.x,strike.start.y);ctx.rotate(strike.angle);
+      ctx.fillStyle=`rgba(255,55,80,${0.12+progress*0.15})`;ctx.fillRect(0,-100,strike.distance+55,200);
+      ctx.strokeStyle='#ff667d';ctx.lineWidth=2;ctx.strokeRect(0,-100,strike.distance+55,200);
+      ctx.fillStyle='#ffd7de';ctx.fillRect(0,-1,strike.distance+55,2);
+      ctx.restore();
+      ctx.save();ctx.strokeStyle='#ff667d';ctx.lineWidth=3;ctx.beginPath();ctx.arc(strike.end.x,strike.end.y,42-10*progress,0,Math.PI*2);ctx.stroke();ctx.restore();
     }
     if(boss.phase2Triggered) {
       ctx.save();ctx.font='bold 13px monospace';ctx.textAlign='center';ctx.fillStyle=boss.entering?'#ffbd76':'#e8c6d0';
@@ -1987,7 +2316,7 @@
     state.playerBullets.push({
       path: opts.path,
       shape: opts.shape || 'Needle',
-      size: opts.size || [12, 6],
+      size: opts.size || [9, 3],
       scale: opts.scale || CONFIG.BULLET_SCALE,
       radius: opts.radius || 5,
       x: opts.x,
@@ -2015,9 +2344,9 @@
       spawnPlayerBullet({
         path: 'bullets/Colors/Cyan/Needle.png',
         shape: 'Needle',
-        size: [12, 6],
+        size: [9, 3],
         scale: CONFIG.BULLET_SCALE,
-        radius: 5,
+        radius: 4.5,
         x: m.x,
         y: m.y,
         vx: 790,
@@ -2031,9 +2360,9 @@
         spawnPlayerBullet({
           path: 'bullets/Colors/Cyan/Needle.png',
           shape: 'Needle',
-          size: [12, 6],
+          size: [9, 3],
           scale: CONFIG.BULLET_SCALE,
-          radius: 5,
+          radius: 4.5,
           x: m.x,
           y: m.y + dy,
           vx: 800,
@@ -2048,9 +2377,9 @@
         spawnPlayerBullet({
           path: 'bullets/Colors/Cyan/Needle.png',
           shape: 'Needle',
-          size: [12, 6],
+          size: [9, 3],
           scale: CONFIG.BULLET_SCALE,
-          radius: 5,
+          radius: 4.5,
           x: m.x,
           y: m.y + dy,
           vx: 810,
@@ -2064,9 +2393,9 @@
         spawnPlayerBullet({
           path: 'bullets/Colors/Cyan/Needle.png',
           shape: 'Needle',
-          size: [12, 6],
+          size: [9, 3],
           scale: CONFIG.BULLET_SCALE,
-          radius: 5,
+          radius: 4.5,
           x: m.x,
           y: m.y,
           vx: Math.cos(rad) * diagSpeed,
@@ -2215,8 +2544,8 @@
           ctx.arc(o.x,o.y,22-14*Math.min(1,progress),0,Math.PI*2);ctx.stroke();
         }
         if(orb) {
-          const scale=o.launched?v.radius/4:0.8+0.7*Math.min(1,progress);
-          ctx.drawImage(orb,Math.round(o.x-8*scale),Math.round(o.y-8*scale),16*scale,16*scale);
+          const radius=o.launched?v.radius:3.2+2.8*Math.min(1,progress);
+          ctx.drawImage(orb,Math.round(o.x-radius),Math.round(o.y-radius),2*radius,2*radius);
         }
       }
       ctx.restore();
@@ -2358,7 +2687,7 @@
       if(f.stage==='DEPLOY'&&!n.arrived) {
         ctx.strokeStyle='rgba(105,232,255,0.35)';ctx.strokeRect(n.tx-8,n.ty-8,16,16);
       }
-      if(n.launched&&orb) ctx.drawImage(orb,Math.round(n.x-24),Math.round(n.y-24),48,48);
+      if(n.launched&&orb) ctx.drawImage(orb,Math.round(n.x-12),Math.round(n.y-12),24,24);
     }
     ctx.restore();
   }
@@ -4084,7 +4413,7 @@
         }
       }
 
-      if (m.x < -100 || m.y < -100 || m.y > CONFIG.CANVAS_HEIGHT + 100) {
+      if (m.x < -m.radius-60 || m.y < -m.radius-60 || m.y > CONFIG.CANVAS_HEIGHT + m.radius+60) {
         state.meteors.splice(i, 1);
       }
     }
@@ -4344,6 +4673,8 @@
         state.enemyBullets.splice(i, 1);
       }
     }
+
+    updateSupplies(dt);
 
     // 14. Update Particles & Floating Texts
     for (let i = state.particles.length - 1; i >= 0; i--) {
@@ -5391,6 +5722,64 @@
     updateHudBadges();
   }
 
+  function spawnSupply(x,y) {
+    const supply={x,y,prevX:x,prevY:y,vx:-CONFIG.SUPPLY_SPEED,age:0,radius:16};
+    state.supplies.push(supply);return supply;
+  }
+
+  function maybeDropSupply(enemy) {
+    if(enemy.supplyRolled)return;
+    enemy.supplyRolled=true;
+    if(Math.random()<CONFIG.SUPPLY_DROP_CHANCE)spawnSupply(enemy.x,enemy.y);
+  }
+
+  function grantSupplyReward(roll=Math.random()) {
+    const p=state.player;if(!p || p.hp<=0)return;
+    const type=roll<0.33?'heal':roll<0.66?'cooldown':roll<0.99?'upgrade':'all';
+    const messages=[];
+    if(type==='heal'||type==='all') {
+      const healed=Math.min(1,p.maxHp-p.hp);p.hp+=healed;
+      messages.push(healed?'+1 HP':'HP 최대');
+    }
+    if(type==='cooldown'||type==='all') {
+      for(const skill of Object.values(p.skills))skill.cooldown=Math.max(0,skill.cooldown-30);
+      messages.push('스킬 쿨 -30초');
+    }
+    if(type==='upgrade'||type==='all') {state.pendingSupplyUpgrades++;messages.push('강화 선택');}
+    state.floatingTexts.push({text:(type==='all'?'LUCKY! 전부 획득 · ':'보급품 · ')+messages.join(' / '),x:p.x,y:p.y-55,color:'#ffe97e',timer:2.5});
+    updatePlayerSkillUI();return type;
+  }
+
+  function openPendingSupplyUpgrade() {
+    if(state.mode!=='PLAYING'||state.pendingSupplyUpgrades<=0)return;
+    state.pendingSupplyUpgrades--;
+    openRewardSelection(getStageNumber(state.currentTier),'supply');
+  }
+
+  function updateSupplies(dt) {
+    if(state.mode!=='PLAYING')return;
+    const p=state.player;
+    for(let i=state.supplies.length-1;i>=0;i--) {
+      const item=state.supplies[i];item.prevX=item.x;item.prevY=item.y;item.x+=item.vx*dt;item.age+=dt;
+      // Relative swept collision also catches a player crossing a fast-moving crate.
+      if(p&&p.hp>0&&distSqPointToSegment(0,0,item.prevX-(p.prevX??p.x),item.prevY-(p.prevY??p.y),item.x-p.x,item.y-p.y)<=(item.radius+p.hitboxRadius)**2) {
+        state.supplies.splice(i,1);grantSupplyReward();continue;
+      }
+      if(item.x < -48)state.supplies.splice(i,1);
+    }
+    openPendingSupplyUpgrade();
+  }
+
+  function renderSupplies() {
+    for(const item of state.supplies) {
+      const pulse=1+0.08*Math.sin(item.age*5);
+      ctx.save();ctx.fillStyle='rgba(255,213,65,0.10)';ctx.strokeStyle='rgba(255,227,111,0.65)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(item.x,item.y,24*pulse,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='rgba(255,213,65,0.18)';ctx.fillRect(item.x+20,item.y-3,18,6);
+      ctx.restore();drawRotatedSprite('pickups/Space_Supply.png',item.x,item.y,[7,7],CONFIG.SUPPLY_SCALE,0,false);
+    }
+  }
+
   function scheduleMeteorWarning() {
     let y = Math.round(96 + Math.random() * (CONFIG.CANVAS_HEIGHT - 170));
     if (state.player && Math.abs(y - state.player.y) < 70) {
@@ -5406,9 +5795,9 @@
   function spawnMeteorFromWarning(warn) {
     const spec = SPRITE_SPECS['extras/Single_Sprite.png'];
     state.meteors.push({
-      path: 'extras/Single_Sprite.png',
-      spec,
-      scale: CONFIG.SHIP_SCALE,
+      path: 'extras/Meteor_Outlined.png',
+      spec: {...spec,size:[36,36]},
+      scale: CONFIG.METEOR_SCALE,
       x: CONFIG.CANVAS_WIDTH + 48,
       y: warn.y,
       prevX: CONFIG.CANVAS_WIDTH + 48,
@@ -5417,7 +5806,7 @@
       vy: (Math.random() - 0.5) * 32,
       rotation: 0,
       rotSpeed: (Math.random() < 0.5 ? -1 : 1) * (2.0 + Math.random() * 2.2),
-      radius: 9 * CONFIG.SHIP_SCALE
+      radius: 9 * CONFIG.METEOR_SCALE
     });
   }
 
@@ -5514,6 +5903,8 @@
         ctx.stroke();
       }
     }
+
+    renderSupplies();
 
     // 6. Render Active 3-Stage Lasers (Origin + Tiled Body + Unstretched Rounded Tip)
     for (const beam of state.lasers) {
@@ -5872,7 +6263,34 @@
     return strip;
   }
 
+  function getChainCurrentPoints(length,elapsed) {
+    const points=[{x:0,y:0}],phase=Math.floor(elapsed*18);
+    for(let x=12;x<length;x+=12) {
+      const jitter=Math.sin(x*0.117+phase*2.1)+Math.sin(x*0.043-phase*1.7);
+      points.push({x,y:Math.round(jitter)});
+    }
+    points.push({x:length,y:0});return points;
+  }
+
+  function renderChainCurrent(beam) {
+    const length=beam.length??computeRayDistanceToScreenEdge(beam.ox,beam.oy,beam.angle),isHead=beam.kind==='CHAIN_HEAD';
+    ctx.save();ctx.translate(beam.ox,beam.oy);ctx.rotate(beam.angle);
+    if(beam.stage<3) {
+      const progress=Math.min(1,beam.elapsed/(beam.stage1Time+beam.stage2Time)),half=isHead?10:7;
+      ctx.fillStyle=`rgba(255,60,90,${0.1+progress*0.15})`;ctx.fillRect(0,-half,length,half*2);
+      ctx.strokeStyle='#ff6e82';ctx.lineWidth=1;ctx.strokeRect(0,-half,length,half*2);
+      ctx.fillStyle='#ffb8c3';ctx.fillRect(0,-0.5,length,1);
+      ctx.strokeStyle='#ff5268';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,22-14*progress,0,Math.PI*2);ctx.stroke();
+    } else {
+      const points=isHead?[{x:0,y:0},{x:length,y:0}]:getChainCurrentPoints(length,beam.elapsed);
+      const stroke=(color,width)=>{ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(0,0);for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);ctx.stroke();};
+      stroke('rgba(255,50,70,0.22)',isHead?16:7);stroke('#ff465c',isHead?8:3);stroke('#ffe1e5',isHead?3:1);
+    }
+    ctx.fillStyle='#fff0f3';ctx.fillRect(-2,-2,4,4);ctx.restore();
+  }
+
   function renderLaserBeam(beam) {
+    if(['CHAIN_CURRENT','CHAIN_HEAD'].includes(beam.kind)){renderChainCurrent(beam);return;}
     if(['ELECTRIC_ENEMY','ELECTRIC_BOSS','EMP_CURRENT','CHAIN_CURRENT'].includes(beam.kind)) {
       ctx.save();ctx.imageSmoothingEnabled=false;
       if(beam.stage<3) {
@@ -6777,7 +7195,7 @@
     } else if(action==='trigger-chain-p2') {
       hideRewardModal();hideOverlay();state.mode='PLAYING';
       const b=state.boss?.kind==='CHAIN_BOSS'&&!state.boss.phase2Triggered?state.boss:startChainBoss({combat:true,campaign:true,skipEntrance:true});
-      b.combat=true;b.entering=false;b.pathState='ROAM';state.phase='BOSS';b.hp=b.maxHp*0.3;
+      b.combat=true;b.entering=false;b.pathState='ROAM';state.phase='BOSS';b.hp=b.maxHp*0.4;
       beginChainPhase2(b);updateHudBadges();
     } else if (['trigger-b5-p2', 'trigger-b6-p2', 'trigger-b7-p2', 'trigger-b8-p2', 'trigger-electric-p2'].includes(action)) {
       const tierMap = {
@@ -6870,6 +7288,13 @@
     TIER8_DASH_DIRECTIONS,
     state,
     assets,
+    spawnSupply,
+    maybeDropSupply,
+    grantSupplyReward,
+    updateSupplies,
+    spawnMeteorFromWarning,
+    spawnEnemyBullet,
+    BULLET_SHAPES,
     spawnWaveEnemy,
     beginEnemySuicide,
     startEnemyDash,
@@ -6889,6 +7314,11 @@
     resetGame,
     jumpToTierWave,
     startTierBoss,
+    initializeChainWhipPhysics,
+    advanceChainWhipPhysics,
+    getChainWhipDrive,
+    beginChainFrontStrike,
+    getChainCurrentPoints,
     startChainBoss,
     beginChainPhase2,
     prepareChainRush,
@@ -6997,7 +7427,7 @@
     }
     if(params.get('chainBoss')==='1') {
       const chain=startChainBoss({combat:params.get('wave')!=='1',campaign:true,skipEntrance:params.get('p2')==='1'});
-      if(params.get('p2')==='1' && chain.combat){chain.hp=chain.maxHp*0.3;beginChainPhase2(chain);}
+      if(params.get('p2')==='1' && chain.combat){chain.hp=chain.maxHp*0.4;beginChainPhase2(chain);}
       if(params.get('preview')==='lanes' && chain.phase2Triggered)previewChainCorridors(chain);
       const secs=params.get('preview')==='lanes'?0:Math.max(0,Math.min(30,Number(params.get('simSeconds')) || 0));
       for(let i=0;i<secs*25;i++)updateGame(0.04);
@@ -7069,6 +7499,21 @@
       for (let i = 0; i < secs * 20; i++) updateGame(0.05);
     }
 
+    if(params.get('chainCurrentPreview')==='1'&&state.boss?.kind==='CHAIN_BOSS') {
+      const b=state.boss,index=b.segments.findIndex((p,i)=>i>0&&p.x>150&&p.x<1100&&p.y>150&&p.y<600&&isChainCorridorPart(b,p,i));
+      if(index>0){const beam=fireChainLaser(b,index);beam.stage=3;beam.stageTimer=beam.stage3Time;beam.elapsed=1.5;}
+    }
+    if(params.get('chainWhip')==='1'&&state.boss?.kind==='CHAIN_BOSS'&&state.boss.pathState==='P2_LASER')beginChainFrontStrike(state.boss,'WHIP');
+    if(params.get('chainStrike')==='1' && state.boss?.kind==='CHAIN_BOSS' && state.boss.pathState==='P2_LASER')beginChainFrontStrike(state.boss);
+    if((params.get('motionSeconds')||params.get('whipSeconds'))&&state.boss?.frontStrike) {
+      const seconds=Math.max(0,Math.min(12,Number(params.get('motionSeconds')||params.get('whipSeconds'))||0)),p=state.player;
+      try {p.invulnTimer=1e6;p.fireCooldown=1e6;for(let t=0;t<seconds-1e-9;t+=1/120)updateGame(Math.min(1/120,seconds-t));}
+      finally {p.hp=p.maxHp;p.invulnTimer=0;p.hitFlashTimer=0;p.fireCooldown=.15;}
+    }
+    if(params.get('supplies')==='1') {
+      spawnSupply(state.player.x+160,state.player.y);spawnSupply(state.player.x+320,state.player.y-100);
+      spawnMeteorFromWarning({y:state.player.y+170,speed:480});state.meteors[0].x=950;
+    }
     updateHudBadges();
     if(params.get('shock')==='1') {state.player.invulnTimer=0;damagePlayer(1,'ELECTRIC TEST',0.3,'Cyan');updateHudBadges();}
     if (params.get('paused') === '1') togglePause();

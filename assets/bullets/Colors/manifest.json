@@ -12,14 +12,8 @@
   "bulletShapes": {
     "Orb": {
       "size": [
-        8,
-        8
-      ],
-      "source": [
-        23,
-        13,
-        4,
-        4
+        5,
+        5
       ],
       "replaces": [
         "Orb",
@@ -28,14 +22,12 @@
     },
     "Needle": {
       "size": [
-        12,
-        6
+        9,
+        3
       ],
-      "source": [
-        5,
-        10,
-        4,
-        10
+      "uprightSize": [
+        3,
+        9
       ],
       "rotation": "clockwise-to-right"
     }
