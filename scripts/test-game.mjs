@@ -28,6 +28,7 @@ const context = vm.createContext({ window, document, Image, console, URLSearchPa
 vm.runInContext(source, context);
 await new Promise(resolve => setTimeout(resolve, 0));
 const g = window.__GAME_DEBUG__, s = g.state;
+const configuredSupplyDropChance=g.CONFIG.SUPPLY_DROP_CHANCE;
 function fresh() {
   g.resetGame(); g.CONFIG.SUPPLY_DROP_CHANCE=0; s.phase = 'TEST'; s.player.fireCooldown = 1e6;
   s.player.invulnTimer = 1e6; s.meteorSpawnTimer = 1e6;
@@ -1678,25 +1679,26 @@ function fixedDropRoll(value,fn) {
  vm.runInContext(`globalThis.savedSupplyRandom=Math.random;Math.random=()=>${value}`,context);
  try{return fn();}finally{vm.runInContext('Math.random=globalThis.savedSupplyRandom',context);}
 }
-test('Supply drops once on a projectile kill, once on suicide initiation, never on retreat',()=>{
+test('Supply drops at the configured 5% boundary once per kill, never on retreat',()=>{
+ assert.equal(configuredSupplyDropChance,0.05);
  for(const tier of [1,6]) {
-  fresh();g.CONFIG.SUPPLY_DROP_CHANCE=0.1;
+  fresh();g.CONFIG.SUPPLY_DROP_CHANCE=configuredSupplyDropChance;
   const e=g.spawnWaveEnemy(tier,{enemyIdx:1});e.x=900;e.y=320;e.entering=false;
   s.playerBullets.push({x:e.x,y:e.y,vx:0,vy:0,radius:6,damage:e.hp+1});
-  fixedDropRoll(0.099,()=>g.updatePlayerBullets(0));
+  fixedDropRoll(0.0499,()=>g.updatePlayerBullets(0));
   assert.equal(s.supplies.length,1);assert.equal(s.supplies[0].x,900);assert.equal(s.supplies[0].y,320);
   fixedDropRoll(0,()=>{g.maybeDropSupply(e);if(tier===6)g.beginEnemySuicide(e);});
   assert.equal(s.supplies.length,1);
  }
- fresh();g.CONFIG.SUPPLY_DROP_CHANCE=0.1;
+ fresh();g.CONFIG.SUPPLY_DROP_CHANCE=configuredSupplyDropChance;
  const e=g.spawnWaveEnemy(1,{enemyIdx:1});e.x=900;e.entering=false;
  s.playerBullets.push({x:e.x,y:e.y,vx:0,vy:0,radius:6,damage:e.hp+1});
- fixedDropRoll(0.1,()=>g.updatePlayerBullets(0));assert.equal(s.supplies.length,0);
+ fixedDropRoll(0.05,()=>g.updatePlayerBullets(0));assert.equal(s.supplies.length,0);
  const retreat=g.spawnWaveEnemy(1,{enemyIdx:1});retreat.retreating=true;retreat.hp=0;retreat.x=1400;
  fixedDropRoll(0,()=>g.updateGame(0.1));assert.equal(s.supplies.length,0);
 });
 test('Skill laser kills also roll supply drops at the killed enemy position',()=>{
- fresh();g.CONFIG.SUPPLY_DROP_CHANCE=0.1;
+ fresh();g.CONFIG.SUPPLY_DROP_CHANCE=configuredSupplyDropChance;
  const e=g.spawnWaveEnemy(1,{enemyIdx:1}),m=g.getPlayerSkillLaserOrigin();
  e.entering=false;e.x=900;e.y=m.y;e.hp=0.1;
  fixedDropRoll(0,()=>g.applyPlayerSkillLaserTick());

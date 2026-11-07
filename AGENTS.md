@@ -11,7 +11,7 @@
 - Phase-two in-arena body runs must be straight; keep turns and the spare neck joint offscreen. The head has vertical freedom with a reserve neck; only this articulated neck may bend during the new lunge/whip mechanics. Phase-two body sections still fire sparse bullets and electric rays while remaining immune to player attacks.
 - Phase-two body shots must originate from actual laid corridor hull ports, excluding the spare neck. Keep an offscreen aiming buffer and smooth dash braking; the front head continuously bobs while attacking.
 
-- Supply crates use the code-native 7×7 space cargo sprite, a once-per-kill 10% drop roll, and 33/33/33/1 reward bands. Supply upgrades pause and resume the same combat; never advance stages or clear hazards. Meteor scale is 4.5 (half the previous 9), with one thin, 1px silhouette-following red rim.
+- Supply crates use the code-native 7×7 space cargo sprite, a once-per-kill 5% drop roll, and 33/33/33/1 reward bands. Supply upgrades pause and resume the same combat; never advance stages or clear hazards. Meteor scale is 4.5 (half the previous 9), with one thin, 1px silhouette-following red rim.
 
 - Chain phase two performs five rushes (front first, all four edges covered, no immediate repeat), then returns with the final rush also braking smoothly. Alternating lunge/whip attacks articulate only the spare neck and preserve the laid corridors. Keep all five corridors connected with sufficient offscreen body length. Body bullet pairs: 0.8–1.2s, maximum 16 active; current starts: 1.6–2.2s with the existing warning.
 

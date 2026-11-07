@@ -37,7 +37,7 @@
     DASH_DAMAGE: 2,
     METEOR_DAMAGE: 2,
     METEOR_SCALE: 4.5, // Half the previous meteor scale of 9
-    SUPPLY_DROP_CHANCE: 0.10,
+    SUPPLY_DROP_CHANCE: 0.05,
     SUPPLY_SCALE: 4,
     SUPPLY_SPEED: 180,
 
