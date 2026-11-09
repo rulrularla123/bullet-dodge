@@ -1,0 +1,162 @@
+{
+  "name": "ERROR",
+  "displayStage": 12,
+  "enemies": [
+    {
+      "file": "Enemy_01.png",
+      "original": "pixil-frame-0_6.png",
+      "sourcePatternTier": 7,
+      "sourceEnemyIdx": 4,
+      "size": [
+        34,
+        40
+      ],
+      "visibleBounds": [
+        4,
+        2,
+        26,
+        31
+      ],
+      "muzzles": [
+        {
+          "x": 16.5,
+          "y": 2
+        },
+        {
+          "x": 9,
+          "y": 10
+        },
+        {
+          "x": 25,
+          "y": 10
+        }
+      ]
+    },
+    {
+      "file": "Enemy_02.png",
+      "original": "pixil-frame-0_7.png",
+      "sourcePatternTier": 5,
+      "sourceEnemyIdx": 4,
+      "size": [
+        34,
+        40
+      ],
+      "visibleBounds": [
+        2,
+        10,
+        30,
+        25
+      ],
+      "muzzles": [
+        {
+          "x": 17,
+          "y": 10
+        }
+      ]
+    },
+    {
+      "file": "Enemy_03.png",
+      "original": "pixil-frame-0_8.png",
+      "sourcePatternTier": 8,
+      "sourceEnemyIdx": 4,
+      "size": [
+        32,
+        40
+      ],
+      "visibleBounds": [
+        1,
+        1,
+        30,
+        39
+      ],
+      "muzzles": [
+        {
+          "x": 13,
+          "y": 1
+        },
+        {
+          "x": 19,
+          "y": 1
+        }
+      ]
+    },
+    {
+      "file": "Enemy_04.png",
+      "original": "pixil-frame-0_9.png",
+      "sourcePatternTier": 6,
+      "sourceEnemyIdx": 4,
+      "size": [
+        32,
+        40
+      ],
+      "visibleBounds": [
+        0,
+        9,
+        32,
+        26
+      ],
+      "muzzles": [
+        {
+          "x": 16,
+          "y": 9
+        },
+        {
+          "x": 9,
+          "y": 11
+        },
+        {
+          "x": 23,
+          "y": 11
+        }
+      ]
+    },
+    {
+      "file": "Enemy_05.png",
+      "original": "pixil-frame-0_10.png",
+      "sourcePatternTier": 9,
+      "sourceEnemyIdx": 4,
+      "size": [
+        32,
+        40
+      ],
+      "visibleBounds": [
+        0,
+        6,
+        32,
+        26
+      ],
+      "muzzles": [
+        {
+          "x": 10,
+          "y": 6
+        },
+        {
+          "x": 22,
+          "y": 6
+        }
+      ]
+    },
+    {
+      "file": "Enemy_06.png",
+      "original": "pixil-frame-0_11.png",
+      "sourcePatternTier": 10,
+      "sourceEnemyIdx": 4,
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        2,
+        2,
+        28,
+        26
+      ],
+      "muzzles": [
+        {
+          "x": 16,
+          "y": 16
+        }
+      ]
+    }
+  ]
+}

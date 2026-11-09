@@ -1,0 +1,1708 @@
+{
+  "coordinateSystem": "Native sprite coordinates before runtime rotation; x right, y down. Suggested leading-edge muzzle points; visually verify barrel correspondence.",
+  "spriteForward": "up",
+  "runtimeRotationDegreesClockwise": {
+    "player": 90,
+    "enemy": -90
+  },
+  "sprites": [
+    {
+      "path": "enemies/Tier_01/Enemy_01.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        12,
+        10,
+        8,
+        11
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 10,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 10,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_01/Enemy_02.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        12,
+        8,
+        8,
+        15
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 8,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 8,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_01/Enemy_03.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        12,
+        6,
+        8,
+        19
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_01/Enemy_04.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        9,
+        6,
+        14,
+        20
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_01/Boss.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        6,
+        6,
+        20,
+        20
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_02/Enemy_01.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        7,
+        7,
+        18,
+        17
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 7,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_02/Enemy_02.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        7,
+        7,
+        18,
+        18
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 7,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_02/Enemy_03.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        6,
+        6,
+        20,
+        19
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_02/Enemy_04.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        4,
+        6,
+        24,
+        19
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 6.0,
+          "y": 11,
+          "kind": "wing-muzzle"
+        },
+        {
+          "x": 26.0,
+          "y": 11,
+          "kind": "wing-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_02/Boss.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        4,
+        6,
+        24,
+        21
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 6.0,
+          "y": 11,
+          "kind": "wing-muzzle"
+        },
+        {
+          "x": 26.0,
+          "y": 11,
+          "kind": "wing-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_03/Enemy_01.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        6,
+        7,
+        20,
+        19
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 7,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_03/Enemy_02.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        5,
+        7,
+        22,
+        22
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 7,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_03/Enemy_03.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        5,
+        6,
+        22,
+        24
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_03/Enemy_04.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        3,
+        5,
+        26,
+        24
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 5,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 5,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_03/Boss.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        2,
+        5,
+        28,
+        25
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 5,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 5,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 12.0,
+          "y": 9,
+          "kind": "side-muzzle"
+        },
+        {
+          "x": 20.0,
+          "y": 9,
+          "kind": "side-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_04/Enemy_01.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        6,
+        5,
+        20,
+        22
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 5,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 5,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_04/Enemy_02.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        2,
+        4,
+        28,
+        23
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 4,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 4,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_04/Enemy_03.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        2,
+        4,
+        28,
+        24
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 4,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 4,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_04/Enemy_04.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        2,
+        4,
+        28,
+        24
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 4,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 4,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 6.5,
+          "y": 11,
+          "kind": "wing-muzzle"
+        },
+        {
+          "x": 25.5,
+          "y": 11,
+          "kind": "wing-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_04/Boss.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        1,
+        4,
+        30,
+        27
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 4,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 4,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 6.5,
+          "y": 10,
+          "kind": "wing-muzzle"
+        },
+        {
+          "x": 25.5,
+          "y": 10,
+          "kind": "wing-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_05/Enemy_01.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        5,
+        5,
+        22,
+        22
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 5,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 5,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_05/Enemy_02.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        5,
+        8,
+        22,
+        19
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 8,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 8,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_05/Enemy_03.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        1,
+        8,
+        30,
+        19
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 11.0,
+          "y": 8,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 15.5,
+          "y": 8,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 20.0,
+          "y": 8,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 11.5,
+          "y": 8,
+          "kind": "left-prong-muzzle"
+        },
+        {
+          "x": 16.0,
+          "y": 8,
+          "kind": "center-muzzle"
+        },
+        {
+          "x": 20.5,
+          "y": 8,
+          "kind": "right-prong-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_05/Enemy_04.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        1,
+        7,
+        30,
+        24
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 7,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_05/Boss.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        1,
+        6,
+        30,
+        26
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 10.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 20.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 11.0,
+          "y": 6,
+          "kind": "left-cannon-muzzle"
+        },
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "center-muzzle"
+        },
+        {
+          "x": 21.0,
+          "y": 6,
+          "kind": "right-cannon-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_06/Enemy_01.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        0,
+        7,
+        32,
+        22
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 7,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_06/Enemy_02.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        0,
+        7,
+        32,
+        24
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 7,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_06/Enemy_03.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        1,
+        7,
+        30,
+        24
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 7,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 7,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_06/Enemy_04.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        0,
+        5,
+        32,
+        26
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 5,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 5,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 9.0,
+          "y": 7,
+          "kind": "left-pod-muzzle"
+        },
+        {
+          "x": 23.0,
+          "y": 7,
+          "kind": "right-pod-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_06/Boss.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        0,
+        3,
+        32,
+        29
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 3,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 8.5,
+          "y": 5,
+          "kind": "wing-missile-left-inner"
+        },
+        {
+          "x": 22.5,
+          "y": 5,
+          "kind": "wing-missile-right-inner"
+        },
+        {
+          "x": 2.0,
+          "y": 8,
+          "kind": "wing-missile-left-outer"
+        },
+        {
+          "x": 29.5,
+          "y": 8,
+          "kind": "wing-missile-right-outer"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_07/Enemy_01.png",
+      "size": [
+        34,
+        40
+      ],
+      "visibleBounds": [
+        12,
+        6,
+        10,
+        27
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 16.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 17.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_07/Enemy_02.png",
+      "size": [
+        34,
+        40
+      ],
+      "visibleBounds": [
+        6,
+        6,
+        22,
+        27
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 16.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 17.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 9.0,
+          "y": 10,
+          "kind": "left-wing-muzzle"
+        },
+        {
+          "x": 25.0,
+          "y": 10,
+          "kind": "right-wing-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_07/Enemy_03.png",
+      "size": [
+        34,
+        40
+      ],
+      "visibleBounds": [
+        6,
+        5,
+        22,
+        28
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 16.0,
+          "y": 5,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.5,
+          "y": 5,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 9.0,
+          "y": 10,
+          "kind": "left-wing-muzzle"
+        },
+        {
+          "x": 25.0,
+          "y": 10,
+          "kind": "right-wing-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_07/Enemy_04.png",
+      "size": [
+        34,
+        40
+      ],
+      "visibleBounds": [
+        5,
+        2,
+        24,
+        31
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 16.0,
+          "y": 2,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.5,
+          "y": 2,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 9.0,
+          "y": 10,
+          "kind": "left-wing-muzzle"
+        },
+        {
+          "x": 25.0,
+          "y": 10,
+          "kind": "right-wing-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_07/Boss.png",
+      "size": [
+        34,
+        40
+      ],
+      "visibleBounds": [
+        0,
+        3,
+        34,
+        33
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 16.0,
+          "y": 3,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.5,
+          "y": 3,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 11.5,
+          "y": 8,
+          "kind": "left-cannon-muzzle"
+        },
+        {
+          "x": 22.5,
+          "y": 8,
+          "kind": "right-cannon-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_08/Enemy_01.png",
+      "size": [
+        32,
+        40
+      ],
+      "visibleBounds": [
+        3,
+        11,
+        26,
+        25
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 11,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 11,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_08/Enemy_02.png",
+      "size": [
+        32,
+        40
+      ],
+      "visibleBounds": [
+        3,
+        11,
+        26,
+        25
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 11,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 11,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_08/Enemy_03.png",
+      "size": [
+        32,
+        40
+      ],
+      "visibleBounds": [
+        2,
+        6,
+        28,
+        34
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 11.0,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 20.0,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 11.5,
+          "y": 6,
+          "kind": "left-barrel-muzzle"
+        },
+        {
+          "x": 20.5,
+          "y": 6,
+          "kind": "right-barrel-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "enemies/Tier_08/Enemy_04.png",
+      "size": [
+        32,
+        40
+      ],
+      "visibleBounds": [
+        2,
+        1,
+        28,
+        39
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 12.5,
+          "y": 1,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 18.5,
+          "y": 1,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 13.0,
+          "y": 1,
+          "kind": "left-barrel-muzzle"
+        },
+        {
+          "x": 19.0,
+          "y": 1,
+          "kind": "right-barrel-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_08/Boss.png",
+      "size": [
+        32,
+        40
+      ],
+      "visibleBounds": [
+        0,
+        1,
+        32,
+        39
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 11.0,
+          "y": 1,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 20.0,
+          "y": 1,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 10,
+          "kind": "center-laser-core"
+        },
+        {
+          "x": 11.5,
+          "y": 1,
+          "kind": "left-barrel-muzzle"
+        },
+        {
+          "x": 20.5,
+          "y": 1,
+          "kind": "right-barrel-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_04/Boss_Body.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        1,
+        4,
+        30,
+        24
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 4,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 4,
+          "kind": "nose-muzzle"
+        },
+        {
+          "x": 6.5,
+          "y": 10,
+          "kind": "wing-muzzle"
+        },
+        {
+          "x": 25.5,
+          "y": 10,
+          "kind": "wing-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_04/Escorts/Escort_01.png",
+      "size": [
+        16,
+        16
+      ],
+      "visibleBounds": [
+        3,
+        4,
+        9,
+        8
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 7.0,
+          "y": 4,
+          "kind": "escort-nose-muzzle"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 7.0,
+          "y": 4,
+          "kind": "escort-nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Tier_04/Escorts/Escort_02.png",
+      "size": [
+        16,
+        16
+      ],
+      "visibleBounds": [
+        3,
+        4,
+        9,
+        8
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 7.0,
+          "y": 4,
+          "kind": "escort-nose-muzzle"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 7.0,
+          "y": 4,
+          "kind": "escort-nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Final_Boss/Final_Boss_Revealed.png",
+      "size": [
+        70,
+        50
+      ],
+      "visibleBounds": [
+        2,
+        0,
+        66,
+        50
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 17.5,
+          "y": 0,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 51.5,
+          "y": 0,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 26.0,
+          "y": 12,
+          "kind": "body-left-main-cannon"
+        },
+        {
+          "x": 35.0,
+          "y": 14,
+          "kind": "body-center-core"
+        },
+        {
+          "x": 44.0,
+          "y": 12,
+          "kind": "body-right-main-cannon"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Final_Boss/Final_Boss_Shadow.png",
+      "size": [
+        70,
+        50
+      ],
+      "visibleBounds": [
+        2,
+        0,
+        66,
+        50
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 17.5,
+          "y": 0,
+          "kind": "leading-edge-candidate"
+        },
+        {
+          "x": 51.5,
+          "y": 0,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 26.0,
+          "y": 12,
+          "kind": "body-left-main-cannon"
+        },
+        {
+          "x": 35.0,
+          "y": 14,
+          "kind": "body-center-core"
+        },
+        {
+          "x": 44.0,
+          "y": 12,
+          "kind": "body-right-main-cannon"
+        }
+      ]
+    },
+    {
+      "path": "player/주인공.png",
+      "size": [
+        32,
+        32
+      ],
+      "visibleBounds": [
+        6,
+        6,
+        20,
+        18
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 15.5,
+          "y": 6,
+          "kind": "leading-edge-candidate"
+        }
+      ],
+      "reviewRequired": false,
+      "muzzles": [
+        {
+          "x": 16.0,
+          "y": 6,
+          "kind": "nose-muzzle"
+        }
+      ]
+    },
+    {
+      "path": "bosses/Final_Boss/Final_Boss_Revealed_Body.png",
+      "size": [
+        70,
+        50
+      ],
+      "visibleBounds": [
+        4,
+        12,
+        62,
+        38
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 26.0,
+          "y": 12,
+          "kind": "body-left-main-cannon"
+        },
+        {
+          "x": 35.0,
+          "y": 14,
+          "kind": "body-center-core"
+        },
+        {
+          "x": 44.0,
+          "y": 12,
+          "kind": "body-right-main-cannon"
+        },
+        {
+          "x": 19.0,
+          "y": 14,
+          "kind": "body-left-shoulder"
+        },
+        {
+          "x": 51.0,
+          "y": 14,
+          "kind": "body-right-shoulder"
+        }
+      ],
+      "muzzles": [
+        {
+          "x": 26.0,
+          "y": 12,
+          "kind": "body-left-main-cannon"
+        },
+        {
+          "x": 35.0,
+          "y": 14,
+          "kind": "body-center-core"
+        },
+        {
+          "x": 44.0,
+          "y": 12,
+          "kind": "body-right-main-cannon"
+        },
+        {
+          "x": 19.0,
+          "y": 14,
+          "kind": "body-left-shoulder"
+        },
+        {
+          "x": 51.0,
+          "y": 14,
+          "kind": "body-right-shoulder"
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Final_Minion_01.png",
+      "size": [
+        16,
+        16
+      ],
+      "visibleBounds": [
+        3,
+        2,
+        10,
+        12
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 8.0,
+          "y": 2,
+          "kind": "minion-nose-muzzle"
+        }
+      ],
+      "muzzles": [
+        {
+          "x": 8.0,
+          "y": 2,
+          "kind": "minion-nose-muzzle"
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Final_Minion_02.png",
+      "size": [
+        16,
+        16
+      ],
+      "visibleBounds": [
+        3,
+        2,
+        10,
+        12
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 8.0,
+          "y": 2,
+          "kind": "minion-nose-muzzle"
+        }
+      ],
+      "muzzles": [
+        {
+          "x": 8.0,
+          "y": 2,
+          "kind": "minion-nose-muzzle"
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Final_Minion_03.png",
+      "size": [
+        16,
+        16
+      ],
+      "visibleBounds": [
+        3,
+        2,
+        10,
+        12
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 8.0,
+          "y": 2,
+          "kind": "minion-nose-muzzle"
+        }
+      ],
+      "muzzles": [
+        {
+          "x": 8.0,
+          "y": 2,
+          "kind": "minion-nose-muzzle"
+        }
+      ],
+      "reviewRequired": false
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Final_Minion_04.png",
+      "size": [
+        16,
+        16
+      ],
+      "visibleBounds": [
+        3,
+        2,
+        10,
+        12
+      ],
+      "muzzleCandidates": [
+        {
+          "x": 8.0,
+          "y": 2,
+          "kind": "minion-nose-muzzle"
+        }
+      ],
+      "muzzles": [
+        {
+          "x": 8.0,
+          "y": 2,
+          "kind": "minion-nose-muzzle"
+        }
+      ],
+      "reviewRequired": false
+    }
+  ]
+}

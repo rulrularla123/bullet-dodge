@@ -1,0 +1,986 @@
+{
+  "version": 1,
+  "units": "native pixels",
+  "sampling": "nearest-neighbor",
+  "heartSize": [
+    8,
+    8
+  ],
+  "bossBarSize": [
+    64,
+    32
+  ],
+  "bossFillRect": {
+    "x": 5,
+    "y": 16,
+    "width": 54,
+    "height": 2
+  },
+  "hearts": [
+    {
+      "name": "Heart_Full",
+      "path": "ui/player/Heart_Full.png",
+      "size": [
+        8,
+        8
+      ]
+    },
+    {
+      "name": "Heart_Empty",
+      "path": "ui/player/Heart_Empty.png",
+      "size": [
+        8,
+        8
+      ]
+    },
+    {
+      "name": "Heart_Hit",
+      "path": "ui/player/Heart_Hit.png",
+      "size": [
+        8,
+        8
+      ]
+    }
+  ],
+  "bullets": [
+    {
+      "path": "bullets/Orb_Red.png",
+      "shape": "Orb",
+      "color": "Red",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Diamond_Red.png",
+      "shape": "Diamond",
+      "color": "Red",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2.5
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Needle_Red.png",
+      "shape": "Needle",
+      "color": "Red",
+      "size": [
+        12,
+        6
+      ],
+      "pivot": [
+        6,
+        3
+      ],
+      "collision": {
+        "type": "capsule",
+        "radius": 1,
+        "length": 7
+      },
+      "forward": "right"
+    },
+    {
+      "path": "bullets/Orb_Orange.png",
+      "shape": "Orb",
+      "color": "Orange",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Diamond_Orange.png",
+      "shape": "Diamond",
+      "color": "Orange",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2.5
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Needle_Orange.png",
+      "shape": "Needle",
+      "color": "Orange",
+      "size": [
+        12,
+        6
+      ],
+      "pivot": [
+        6,
+        3
+      ],
+      "collision": {
+        "type": "capsule",
+        "radius": 1,
+        "length": 7
+      },
+      "forward": "right"
+    },
+    {
+      "path": "bullets/Orb_Yellow.png",
+      "shape": "Orb",
+      "color": "Yellow",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Diamond_Yellow.png",
+      "shape": "Diamond",
+      "color": "Yellow",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2.5
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Needle_Yellow.png",
+      "shape": "Needle",
+      "color": "Yellow",
+      "size": [
+        12,
+        6
+      ],
+      "pivot": [
+        6,
+        3
+      ],
+      "collision": {
+        "type": "capsule",
+        "radius": 1,
+        "length": 7
+      },
+      "forward": "right"
+    },
+    {
+      "path": "bullets/Orb_Lime.png",
+      "shape": "Orb",
+      "color": "Lime",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Diamond_Lime.png",
+      "shape": "Diamond",
+      "color": "Lime",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2.5
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Needle_Lime.png",
+      "shape": "Needle",
+      "color": "Lime",
+      "size": [
+        12,
+        6
+      ],
+      "pivot": [
+        6,
+        3
+      ],
+      "collision": {
+        "type": "capsule",
+        "radius": 1,
+        "length": 7
+      },
+      "forward": "right"
+    },
+    {
+      "path": "bullets/Orb_Cyan.png",
+      "shape": "Orb",
+      "color": "Cyan",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Diamond_Cyan.png",
+      "shape": "Diamond",
+      "color": "Cyan",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2.5
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Needle_Cyan.png",
+      "shape": "Needle",
+      "color": "Cyan",
+      "size": [
+        12,
+        6
+      ],
+      "pivot": [
+        6,
+        3
+      ],
+      "collision": {
+        "type": "capsule",
+        "radius": 1,
+        "length": 7
+      },
+      "forward": "right"
+    },
+    {
+      "path": "bullets/Orb_Blue.png",
+      "shape": "Orb",
+      "color": "Blue",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Diamond_Blue.png",
+      "shape": "Diamond",
+      "color": "Blue",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2.5
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Needle_Blue.png",
+      "shape": "Needle",
+      "color": "Blue",
+      "size": [
+        12,
+        6
+      ],
+      "pivot": [
+        6,
+        3
+      ],
+      "collision": {
+        "type": "capsule",
+        "radius": 1,
+        "length": 7
+      },
+      "forward": "right"
+    },
+    {
+      "path": "bullets/Orb_Violet.png",
+      "shape": "Orb",
+      "color": "Violet",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Diamond_Violet.png",
+      "shape": "Diamond",
+      "color": "Violet",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2.5
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Needle_Violet.png",
+      "shape": "Needle",
+      "color": "Violet",
+      "size": [
+        12,
+        6
+      ],
+      "pivot": [
+        6,
+        3
+      ],
+      "collision": {
+        "type": "capsule",
+        "radius": 1,
+        "length": 7
+      },
+      "forward": "right"
+    },
+    {
+      "path": "bullets/Orb_Pink.png",
+      "shape": "Orb",
+      "color": "Pink",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Diamond_Pink.png",
+      "shape": "Diamond",
+      "color": "Pink",
+      "size": [
+        8,
+        8
+      ],
+      "pivot": [
+        4,
+        4
+      ],
+      "collision": {
+        "type": "circle",
+        "radius": 2.5
+      },
+      "forward": "radial"
+    },
+    {
+      "path": "bullets/Needle_Pink.png",
+      "shape": "Needle",
+      "color": "Pink",
+      "size": [
+        12,
+        6
+      ],
+      "pivot": [
+        6,
+        3
+      ],
+      "collision": {
+        "type": "capsule",
+        "radius": 1,
+        "length": 7
+      },
+      "forward": "right"
+    }
+  ],
+  "bossBars": [
+    {
+      "id": "Tier_01",
+      "label": "Pearl / red details",
+      "color": "#dceaff",
+      "accent": "#ed1c24",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Tier_01_Full.png",
+        "empty": "ui/boss_bars/Tier_01_Empty.png",
+        "frame": "ui/boss_bars/Tier_01_Frame.png",
+        "fill": "ui/boss_bars/Tier_01_Fill.png"
+      }
+    },
+    {
+      "id": "Tier_02",
+      "label": "Steel / red details",
+      "color": "#a8b4c8",
+      "accent": "#ed1c24",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Tier_02_Full.png",
+        "empty": "ui/boss_bars/Tier_02_Empty.png",
+        "frame": "ui/boss_bars/Tier_02_Frame.png",
+        "fill": "ui/boss_bars/Tier_02_Fill.png"
+      }
+    },
+    {
+      "id": "Tier_03",
+      "label": "Cyan",
+      "color": "#4adeff",
+      "accent": "#00b7ef",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Tier_03_Full.png",
+        "empty": "ui/boss_bars/Tier_03_Empty.png",
+        "frame": "ui/boss_bars/Tier_03_Frame.png",
+        "fill": "ui/boss_bars/Tier_03_Fill.png"
+      }
+    },
+    {
+      "id": "Tier_04",
+      "label": "Blue",
+      "color": "#00b7ef",
+      "accent": "#1f2a91",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Tier_04_Full.png",
+        "empty": "ui/boss_bars/Tier_04_Empty.png",
+        "frame": "ui/boss_bars/Tier_04_Frame.png",
+        "fill": "ui/boss_bars/Tier_04_Fill.png"
+      }
+    },
+    {
+      "id": "Tier_05",
+      "label": "Crimson",
+      "color": "#ed1c24",
+      "accent": "#ff7e00",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Tier_05_Full.png",
+        "empty": "ui/boss_bars/Tier_05_Empty.png",
+        "frame": "ui/boss_bars/Tier_05_Frame.png",
+        "fill": "ui/boss_bars/Tier_05_Fill.png"
+      }
+    },
+    {
+      "id": "Tier_06",
+      "label": "Ember",
+      "color": "#ff7e00",
+      "accent": "#ffce36",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Tier_06_Full.png",
+        "empty": "ui/boss_bars/Tier_06_Empty.png",
+        "frame": "ui/boss_bars/Tier_06_Frame.png",
+        "fill": "ui/boss_bars/Tier_06_Fill.png"
+      }
+    },
+    {
+      "id": "Tier_07",
+      "label": "Lime",
+      "color": "#a8e61d",
+      "accent": "#22b14c",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Tier_07_Full.png",
+        "empty": "ui/boss_bars/Tier_07_Empty.png",
+        "frame": "ui/boss_bars/Tier_07_Frame.png",
+        "fill": "ui/boss_bars/Tier_07_Fill.png"
+      }
+    },
+    {
+      "id": "Tier_08",
+      "label": "Ice cyan",
+      "color": "#43d8fa",
+      "accent": "#86e9fc",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Tier_08_Full.png",
+        "empty": "ui/boss_bars/Tier_08_Empty.png",
+        "frame": "ui/boss_bars/Tier_08_Frame.png",
+        "fill": "ui/boss_bars/Tier_08_Fill.png"
+      }
+    },
+    {
+      "id": "Final_Shadow",
+      "label": "Shadow / acid green",
+      "color": "#a782ff",
+      "accent": "#d8ff35",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Final_Shadow_Full.png",
+        "empty": "ui/boss_bars/Final_Shadow_Empty.png",
+        "frame": "ui/boss_bars/Final_Shadow_Frame.png",
+        "fill": "ui/boss_bars/Final_Shadow_Fill.png"
+      }
+    },
+    {
+      "id": "Final_Revealed",
+      "label": "Royal gold / cyan",
+      "color": "#ffcc45",
+      "accent": "#43e7ef",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": {
+        "x": 5,
+        "y": 16,
+        "width": 54,
+        "height": 2
+      },
+      "files": {
+        "full": "ui/boss_bars/Final_Revealed_Full.png",
+        "empty": "ui/boss_bars/Final_Revealed_Empty.png",
+        "frame": "ui/boss_bars/Final_Revealed_Frame.png",
+        "fill": "ui/boss_bars/Final_Revealed_Fill.png"
+      }
+    }
+  ],
+  "font": [
+    {
+      "glyph": "0",
+      "path": "ui/font/Glyph_0.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "1",
+      "path": "ui/font/Glyph_1.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "2",
+      "path": "ui/font/Glyph_2.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "3",
+      "path": "ui/font/Glyph_3.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "4",
+      "path": "ui/font/Glyph_4.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "5",
+      "path": "ui/font/Glyph_5.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "6",
+      "path": "ui/font/Glyph_6.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "7",
+      "path": "ui/font/Glyph_7.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "8",
+      "path": "ui/font/Glyph_8.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "9",
+      "path": "ui/font/Glyph_9.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "Colon",
+      "path": "ui/font/Glyph_Colon.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    },
+    {
+      "glyph": "Times",
+      "path": "ui/font/Glyph_Times.png",
+      "size": [
+        3,
+        5
+      ],
+      "advance": 4
+    }
+  ],
+  "shadowSprites": [
+    {
+      "path": "bosses/Final_Boss/Escorts/Shadow_Minion_01.png",
+      "size": [
+        16,
+        16
+      ],
+      "role": "unused-reference-shadow-minion",
+      "sourceRect": {
+        "x": 13,
+        "y": 0,
+        "width": 10,
+        "height": 12
+      },
+      "sourceForward": "up"
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Shadow_Minion_02.png",
+      "size": [
+        16,
+        16
+      ],
+      "role": "unused-reference-shadow-minion",
+      "sourceRect": {
+        "x": 47,
+        "y": 0,
+        "width": 10,
+        "height": 12
+      },
+      "sourceForward": "up"
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Shadow_Minion_03.png",
+      "size": [
+        16,
+        16
+      ],
+      "role": "unused-reference-shadow-minion",
+      "sourceRect": {
+        "x": 2,
+        "y": 10,
+        "width": 10,
+        "height": 12
+      },
+      "sourceForward": "up"
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Shadow_Minion_04.png",
+      "size": [
+        16,
+        16
+      ],
+      "role": "unused-reference-shadow-minion",
+      "sourceRect": {
+        "x": 58,
+        "y": 10,
+        "width": 10,
+        "height": 12
+      },
+      "sourceForward": "up"
+    },
+    {
+      "path": "bosses/Final_Boss/Final_Boss_Shadow_Body.png",
+      "size": [
+        70,
+        50
+      ],
+      "role": "shadow-boss-without-baked-minions"
+    }
+  ],
+  "finalSprites": [
+    {
+      "path": "bosses/Final_Boss/Escorts/Final_Minion_01.png",
+      "size": [
+        16,
+        16
+      ],
+      "role": "independent-escort",
+      "invulnerableWhileBossAlive": true,
+      "sourceRect": {
+        "x": 13,
+        "y": 0,
+        "width": 10,
+        "height": 12
+      },
+      "sourceForward": "up"
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Final_Minion_02.png",
+      "size": [
+        16,
+        16
+      ],
+      "role": "independent-escort",
+      "invulnerableWhileBossAlive": true,
+      "sourceRect": {
+        "x": 47,
+        "y": 0,
+        "width": 10,
+        "height": 12
+      },
+      "sourceForward": "up"
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Final_Minion_03.png",
+      "size": [
+        16,
+        16
+      ],
+      "role": "independent-escort",
+      "invulnerableWhileBossAlive": true,
+      "sourceRect": {
+        "x": 2,
+        "y": 10,
+        "width": 10,
+        "height": 12
+      },
+      "sourceForward": "up"
+    },
+    {
+      "path": "bosses/Final_Boss/Escorts/Final_Minion_04.png",
+      "size": [
+        16,
+        16
+      ],
+      "role": "independent-escort",
+      "invulnerableWhileBossAlive": true,
+      "sourceRect": {
+        "x": 58,
+        "y": 10,
+        "width": 10,
+        "height": 12
+      },
+      "sourceForward": "up"
+    },
+    {
+      "path": "bosses/Final_Boss/Final_Boss_Revealed_Body.png",
+      "size": [
+        70,
+        50
+      ],
+      "role": "true-form-boss-without-baked-escorts"
+    }
+  ],
+  "finalEncounter": {
+    "shadow": {
+      "sprite": "bosses/Final_Boss/Final_Boss_Shadow.png",
+      "escorts": "static baked-in silhouettes; no independent escorts",
+      "attack": "simple barrage",
+      "healthBar": "Final_Shadow"
+    },
+    "revealed": {
+      "sprite": "bosses/Final_Boss/Final_Boss_Revealed_Body.png",
+      "escorts": [
+        "bosses/Final_Boss/Escorts/Final_Minion_01.png",
+        "bosses/Final_Boss/Escorts/Final_Minion_02.png",
+        "bosses/Final_Boss/Escorts/Final_Minion_03.png",
+        "bosses/Final_Boss/Escorts/Final_Minion_04.png"
+      ],
+      "escortCount": 4,
+      "escortMotion": "independent irregular movement around the boss, inside rightmost third",
+      "escortInvulnerability": "until true-form boss defeated",
+      "attack": "boss and all four escorts attack independently",
+      "healthBar": "Final_Revealed"
+    },
+    "clearCondition": "true-form boss defeated; remove escorts and enemy projectiles"
+  }
+}

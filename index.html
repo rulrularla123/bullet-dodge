@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bullet Hell Dodging — Pixel Space Shooter V4</title>
-  <link rel="stylesheet" href="style.css?v=20261107-supply-drop-5pct" />
+  <link rel="stylesheet" href="style.css?v=20261110-error-release" />
 </head>
 <body>
   <div id="app">
@@ -57,8 +57,8 @@
                 <div class="card-key">KEY [1]</div>
                 <div class="card-icon card-icon-hp">♥</div>
                 <h3 class="card-title">체력 강화</h3>
-                <p class="card-effect">최대 체력 <strong>+1</strong> 증가<br/>선택 시 현재 체력은 회복하지 않음</p>
-                <div class="card-stat" id="reward-stat-vitality">현재: 5/5 → 선택 후: 5/6</div>
+                <p class="card-effect">최대 체력 <strong>+1</strong> 증가<br/>현재 체력 <strong>+1</strong> 회복</p>
+                <div class="card-stat" id="reward-stat-vitality">현재: 5/5 → 선택 후: 6/6</div>
               </button>
 
               <button type="button" class="reward-card" data-reward="equipment" id="reward-card-2">
@@ -87,6 +87,33 @@
           </div>
         </div>
 
+        <div id="supply-screen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="supply-title">
+          <div class="reward-modal">
+            <div class="reward-header">
+              <span class="reward-badge">SPACE SUPPLY</span>
+              <h2 id="supply-title">보급품 보상 선택</h2>
+              <p class="reward-desc">하나를 선택하세요 · 클릭 또는 <strong>1 / 2 / 3</strong><br/>선택하는 동안 전투가 멈춥니다.</p>
+            </div>
+            <div class="reward-cards supply-cards">
+              <button type="button" class="reward-card" data-supply="heal">
+                <div class="card-key">KEY [1]</div><div class="card-icon card-icon-hp">♥</div>
+                <h3 class="card-title">체력 회복</h3><p class="card-effect">현재 체력 <strong>+1</strong> 회복</p>
+                <div class="card-stat" id="supply-stat-heal"></div>
+              </button>
+              <button type="button" class="reward-card" data-supply="cooldown">
+                <div class="card-key">KEY [2]</div><div class="card-icon card-icon-skill">E R T</div>
+                <h3 class="card-title">스킬 쿨 감소</h3><p class="card-effect">세 스킬의 남은 쿨타임 <strong>−30초</strong></p>
+                <div class="card-stat" id="supply-stat-cooldown"></div>
+              </button>
+              <button type="button" class="reward-card" data-supply="upgrade">
+                <div class="card-key">KEY [3]</div><div class="card-icon card-icon-wp">✦</div>
+                <h3 class="card-title">강화 보상</h3><p class="card-effect">짝수 보스 보상과 같은<br/><strong>강화 선택창</strong> 열기</p>
+                <div class="card-stat">체력 · 장비 · 기동성 · 스킬 중 선택</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Pause / Game Over / Clear Overlay -->
         <div id="overlay-screen" class="overlay hidden">
           <div class="overlay-card">
@@ -111,10 +138,12 @@
 
     <section id="debug-panel" class="debug-panel hidden" aria-label="개발 및 플레이 검증 패널">
       <div class="debug-row">
-        <span class="debug-label">V4 잡몹 검증:</span>
+        <span class="debug-label">잡몹 패턴:</span>
         <button type="button" data-action="v4-enemy-demo" data-tier="5">T5 3·4단계 돌진</button>
+        <button type="button" data-action="v4-enemy-demo" data-tier="10">T6 코어 잡몹 4종</button>
         <button type="button" data-action="v4-enemy-demo" data-tier="6">T7 단계별 자폭</button>
         <button type="button" data-action="v4-enemy-demo" data-tier="7">T8 소형 레이저</button>
+        <button type="button" data-action="v4-enemy-demo" data-tier="9">T10 잡몹 4종</button>
         <button type="button" data-action="v4-enemy-demo" data-tier="8">T11 단계별 고속 입장</button>
       </div>
       <div class="debug-row">
@@ -123,50 +152,58 @@
         <button type="button" data-action="jump-tier" data-tier="2">T2</button>
         <button type="button" data-action="jump-tier" data-tier="3">T3</button>
         <button type="button" data-action="jump-tier" data-tier="4">T4</button>
-        <button type="button" data-action="jump-tier" data-tier="10">T6(EMP)</button>
         <button type="button" data-action="jump-tier" data-tier="5">T5</button>
+        <button type="button" data-action="jump-tier" data-tier="10">T6(EMP)</button>
         <button type="button" data-action="jump-tier" data-tier="6">T7</button>
         <button type="button" data-action="jump-tier" data-tier="7">T8</button>
-        <button type="button" data-action="jump-tier" data-tier="8">T11</button>
         <button type="button" data-action="jump-tier" data-tier="11">T9(연결형 생존)</button>
         <button type="button" data-action="jump-tier" data-tier="9">T10(전기)</button>
-        <span class="debug-sep">|</span>
+        <button type="button" data-action="jump-tier" data-tier="8">T11</button>
+        <button type="button" data-action="jump-tier" data-tier="12">T12(오류)</button>
+      </div>
+      <div class="debug-row">
         <span class="debug-label">보스 직행:</span>
         <button type="button" data-action="jump-boss" data-tier="1">B1</button>
         <button type="button" data-action="jump-boss" data-tier="2">B2</button>
         <button type="button" data-action="jump-boss" data-tier="3">B3</button>
         <button type="button" data-action="jump-boss" data-tier="4">B4(호위2)</button>
-        <button type="button" data-action="jump-boss" data-tier="10">B6(EMP)</button>
-        <button type="button" data-action="v4-enemy-demo" data-tier="10">T6 코어 잡몹 4종</button>
         <button type="button" data-action="jump-boss" data-tier="5">B5(돌진)</button>
+        <button type="button" data-action="jump-boss" data-tier="10">B6(EMP)</button>
         <button type="button" data-action="jump-boss" data-tier="6">B7(미사일)</button>
         <button type="button" data-action="jump-boss" data-tier="7">B8(레이저)</button>
-        <button type="button" data-action="jump-boss" data-tier="8">B11(4레이저/돌진)</button>
         <button type="button" data-action="jump-boss" data-tier="11">B9(연결형)</button>
         <button type="button" data-action="jump-boss" data-tier="9">B10(전류 구체)</button>
-        <button type="button" data-action="v4-enemy-demo" data-tier="9">T10 잡몹 4종</button>
+        <button type="button" data-action="jump-boss" data-tier="8">B11(4레이저/돌진)</button>
+        <button type="button" data-action="jump-boss" data-tier="12">B12(오류)</button>
         <button type="button" data-action="jump-shadow">그림자</button>
         <button type="button" data-action="jump-revealed">최종보스</button>
       </div>
       <div class="debug-row">
-        <span class="debug-label">패턴/보상/강화 검증:</span>
+        <span class="debug-label">보스 패턴:</span>
         <button type="button" data-action="trigger-b5-dash">T5 수평돌진</button>
-        <button type="button" data-action="trigger-b6-missiles">T7 4발미사일</button>
-        <button type="button" data-action="trigger-b7-laser">T8 2배레이저</button>
-        <button type="button" data-action="trigger-b8-ult">T11 4레이저 궁극기</button>
-        <button type="button" data-action="trigger-b8-dash">T11 돌진묶음</button>
         <button type="button" data-action="trigger-b5-p2">B5 2페이즈(5돌진)</button>
+        <button type="button" data-action="trigger-b6-missiles">T7 4발미사일</button>
         <button type="button" data-action="trigger-b6-p2">B7 2페이즈(전맵폭발)</button>
+        <button type="button" data-action="trigger-b7-laser">T8 2배레이저</button>
         <button type="button" data-action="trigger-b7-p2">B8 2페이즈(순간이동레이저)</button>
         <button type="button" data-action="trigger-chain-p2">B9 2페이즈(똬리/5돌진)</button>
         <button type="button" data-action="trigger-electric-p2">B10 2페이즈(전류망)</button>
+        <button type="button" data-action="trigger-b8-ult">T11 4레이저 궁극기</button>
+        <button type="button" data-action="trigger-b8-dash">T11 돌진묶음</button>
         <button type="button" data-action="trigger-b8-p2">B11 2페이즈(돌진편대)</button>
+        <button type="button" data-action="trigger-error-p2">B12 2페이즈(오류 노드)</button>
         <button type="button" data-action="trigger-final-rush">최종 무지개 4레이저</button>
         <button type="button" data-action="trigger-escort-laser">호위기 레이저</button>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">보상·강화:</span>
         <button type="button" data-action="open-reward">짝수보스 보상창</button>
         <button type="button" data-action="cycle-weapon" id="btn-cycle-weapon">장비 레벨: Lv0</button>
         <button type="button" data-action="cycle-skills" id="btn-cycle-skills">스킬 강화: +0</button>
         <button type="button" data-action="cycle-mobility" id="btn-cycle-mobility">기동성: +0</button>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">전투 관리:</span>
         <button type="button" data-action="damage-boss">보스 -25%</button>
         <button type="button" data-action="kill-boss">보스 격파</button>
         <button type="button" data-action="toggle-invincible" id="btn-invincible">무적: OFF</button>
@@ -177,6 +214,6 @@
     </section>
   </div>
 
-  <script src="game.js?v=20261107-supply-drop-5pct"></script>
+  <script src="game.js?v=20261110-error-release"></script>
 </body>
 </html>

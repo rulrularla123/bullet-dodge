@@ -66,9 +66,10 @@ for(const dir of ['enemies','player','bosses'])if(fs.existsSync(at(dir)))scan(di
 const catalog={};
 for(const file of files){const im=decode(at(file)),counts={};for(let i=0;i<im.data.length;i+=4)if(im.data[i+3]){const key=hex([...im.data.subarray(i,i+3)]);counts[key]=(counts[key]||0)+1;}
   catalog[file]=Object.fromEntries(Object.entries(counts).sort((a,b)=>b[1]-a[1]));}
-const stageOrder=[1,2,3,4,5,10,6,7,11,9,8],bars=[];
-const bossDefinitions=Array.from({length:10},(_,i)=>{const t=i+1,id=`Tier_${String(t).padStart(2,'0')}`;return {t,id,model:`enemies/${id}/Boss.png`};});
-bossDefinitions.push({t:11,id:'Chain_Boss',model:'bosses/Chain_Boss/Head_And_Saws.png'});
+const stageOrder=[1,2,3,4,5,10,6,7,11,9,8,12],bars=[];
+const bossDefinitions=Array.from({length:10},(_,i)=>{const t=i+1,id=`Tier_${String(t).padStart(2,'0')}`;return {t,id,model:`bosses/${id}/Boss.png`};});
+bossDefinitions.push({t:12,id:'Tier_12',model:'bosses/Tier_12/Boss.png'});
+bossDefinitions.push({t:11,id:'Chain_Boss',model:'bosses/Chain_Boss/Parts/Head_And_Saws.png'});
 for(const {t,id,model} of bossDefinitions){
   const vivid=Object.keys(catalog[model]).filter(c=>{const a=rgb(c);return Math.max(...a)-Math.min(...a)>50;});
   if(!vivid.length)throw Error(`Choose a boss accent for ${model}`);
@@ -90,7 +91,12 @@ for(const {t,id,model} of bossDefinitions){
   }
   for(const im of [layers.Frame,layers.Full]) {
     const add=(x,y,c)=>{if(!im.data[(y*64+x)*4+3])pixel(im,x,y,c);};
-    if(t===11) {
+    if(t===12) {
+      // Split data brackets and displaced pixels only in the original frame's transparent margin.
+      for(const [cx,c] of [[11,[255,85,181]],[52,[0,238,255]]]) {
+        for(const [dx,dy] of [[-3,-2],[-3,-1],[-3,0],[-2,2],[0,2],[2,1],[3,1]])add(cx+dx,6+dy,c);
+      }
+    } else if(t===11) {
       for(const cx of [12,51])for(const [dx,dy] of [[-3,0],[-2,-1],[-1,-2],[0,-3],[1,-2],[2,-1],[3,0]])add(cx+dx,7+dy,dy<-1?bright:base);
     } else if(t===10) {
       // Two small EMP rings, away from the unchanged BOSS lettering and health strip.

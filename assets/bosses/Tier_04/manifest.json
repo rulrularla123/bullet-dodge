@@ -1,0 +1,50 @@
+{
+  "source": "Boss.png",
+  "sourceForward": "up",
+  "body": {
+    "file": "Boss_Body.png",
+    "size": [
+      32,
+      32
+    ]
+  },
+  "escorts": [
+    {
+      "file": "Escorts/Escort_01.png",
+      "size": [
+        16,
+        16
+      ],
+      "sourceRect": {
+        "x": 1,
+        "y": 23,
+        "width": 9,
+        "height": 8
+      },
+      "sourceForward": "up",
+      "muzzle": {
+        "x": 7,
+        "y": 4
+      }
+    },
+    {
+      "file": "Escorts/Escort_02.png",
+      "size": [
+        16,
+        16
+      ],
+      "sourceRect": {
+        "x": 22,
+        "y": 23,
+        "width": 9,
+        "height": 8
+      },
+      "sourceForward": "up",
+      "muzzle": {
+        "x": 7,
+        "y": 4
+      }
+    }
+  ],
+  "combat": "Two independent escorts. Right-third limit applies. Unlike final boss escorts, invulnerability is not requested; default destructible."
+}

@@ -36,7 +36,7 @@
     {
       "id": "Tier_01",
       "displayStage": 1,
-      "model": "enemies/Tier_01/Boss.png",
+      "model": "bosses/Tier_01/Boss.png",
       "primary": "#ed1c24",
       "secondary": "#ed1c24",
       "size": [
@@ -53,7 +53,7 @@
     {
       "id": "Tier_02",
       "displayStage": 2,
-      "model": "enemies/Tier_02/Boss.png",
+      "model": "bosses/Tier_02/Boss.png",
       "primary": "#ed1c24",
       "secondary": "#ed1c24",
       "size": [
@@ -70,7 +70,7 @@
     {
       "id": "Tier_03",
       "displayStage": 3,
-      "model": "enemies/Tier_03/Boss.png",
+      "model": "bosses/Tier_03/Boss.png",
       "primary": "#00b7ef",
       "secondary": "#4adeff",
       "size": [
@@ -87,7 +87,7 @@
     {
       "id": "Tier_04",
       "displayStage": 4,
-      "model": "enemies/Tier_04/Boss.png",
+      "model": "bosses/Tier_04/Boss.png",
       "primary": "#121759",
       "secondary": "#00b7ef",
       "size": [
@@ -104,7 +104,7 @@
     {
       "id": "Tier_05",
       "displayStage": 5,
-      "model": "enemies/Tier_05/Boss.png",
+      "model": "bosses/Tier_05/Boss.png",
       "primary": "#990030",
       "secondary": "#ed1c24",
       "size": [
@@ -121,7 +121,7 @@
     {
       "id": "Tier_06",
       "displayStage": 7,
-      "model": "enemies/Tier_06/Boss.png",
+      "model": "bosses/Tier_06/Boss.png",
       "primary": "#ed1c24",
       "secondary": "#990030",
       "size": [
@@ -138,7 +138,7 @@
     {
       "id": "Tier_07",
       "displayStage": 8,
-      "model": "enemies/Tier_07/Boss.png",
+      "model": "bosses/Tier_07/Boss.png",
       "primary": "#a8e61d",
       "secondary": "#22b14c",
       "size": [
@@ -155,7 +155,7 @@
     {
       "id": "Tier_08",
       "displayStage": 11,
-      "model": "enemies/Tier_08/Boss.png",
+      "model": "bosses/Tier_08/Boss.png",
       "primary": "#43d8fa",
       "secondary": "#00b7ef",
       "size": [
@@ -172,7 +172,7 @@
     {
       "id": "Tier_09",
       "displayStage": 10,
-      "model": "enemies/Tier_09/Boss.png",
+      "model": "bosses/Tier_09/Boss.png",
       "primary": "#00b7ef",
       "secondary": "#0033ff",
       "size": [
@@ -189,7 +189,7 @@
     {
       "id": "Tier_10",
       "displayStage": 6,
-      "model": "enemies/Tier_10/Boss.png",
+      "model": "bosses/Tier_10/Boss.png",
       "primary": "#9900ff",
       "secondary": "#bc5bfc",
       "size": [
@@ -204,9 +204,26 @@
       ]
     },
     {
+      "id": "Tier_12",
+      "displayStage": 12,
+      "model": "bosses/Tier_12/Boss.png",
+      "primary": "#ed00ca",
+      "secondary": "#00d9ff",
+      "size": [
+        64,
+        32
+      ],
+      "fillRect": [
+        5,
+        16,
+        54,
+        2
+      ]
+    },
+    {
       "id": "Chain_Boss",
       "displayStage": 9,
-      "model": "bosses/Chain_Boss/Head_And_Saws.png",
+      "model": "bosses/Chain_Boss/Parts/Head_And_Saws.png",
       "primary": "#b71c1c",
       "secondary": "#ed1c24",
       "size": [
@@ -222,13 +239,6 @@
     }
   ],
   "models": {
-    "enemies/Tier_01/Boss.png": {
-      "#000000": 72,
-      "#ffffff": 49,
-      "#b4b4b4": 40,
-      "#464646": 7,
-      "#ed1c24": 6
-    },
     "enemies/Tier_01/Enemy_01.png": {
       "#ffffff": 28,
       "#000000": 24,
@@ -251,14 +261,6 @@
       "#b4b4b4": 31,
       "#464646": 5,
       "#ed1c24": 4
-    },
-    "enemies/Tier_02/Boss.png": {
-      "#000000": 108,
-      "#b4b4b4": 36,
-      "#6e6e6e": 32,
-      "#464646": 16,
-      "#ed1c24": 12,
-      "#ffffff": 6
     },
     "enemies/Tier_02/Enemy_01.png": {
       "#000000": 60,
@@ -290,16 +292,6 @@
       "#ed1c24": 8,
       "#ffffff": 5,
       "#464646": 4
-    },
-    "enemies/Tier_03/Boss.png": {
-      "#000000": 124,
-      "#464646": 60,
-      "#6e6e6e": 27,
-      "#00b7ef": 16,
-      "#4adeff": 10,
-      "#d4d4d4": 7,
-      "#00c8ff": 3,
-      "#00eaff": 1
     },
     "enemies/Tier_03/Enemy_01.png": {
       "#000000": 66,
@@ -337,18 +329,6 @@
       "#00c8ff": 3,
       "#00eaff": 1
     },
-    "enemies/Tier_04/Boss.png": {
-      "#000000": 208,
-      "#121759": 50,
-      "#00b7ef": 42,
-      "#1f2a91": 27,
-      "#86e9fc": 12,
-      "#212fad": 12,
-      "#2f3699": 10,
-      "#4d6df3": 8,
-      "#d4d4d4": 7,
-      "#99d9ea": 2
-    },
     "enemies/Tier_04/Enemy_01.png": {
       "#000000": 102,
       "#121759": 54,
@@ -384,15 +364,6 @@
       "#212fad": 12,
       "#d4d4d4": 7
     },
-    "enemies/Tier_05/Boss.png": {
-      "#000000": 148,
-      "#990030": 71,
-      "#ed1c24": 70,
-      "#262626": 32,
-      "#464646": 5,
-      "#d4d4d4": 4,
-      "#ff7e00": 4
-    },
     "enemies/Tier_05/Enemy_01.png": {
       "#000000": 82,
       "#262626": 68,
@@ -425,14 +396,6 @@
       "#d4d4d4": 4,
       "#262626": 4,
       "#990030": 4
-    },
-    "enemies/Tier_06/Boss.png": {
-      "#000000": 222,
-      "#ed1c24": 117,
-      "#990030": 93,
-      "#b4b4b4": 26,
-      "#ff7e00": 15,
-      "#ffc20e": 9
     },
     "enemies/Tier_06/Enemy_01.png": {
       "#000000": 92,
@@ -470,14 +433,6 @@
       "#ff7e00": 21,
       "#ffc20e": 13
     },
-    "enemies/Tier_07/Boss.png": {
-      "#ffffff": 174,
-      "#000000": 146,
-      "#a8e61d": 86,
-      "#b4b4b4": 74,
-      "#6e6e6e": 24,
-      "#22b14c": 20
-    },
     "enemies/Tier_07/Enemy_01.png": {
       "#ffffff": 55,
       "#000000": 42,
@@ -508,18 +463,6 @@
       "#a8e61d": 28,
       "#22b14c": 20,
       "#6e6e6e": 10
-    },
-    "enemies/Tier_08/Boss.png": {
-      "#000000": 256,
-      "#ffffff": 139,
-      "#43d8fa": 89,
-      "#d4d4d4": 78,
-      "#b4b4b4": 71,
-      "#464646": 51,
-      "#6e6e6e": 33,
-      "#00b7ef": 21,
-      "#86e9fc": 11,
-      "#262626": 10
     },
     "enemies/Tier_08/Enemy_01.png": {
       "#000000": 86,
@@ -561,15 +504,6 @@
       "#86e9fc": 11,
       "#262626": 10
     },
-    "enemies/Tier_09/Boss.png": {
-      "#000000": 189,
-      "#00b7ef": 92,
-      "#0033ff": 82,
-      "#001c8c": 48,
-      "#fff200": 18,
-      "#ffffff": 16,
-      "#b4b4b4": 10
-    },
     "enemies/Tier_09/Enemy_01.png": {
       "#000000": 64,
       "#0033ff": 31,
@@ -603,14 +537,6 @@
       "#b4b4b4": 20,
       "#fff200": 12
     },
-    "enemies/Tier_10/Boss.png": {
-      "#000000": 182,
-      "#ffffff": 114,
-      "#b4b4b4": 76,
-      "#9900ff": 64,
-      "#bc5bfc": 14,
-      "#6200a3": 2
-    },
     "enemies/Tier_10/Enemy_01.png": {
       "#ffffff": 72,
       "#000000": 60,
@@ -643,6 +569,57 @@
       "#6200a3": 2,
       "#bc5bfc": 2
     },
+    "enemies/Tier_12/Enemy_01.png": {
+      "#000000": 122,
+      "#ffffff": 115,
+      "#b4b4b4": 61,
+      "#ed00ca": 60,
+      "#00d9ff": 43,
+      "#6e6e6e": 10
+    },
+    "enemies/Tier_12/Enemy_02.png": {
+      "#000000": 91,
+      "#464646": 75,
+      "#6e6e6e": 50,
+      "#ed00ca": 49,
+      "#00d9ff": 36,
+      "#262626": 4,
+      "#d4d4d4": 1
+    },
+    "enemies/Tier_12/Enemy_03.png": {
+      "#000000": 217,
+      "#ed00ca": 78,
+      "#b4b4b4": 74,
+      "#00d9ff": 62,
+      "#ffffff": 62,
+      "#6e6e6e": 46,
+      "#464646": 36,
+      "#99d9ea": 25,
+      "#262626": 10
+    },
+    "enemies/Tier_12/Enemy_04.png": {
+      "#000000": 169,
+      "#00d9ff": 79,
+      "#6e6e6e": 61,
+      "#ed00ca": 54,
+      "#b4b4b4": 38
+    },
+    "enemies/Tier_12/Enemy_05.png": {
+      "#000000": 182,
+      "#00d9ff": 70,
+      "#001c8c": 49,
+      "#0033ff": 49,
+      "#ed00ca": 38,
+      "#ffffff": 24,
+      "#b4b4b4": 20
+    },
+    "enemies/Tier_12/Enemy_06.png": {
+      "#000000": 134,
+      "#ffffff": 82,
+      "#b4b4b4": 41,
+      "#ed00ca": 28,
+      "#00d9ff": 21
+    },
     "player/주인공.png": {
       "#000000": 100,
       "#ffffff": 28,
@@ -651,12 +628,12 @@
       "#99d9ea": 14,
       "#709ad1": 14
     },
-    "bosses/Chain_Boss/Blade.png": {
+    "bosses/Chain_Boss/Parts/Blade.png": {
       "#000000": 106,
       "#bdbdbd": 62,
       "#eeeeee": 50
     },
-    "bosses/Chain_Boss/Body_Blade.png": {
+    "bosses/Chain_Boss/Parts/Body_Blade.png": {
       "#455a64": 66,
       "#000000": 56,
       "#263238": 36,
@@ -666,7 +643,7 @@
       "#ef9a9a": 2,
       "#b71c1c": 2
     },
-    "bosses/Chain_Boss/Body_Gun.png": {
+    "bosses/Chain_Boss/Parts/Body_Gun.png": {
       "#000000": 68,
       "#455a64": 66,
       "#263238": 36,
@@ -676,7 +653,7 @@
       "#ffffff": 4,
       "#ef9a9a": 2
     },
-    "bosses/Chain_Boss/Head_And_Saws.png": {
+    "bosses/Chain_Boss/Parts/Head_And_Saws.png": {
       "#000000": 124,
       "#263238": 64,
       "#455a64": 64,
@@ -684,6 +661,64 @@
       "#b71c1c": 4,
       "#ed1c24": 2,
       "#ffffff": 2
+    },
+    "bosses/Final_Boss/Escorts/Final_Minion_01.png": {
+      "#000000": 24,
+      "#a8e61d": 10,
+      "#b4b4b4": 7,
+      "#ffffff": 6,
+      "#464646": 5,
+      "#fff200": 4,
+      "#22b14c": 1
+    },
+    "bosses/Final_Boss/Escorts/Final_Minion_02.png": {
+      "#000000": 24,
+      "#a8e61d": 10,
+      "#b4b4b4": 7,
+      "#ffffff": 6,
+      "#464646": 5,
+      "#fff200": 2,
+      "#ffc20e": 2,
+      "#22b14c": 1
+    },
+    "bosses/Final_Boss/Escorts/Final_Minion_03.png": {
+      "#000000": 24,
+      "#a8e61d": 10,
+      "#b4b4b4": 7,
+      "#ffffff": 6,
+      "#464646": 5,
+      "#fff200": 4,
+      "#22b14c": 1
+    },
+    "bosses/Final_Boss/Escorts/Final_Minion_04.png": {
+      "#000000": 24,
+      "#a8e61d": 10,
+      "#b4b4b4": 7,
+      "#ffffff": 6,
+      "#464646": 5,
+      "#fff200": 2,
+      "#ffc20e": 2,
+      "#22b14c": 1
+    },
+    "bosses/Final_Boss/Escorts/Shadow_Minion_01.png": {
+      "#000000": 46,
+      "#a8e61d": 10,
+      "#22b14c": 1
+    },
+    "bosses/Final_Boss/Escorts/Shadow_Minion_02.png": {
+      "#000000": 46,
+      "#a8e61d": 10,
+      "#22b14c": 1
+    },
+    "bosses/Final_Boss/Escorts/Shadow_Minion_03.png": {
+      "#000000": 46,
+      "#a8e61d": 10,
+      "#22b14c": 1
+    },
+    "bosses/Final_Boss/Escorts/Shadow_Minion_04.png": {
+      "#000000": 46,
+      "#a8e61d": 10,
+      "#22b14c": 1
     },
     "bosses/Final_Boss/Final_Boss_Revealed.png": {
       "#000000": 746,
@@ -727,63 +762,42 @@
       "#990030": 2,
       "#ed1c24": 2
     },
-    "bosses/Final_Boss/Final_Minion_01.png": {
-      "#000000": 24,
-      "#a8e61d": 10,
-      "#b4b4b4": 7,
-      "#ffffff": 6,
-      "#464646": 5,
-      "#fff200": 4,
-      "#22b14c": 1
+    "bosses/Tier_01/Boss.png": {
+      "#000000": 72,
+      "#ffffff": 49,
+      "#b4b4b4": 40,
+      "#464646": 7,
+      "#ed1c24": 6
     },
-    "bosses/Final_Boss/Final_Minion_02.png": {
-      "#000000": 24,
-      "#a8e61d": 10,
-      "#b4b4b4": 7,
-      "#ffffff": 6,
-      "#464646": 5,
-      "#fff200": 2,
-      "#ffc20e": 2,
-      "#22b14c": 1
+    "bosses/Tier_02/Boss.png": {
+      "#000000": 108,
+      "#b4b4b4": 36,
+      "#6e6e6e": 32,
+      "#464646": 16,
+      "#ed1c24": 12,
+      "#ffffff": 6
     },
-    "bosses/Final_Boss/Final_Minion_03.png": {
-      "#000000": 24,
-      "#a8e61d": 10,
-      "#b4b4b4": 7,
-      "#ffffff": 6,
-      "#464646": 5,
-      "#fff200": 4,
-      "#22b14c": 1
+    "bosses/Tier_03/Boss.png": {
+      "#000000": 124,
+      "#464646": 60,
+      "#6e6e6e": 27,
+      "#00b7ef": 16,
+      "#4adeff": 10,
+      "#d4d4d4": 7,
+      "#00c8ff": 3,
+      "#00eaff": 1
     },
-    "bosses/Final_Boss/Final_Minion_04.png": {
-      "#000000": 24,
-      "#a8e61d": 10,
-      "#b4b4b4": 7,
-      "#ffffff": 6,
-      "#464646": 5,
-      "#fff200": 2,
-      "#ffc20e": 2,
-      "#22b14c": 1
-    },
-    "bosses/Final_Boss/Shadow_Minion_01.png": {
-      "#000000": 46,
-      "#a8e61d": 10,
-      "#22b14c": 1
-    },
-    "bosses/Final_Boss/Shadow_Minion_02.png": {
-      "#000000": 46,
-      "#a8e61d": 10,
-      "#22b14c": 1
-    },
-    "bosses/Final_Boss/Shadow_Minion_03.png": {
-      "#000000": 46,
-      "#a8e61d": 10,
-      "#22b14c": 1
-    },
-    "bosses/Final_Boss/Shadow_Minion_04.png": {
-      "#000000": 46,
-      "#a8e61d": 10,
-      "#22b14c": 1
+    "bosses/Tier_04/Boss.png": {
+      "#000000": 208,
+      "#121759": 50,
+      "#00b7ef": 42,
+      "#1f2a91": 27,
+      "#86e9fc": 12,
+      "#212fad": 12,
+      "#2f3699": 10,
+      "#4d6df3": 8,
+      "#d4d4d4": 7,
+      "#99d9ea": 2
     },
     "bosses/Tier_04/Boss_Body.png": {
       "#000000": 154,
@@ -795,17 +809,77 @@
       "#2f3699": 10,
       "#d4d4d4": 7
     },
-    "bosses/Tier_04/Escort_01.png": {
+    "bosses/Tier_04/Escorts/Escort_01.png": {
       "#000000": 27,
       "#00b7ef": 4,
       "#4d6df3": 4,
       "#99d9ea": 1
     },
-    "bosses/Tier_04/Escort_02.png": {
+    "bosses/Tier_04/Escorts/Escort_02.png": {
       "#000000": 27,
       "#00b7ef": 4,
       "#4d6df3": 4,
       "#99d9ea": 1
+    },
+    "bosses/Tier_05/Boss.png": {
+      "#000000": 148,
+      "#990030": 71,
+      "#ed1c24": 70,
+      "#262626": 32,
+      "#464646": 5,
+      "#d4d4d4": 4,
+      "#ff7e00": 4
+    },
+    "bosses/Tier_06/Boss.png": {
+      "#000000": 222,
+      "#ed1c24": 117,
+      "#990030": 93,
+      "#b4b4b4": 26,
+      "#ff7e00": 15,
+      "#ffc20e": 9
+    },
+    "bosses/Tier_07/Boss.png": {
+      "#ffffff": 174,
+      "#000000": 146,
+      "#a8e61d": 86,
+      "#b4b4b4": 74,
+      "#6e6e6e": 24,
+      "#22b14c": 20
+    },
+    "bosses/Tier_08/Boss.png": {
+      "#000000": 256,
+      "#ffffff": 139,
+      "#43d8fa": 89,
+      "#d4d4d4": 78,
+      "#b4b4b4": 71,
+      "#464646": 51,
+      "#6e6e6e": 33,
+      "#00b7ef": 21,
+      "#86e9fc": 11,
+      "#262626": 10
+    },
+    "bosses/Tier_09/Boss.png": {
+      "#000000": 189,
+      "#00b7ef": 92,
+      "#0033ff": 82,
+      "#001c8c": 48,
+      "#fff200": 18,
+      "#ffffff": 16,
+      "#b4b4b4": 10
+    },
+    "bosses/Tier_10/Boss.png": {
+      "#000000": 182,
+      "#ffffff": 114,
+      "#b4b4b4": 76,
+      "#9900ff": 64,
+      "#bc5bfc": 14,
+      "#6200a3": 2
+    },
+    "bosses/Tier_12/Boss.png": {
+      "#000000": 201,
+      "#ed00ca": 75,
+      "#00d9ff": 74,
+      "#ffffff": 50
     }
   }
 }

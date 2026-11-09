@@ -1,0 +1,357 @@
+{
+  "source": "https://www.figma.com/design/AICeChfeIl6kTr6ezgi8sR/Untitled?node-id=0-1",
+  "order": "Bottom to top within each column, columns right to left; lower group before upper group.",
+  "tiers": 8,
+  "enemiesPerTier": 5,
+  "assets": [
+    {
+      "nodeId": "1:38",
+      "tier": 1,
+      "position": 1,
+      "role": "Enemy",
+      "path": "enemies/Tier_01/Enemy_01.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:33",
+      "tier": 1,
+      "position": 2,
+      "role": "Enemy",
+      "path": "enemies/Tier_01/Enemy_02.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:28",
+      "tier": 1,
+      "position": 3,
+      "role": "Enemy",
+      "path": "enemies/Tier_01/Enemy_03.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:23",
+      "tier": 1,
+      "position": 4,
+      "role": "Enemy",
+      "path": "enemies/Tier_01/Enemy_04.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:18",
+      "tier": 1,
+      "position": 5,
+      "role": "Boss",
+      "path": "bosses/Tier_01/Boss.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:37",
+      "tier": 2,
+      "position": 1,
+      "role": "Enemy",
+      "path": "enemies/Tier_02/Enemy_01.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:32",
+      "tier": 2,
+      "position": 2,
+      "role": "Enemy",
+      "path": "enemies/Tier_02/Enemy_02.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:27",
+      "tier": 2,
+      "position": 3,
+      "role": "Enemy",
+      "path": "enemies/Tier_02/Enemy_03.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:22",
+      "tier": 2,
+      "position": 4,
+      "role": "Enemy",
+      "path": "enemies/Tier_02/Enemy_04.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:17",
+      "tier": 2,
+      "position": 5,
+      "role": "Boss",
+      "path": "bosses/Tier_02/Boss.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:36",
+      "tier": 3,
+      "position": 1,
+      "role": "Enemy",
+      "path": "enemies/Tier_03/Enemy_01.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:31",
+      "tier": 3,
+      "position": 2,
+      "role": "Enemy",
+      "path": "enemies/Tier_03/Enemy_02.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:26",
+      "tier": 3,
+      "position": 3,
+      "role": "Enemy",
+      "path": "enemies/Tier_03/Enemy_03.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:21",
+      "tier": 3,
+      "position": 4,
+      "role": "Enemy",
+      "path": "enemies/Tier_03/Enemy_04.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:16",
+      "tier": 3,
+      "position": 5,
+      "role": "Boss",
+      "path": "bosses/Tier_03/Boss.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:35",
+      "tier": 4,
+      "position": 1,
+      "role": "Enemy",
+      "path": "enemies/Tier_04/Enemy_01.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:30",
+      "tier": 4,
+      "position": 2,
+      "role": "Enemy",
+      "path": "enemies/Tier_04/Enemy_02.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:25",
+      "tier": 4,
+      "position": 3,
+      "role": "Enemy",
+      "path": "enemies/Tier_04/Enemy_03.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:20",
+      "tier": 4,
+      "position": 4,
+      "role": "Enemy",
+      "path": "enemies/Tier_04/Enemy_04.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:15",
+      "tier": 4,
+      "position": 5,
+      "role": "Boss",
+      "path": "bosses/Tier_04/Boss.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:34",
+      "tier": 5,
+      "position": 1,
+      "role": "Enemy",
+      "path": "enemies/Tier_05/Enemy_01.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:29",
+      "tier": 5,
+      "position": 2,
+      "role": "Enemy",
+      "path": "enemies/Tier_05/Enemy_02.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:24",
+      "tier": 5,
+      "position": 3,
+      "role": "Enemy",
+      "path": "enemies/Tier_05/Enemy_03.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:19",
+      "tier": 5,
+      "position": 4,
+      "role": "Enemy",
+      "path": "enemies/Tier_05/Enemy_04.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:14",
+      "tier": 5,
+      "position": 5,
+      "role": "Boss",
+      "path": "bosses/Tier_05/Boss.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:13",
+      "tier": 6,
+      "position": 1,
+      "role": "Enemy",
+      "path": "enemies/Tier_06/Enemy_01.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:12",
+      "tier": 6,
+      "position": 2,
+      "role": "Enemy",
+      "path": "enemies/Tier_06/Enemy_02.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:11",
+      "tier": 6,
+      "position": 3,
+      "role": "Enemy",
+      "path": "enemies/Tier_06/Enemy_03.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:10",
+      "tier": 6,
+      "position": 4,
+      "role": "Enemy",
+      "path": "enemies/Tier_06/Enemy_04.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:9",
+      "tier": 6,
+      "position": 5,
+      "role": "Boss",
+      "path": "bosses/Tier_06/Boss.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:45",
+      "tier": 7,
+      "position": 1,
+      "role": "Enemy",
+      "path": "enemies/Tier_07/Enemy_01.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:46",
+      "tier": 7,
+      "position": 2,
+      "role": "Enemy",
+      "path": "enemies/Tier_07/Enemy_02.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:47",
+      "tier": 7,
+      "position": 3,
+      "role": "Enemy",
+      "path": "enemies/Tier_07/Enemy_03.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:48",
+      "tier": 7,
+      "position": 4,
+      "role": "Enemy",
+      "path": "enemies/Tier_07/Enemy_04.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:49",
+      "tier": 7,
+      "position": 5,
+      "role": "Boss",
+      "path": "bosses/Tier_07/Boss.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:40",
+      "tier": 8,
+      "position": 1,
+      "role": "Enemy",
+      "path": "enemies/Tier_08/Enemy_01.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:41",
+      "tier": 8,
+      "position": 2,
+      "role": "Enemy",
+      "path": "enemies/Tier_08/Enemy_02.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:42",
+      "tier": 8,
+      "position": 3,
+      "role": "Enemy",
+      "path": "enemies/Tier_08/Enemy_03.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:43",
+      "tier": 8,
+      "position": 4,
+      "role": "Enemy",
+      "path": "enemies/Tier_08/Enemy_04.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:44",
+      "tier": 8,
+      "position": 5,
+      "role": "Boss",
+      "path": "bosses/Tier_08/Boss.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:39",
+      "role": "Extra",
+      "path": "extras/Single_Sprite.png",
+      "sourceType": "original"
+    },
+    {
+      "nodeId": "1:4",
+      "role": "FinalBoss",
+      "path": "bosses/Final_Boss/Final_Boss_Revealed.png",
+      "sourceType": "original",
+      "phase": 2,
+      "form": "Revealed"
+    },
+    {
+      "nodeId": "1:5",
+      "role": "FinalBoss",
+      "path": "bosses/Final_Boss/Final_Boss_Shadow.png",
+      "sourceType": "original",
+      "phase": 1,
+      "form": "Shadow"
+    }
+  ],
+  "finalBoss": {
+    "phaseOrder": [
+      "bosses/Final_Boss/Final_Boss_Shadow.png",
+      "bosses/Final_Boss/Final_Boss_Revealed.png"
+    ],
+    "description": "Appears in shadow first, then reveals its true form."
+  }
+}

@@ -161,12 +161,12 @@ test('Each boss heals current HP by one without increasing its maximum', () => {
  fresh(); g.startTierBoss(1); g.handleBossDefeated();
  assert.equal(s.player.hp, 5); assert.equal(s.player.maxHp, 5);
 });
-test('Vitality reward raises only max HP; boss heal remains separate', () => {
+test('Vitality reward adds one max HP and one current HP; boss heal remains separate', () => {
  fresh(); s.player.hp = 2; g.startTierBoss(2); g.handleBossDefeated();
  assert.equal(s.player.hp, 3); assert.equal(s.mode, 'REWARD');
- assert.match(nodes.get('reward-stat-vitality').textContent, /3\/5.*3\/6/);
+ assert.match(nodes.get('reward-stat-vitality').textContent, /3\/5.*4\/6/);
  g.applyRewardChoice('vitality');
- assert.equal(s.player.hp, 3); assert.equal(s.player.maxHp, 6);
+ assert.equal(s.player.hp, 4); assert.equal(s.player.maxHp, 6);
  g.applyRewardChoice('vitality'); assert.equal(s.player.maxHp, 6);
 });
 for (const fps of [30,60]) {
@@ -716,7 +716,7 @@ for(const fps of [30,60]) {
 test('All five skill ranks match the requested damage, cooldowns, heal and shield durations',()=>{
  const expected=[
   [600,120,1,180,4,120], [1300,120,2,180,6,120], [1300,100,2,120,7,120],
-  [2700,100,3,120,10,120], [13000/3,80,3,90,10,100]
+  [2700,100,3,120,10,120], [20000/3,80,3,90,10,100]
  ];
  for(let level=0;level<=4;level++) {
   fresh();s.player.skillLevel=level;s.player.maxHp=10;s.player.hp=1;
@@ -730,7 +730,7 @@ test('All five skill ranks match the requested damage, cooldowns, heal and shiel
 });
 for(const fps of [30,60]) {
  test(`Every laser rank deals its exact six-second total to each pierced target (${fps}fps)`,()=>{
-  const totals=[600,1300,1300,2700,13000/3];
+  const totals=[600,1300,1300,2700,20000/3];
   for(let level=0;level<=4;level++) {
    fresh();s.player.skillLevel=level;
    const enemy=g.spawnWaveEnemy(1,{enemyIdx:1});enemy.entering=false;
@@ -836,10 +836,12 @@ test('Electric volleys freeze while paused, expire offscreen, and clear on resta
  g.startTierBoss(9);g.spawnElectricVolley(s.boss);g.handleBossDefeated();
  assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);assert.equal(s.electricVolleys.length,0);
 });
-test('Electricity is stage 10 with a reward, followed by stage 11 and the final boss',()=>{
+test('Electricity and rush-fleet stages lead to error stage 12 before the final boss',()=>{
  fresh();g.startTierBoss(9);g.handleBossDefeated();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);
  g.applyRewardChoice('skills');assert.equal(s.currentTier,8);assert.equal(g.getStageNumber(s.currentTier),11);assert.equal(s.phase,'WAVE');
- g.startTierBoss(8);g.handleBossDefeated();assert.equal(s.phase,'FINAL_SHADOW');
+ g.startTierBoss(8);g.handleBossDefeated();assert.equal(s.phase,'WAVE');assert.equal(s.currentTier,12);
+ g.startTierBoss(12);g.handleBossDefeated();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,12);
+ g.applyRewardChoice('skills');assert.equal(s.phase,'FINAL_SHADOW');
  g.jumpToTierWave(g.getPatternTier(9));assert.equal(s.currentTier,11);assert.equal(s.boss.kind,'CHAIN_BOSS');
 });
 
@@ -952,7 +954,7 @@ test('Stage 8 reward leads to chain survival, chain boss, then electricity at st
  const chain=s.boss;s.tierWaveElapsed=59.99;g.updateGame(0.02);
  assert.equal(s.boss,chain);assert.equal(chain.combat,true);assert.equal(s.phase,'BOSS');
  g.handleBossDefeated();assert.equal(s.currentTier,9);assert.equal(g.getStageNumber(s.currentTier),10);
- s.enemySpawnTimer=100;s.tierWaveElapsed=59.99;g.updateGame(0.02);assert.equal(s.boss.path,'enemies/Tier_09/Boss.png');
+ s.enemySpawnTimer=100;s.tierWaveElapsed=59.99;g.updateGame(0.02);assert.equal(s.boss.path,'bosses/Tier_09/Boss.png');
  assert.equal(nodes.get('stage-label').textContent,'TIER 10 BOSS');
 });
 
@@ -1188,7 +1190,7 @@ test('Purple EMP is stage 6 after the original stage 5 dash boss, preserving pat
  g.startTierBoss(4);g.handleBossDefeated();g.applyRewardChoice('skills');assert.equal(s.currentTier,5);
  g.startTierBoss(5);g.handleBossDefeated();assert.equal(s.currentTier,10);
  s.enemySpawnTimer=100;s.tierWaveElapsed=59.99;g.updateGame(0.02);
- assert.equal(s.boss.path,'enemies/Tier_10/Boss.png');assert.equal(s.boss.maxHp,2300);
+ assert.equal(s.boss.path,'bosses/Tier_10/Boss.png');assert.equal(s.boss.maxHp,2300);
  g.handleBossDefeated();assert.equal(s.rewardPendingTier,6);g.applyRewardChoice('skills');assert.equal(g.getStageNumber(s.currentTier),7);
 });
 test('Purple core currents originate at the core, are larger for the boss, and never cause electric stun',()=>{
@@ -1349,7 +1351,7 @@ test('Aimed chain rays lock their launch direction while the player moves',()=>{
 test('Chain rays render above the complete body and use the separate knife halves',()=>{
  fresh();const b=g.startChainBoss({skipEntrance:true}),l=g.fireChainLaser(b,5);l.stage=3;
  const offset=imageDraws.length,paintOffset=paintOrder.length;g.step(0);const draws=imageDraws.slice(offset);
- const body=g.assets.images.get('bosses/Chain_Boss/Body_Blade.png'),knife=g.assets.images.get('bosses/Chain_Boss/Blade.png');
+ const body=g.assets.images.get('bosses/Chain_Boss/Parts/Body_Blade.png'),knife=g.assets.images.get('bosses/Chain_Boss/Parts/Blade.png');
  const ordered=paintOrder.slice(paintOffset);
  assert.ok(ordered.findIndex(d=>d.kind==='ray-end')>ordered.findLastIndex(d=>d.kind==='image'&&d.args[0]===body));
  const cuts=draws.filter(d=>d[0]===knife);assert.ok(cuts.length>0&&cuts.length%2===0);assert.ok(cuts.every(d=>d[1]===8||d[1]===17));assert.ok(cuts.every(d=>d[3]===8));
@@ -1675,6 +1677,250 @@ test('Front patrol reaches both vertical ends quickly with changing speed, and p
  const y=b.y,velocity=b.frontPatrol.velocity;s.mode='PAUSED';g.updateGame(3);assert.equal(b.y,y);assert.equal(b.frontPatrol.velocity,velocity);
 });
 
+test('Requested boss health applies to fleet, error and final form, including the skill one-third rule',()=>{
+ for(const [tier,hp] of [[8,10000],[12,10000]]) {
+  fresh();s.currentTier=tier;g.startTierBoss(tier);assert.equal(s.boss.hp,hp);assert.equal(s.boss.maxHp,hp);
+ }
+ fresh();g.startRevealedFinalBoss();assert.equal(s.boss.hp,20000);assert.equal(s.boss.maxHp,20000);
+ assert.equal(g.getSkillStats(4).laserTotal,20000/3);
+});
+test('Every ordinary minion grows by displayed stage and tech, including reordered and reused tiers',()=>{
+ const previous=[0,0,0,0];
+ for(let stage=1;stage<=12;stage++) {
+  const tier=g.getPatternTier(stage);fresh();g.jumpToTierWave(tier);
+  for(let tech=1;tech<=4;tech++) {
+   const expected=2*Math.ceil(34*Math.pow(1.25,stage-1)*[1,1.35,1.8,2.4][tech-1]);
+   const hp=g.getEnemyMaxHp(tier,tech);assert.equal(hp,expected);assert.ok(hp>previous[tech-1]);previous[tech-1]=hp;
+   if(tech>1)assert.ok(hp>g.getEnemyMaxHp(tier,tech-1));
+   if(tier!==11 && tier!==12) {const e=g.spawnWaveEnemy(tier,{enemyIdx:tech});assert.equal(e.hp,expected);assert.equal(e.maxHp,expected);}
+  }
+ }
+ fresh();g.jumpToTierWave(12);
+ for(let variant=1;variant<=6;variant++)assert.equal(g.spawnWaveEnemy(12,{errorVariant:variant}).maxHp,[900,1200,1200,1200,1200,800][variant-1]);
+});
+
+test('Error wave has six final-tech variants with original pattern identities and dedicated sprites',()=>{
+ fresh();g.jumpToTierWave(12);
+ assert.equal(g.getPatternTier(12),12);assert.equal(g.getStageNumber(8),11);
+ const expected=[7,5,8,6,9,10];
+ for(let variant=1;variant<=6;variant++) {
+  const enemy=g.spawnWaveEnemy(12,{errorVariant:variant});
+  assert.equal(enemy.tier,expected[variant-1]);assert.equal(enemy.enemyIdx,4);
+  assert.equal(enemy.stageTier,12);assert.equal(enemy.glitch,true);
+  assert.equal(enemy.path,`enemies/Tier_12/Enemy_0${variant}.png`);
+  const hp=[900,1200,1200,1200,1200,800][variant-1];
+  assert.equal(enemy.maxHp,hp);assert.equal(enemy.hp,hp);
+  assert.ok(g.assets.images.has(enemy.path));
+ }
+ assert.equal(s.enemies[2].specialState,'FLYBY_WARN');
+});
+test('Error attacks retain original projectile, laser, electric-pair, EMP and suicide behavior',()=>{
+ for(const variant of [1,2,3,4,5,6]) {
+  fresh();g.jumpToTierWave(12);s.phase='TEST';
+  const enemy=g.spawnWaveEnemy(12,{errorVariant:variant});enemy.entering=false;
+  enemy.x=enemy.homeX;enemy.specialState='NORMAL';
+  g.fireEnemyPattern(enemy);
+  if(variant===1 || variant===6) {assert.ok(s.lasers.length>0);assert.ok(s.lasers.every(b=>b.glitch));}
+  else if(variant===5) {assert.equal(s.electricVolleys.length,1);assert.equal(s.electricVolleys[0].glitch,true);assert.equal(s.electricVolleys[0].orbs.length,2);}
+  else {assert.ok(s.enemyBullets.length>0);assert.ok(s.enemyBullets.every(b=>b.glitch));}
+  if(variant===4) {g.beginEnemySuicide(enemy);assert.equal(enemy.specialState,'SUICIDE_APPROACH');}
+  if(variant===2) {enemy.specialCooldown=0;g.updateGame(0.01);assert.equal(enemy.specialState,'DASH_WARN');}
+ }
+ fresh();g.spawnEnemyBullet(900,100,-200,0);assert.equal(s.enemyBullets[0].glitch,false);
+});
+test('Error signal interference lasts five seconds, pauses, clears outside its wave, and renders without mutation',()=>{
+ fresh();g.jumpToTierWave(12);s.phase='TEST';
+ s.errorFx.cooldown=0.01;g.updateGame(0.02);assert.equal(s.errorFx.remaining,5);
+ s.mode='PAUSED';g.updateGame(2);assert.equal(s.errorFx.remaining,5);
+ s.mode='PLAYING';g.updateGame(0.25);assert.equal(s.errorFx.remaining,4.75);
+ const before=JSON.stringify(s.errorFx);g.renderGame();g.renderGame();assert.equal(JSON.stringify(s.errorFx),before);
+ g.updateErrorEffects(4.75);assert.equal(s.errorFx.remaining,0);assert.ok(s.errorFx.cooldown>=12);
+ g.startTierBoss(12);g.updateErrorEffects(0.01);assert.equal(s.errorFx.remaining,0);
+ g.jumpToTierWave(1);g.updateErrorEffects(0.01);assert.equal(s.errorFx.remaining,0);
+});
+test('A complete error wave advances naturally to its boss and clears signal interference',()=>{
+ fresh();g.jumpToTierWave(12);s.debugInvincible=true;s.player.fireCooldown=1e6;
+ tick(60.2);assert.equal(s.phase,'BOSS');assert.equal(s.boss.tier,12);
+ assert.equal(s.errorFx.remaining,0);assert.equal(s.tierWaveElapsed,60);
+});
+test('Error boss moves and takes damage with its own original-shaped pixel health bar',()=>{
+ fresh();s.currentTier=12;g.startTierBoss(12);const boss=s.boss;
+ boss.entering=false;boss.x=boss.homeX;const y=boss.y;
+ g.updateGame(0.5);assert.notEqual(boss.y,y);assert.equal(boss.prototype,false);
+ assert.equal(boss.barId,'Tier_12');assert.equal(boss.path,'bosses/Tier_12/Boss.png');
+ assert.equal(s.lasers.length,0);assert.equal(s.enemyBullets.length,0);
+ const m=g.getPlayerSkillLaserOrigin();boss.x=950;boss.y=m.y;boss.hp=1000;
+ g.applyPlayerSkillLaserTick();assert.ok(boss.hp<1000);
+ const full=fs.readFileSync(fileURLToPath(new URL('../assets/ui/boss_bars/Tier_12_Full.png',import.meta.url)));
+ assert.equal(full.readUInt32BE(16),64);assert.equal(full.readUInt32BE(20),32);
+});
+
+function errorBossTest() {
+ fresh();s.currentTier=12;g.startTierBoss(12);const boss=s.boss;
+ boss.entering=false;boss.x=boss.homeX;boss.errorWaveCooldown=100;boss.errorTeleportCooldown=100;
+ return boss;
+}
+for(const fps of [30,60]) {
+ test(`Error boss sustains capped bullet patterns, teleports and pulses without normal lasers (${fps}fps)`,()=>{
+  const b=errorBossTest();b.errorWaveCooldown=0.1;b.errorTeleportCooldown=4;
+  let moved=false,corrupted=false,maxBullets=0;const initialY=b.y;
+  for(let i=0;i<12*fps;i++) {g.updateGame(1/fps);maxBullets=Math.max(maxBullets,s.enemyBullets.length);moved ||= Math.abs(b.y-initialY)>150;corrupted ||= s.player.corruptionRemaining>0;g.renderGame();}
+  assert.ok(moved);assert.ok(corrupted);assert.ok(maxBullets>10&&maxBullets<=96);
+  assert.equal(s.lasers.length,0);assert.equal(b.errorPattern>=3,true);
+  assert.ok(s.enemyBullets.every(b=>b.errorPower===2));
+ });
+ test(`Pulse always corrupts through shield and invulnerability without direct HP damage (${fps}fps)`,()=>{
+  const b=errorBossTest(),p=s.player;p.skills.shield.remaining=10;p.invulnTimer=100;
+  const hp=p.hp;g.beginErrorWave(b);
+  for(let i=0;i<3*fps;i++)g.updateGame(1/fps);
+  assert.ok(p.corruptionRemaining>5);assert.equal(p.hp,hp);assert.equal(s.errorWaves.length,0);
+ });
+}
+test('Every received attack during the error boss applies corruption, but blocked hits and other bosses do not',()=>{
+ const b=errorBossTest(),p=s.player;p.invulnTimer=0;s.debugInvincible=false;
+ assert.equal(g.damagePlayer(1,'BULLET'),true);assert.equal(p.corruptionRemaining,8);
+ p.corruptionRemaining=2;p.invulnTimer=0;g.damagePlayer(1,'METEOR');assert.equal(p.corruptionRemaining,8);
+ p.corruptionRemaining=2;p.invulnTimer=1;g.damagePlayer(1,'BLOCKED');assert.equal(p.corruptionRemaining,2);
+ fresh();s.player.invulnTimer=0;g.damagePlayer(1,'BULLET');assert.equal(s.player.corruptionRemaining,0);
+});
+test('Corruption rolls each projectile once at the exact 50 percent boundary and never rerolls on refresh',()=>{
+ const b=errorBossTest(),p=s.player;
+ const make=()=>g.spawnPlayerBullet({x:500,y:300,vx:100,vy:0,damage:25,radius:5,piercing:true});
+ make();fixedDropRoll(0.499999,()=>g.applyErrorCorruption());assert.equal(s.playerBullets[0].errorMiss,false);
+ fixedDropRoll(0.5,()=>make());assert.equal(s.playerBullets[1].errorMiss,true);
+ fixedDropRoll(0.99,()=>g.applyErrorCorruption());assert.equal(s.playerBullets[0].errorMiss,false);
+ const miss=s.playerBullets[1];miss.x=b.x;miss.y=b.y;miss.vx=0;
+ const hp=b.hp;g.updatePlayerBullets(0);g.updatePlayerBullets(0);assert.equal(b.hp,hp);
+ p.corruptionRemaining=0;make();assert.equal(s.playerBullets[2].corrupted,undefined);
+});
+test('Phase two starts exactly at half HP and creates at most four uniquely linked nodes',()=>{
+ const b=errorBossTest();b.hp=5001;g.updateGame(0.01);assert.equal(b.phase2Triggered,false);
+ b.hp=5000;fixedDropRoll(0.99,()=>g.updateGame(0.01));
+ assert.equal(b.phase2Triggered,true);assert.equal(s.errorNodes.length,4);assert.equal(s.errorClones.length,0);
+ assert.ok(s.errorNodes.every(n=>n.hp===1000&&n.windowRemaining===0));
+ assert.equal(new Set(s.errorNodes.map(n=>n.id)).size,4);
+ tick(3);assert.equal(s.errorClones.length,4);
+ assert.ok(s.errorNodes.every(n=>n.windowRemaining>8&&n.windowRemaining<=10));
+ assert.equal(new Set(s.errorClones.map(c=>c.nodeId)).size,4);
+});
+test('Nodes are invulnerable until the pulse passes, close after ten seconds, and retain damage across windows',()=>{
+ const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);g.createErrorNodes(b);
+ const node=s.errorNodes[0];assert.equal(g.hitErrorNode(node,400),false);assert.equal(node.hp,1000);
+ g.openErrorNodeWindow(b);g.hitErrorNode(node,400);assert.equal(node.hp,600);
+ b.errorWaveCooldown=100;g.updateErrorBoss(b,10.01);
+ assert.equal(node.windowRemaining,0);assert.equal(g.hitErrorNode(node,100),false);assert.equal(node.hp,600);
+ g.openErrorNodeWindow(b);assert.equal(node.windowRemaining,10);assert.equal(node.hp,600);
+});
+test('Destroying a node removes only its paired echo and bullets; other echoes and the main boss remain',()=>{
+ const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);fixedDropRoll(0.99,()=>g.createErrorNodes(b));g.openErrorNodeWindow(b);
+ const node=s.errorNodes[0],other=s.errorNodes[1],count=s.errorClones.length;
+ g.spawnEnemyBullet(900,100,-200,0);s.enemyBullets[0].errorNodeId=node.id;
+ g.spawnEnemyBullet(900,200,-200,0);s.enemyBullets[1].errorNodeId=other.id;
+ g.hitErrorNode(node,1000);assert.equal(s.errorNodes.length,count-1);assert.equal(s.errorClones.length,count-1);
+ assert.ok(s.errorClones.some(c=>c.nodeId===other.id));assert.ok(!s.enemyBullets.some(p=>p.errorNodeId===node.id));
+ assert.ok(s.enemyBullets.some(p=>p.errorNodeId===other.id));assert.equal(s.boss,b);assert.equal(b.hp,5000);
+});
+test('Ordinary, piercing and skill laser attacks can destroy open nodes with correct once-per-target hits',()=>{
+ const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);g.createErrorNodes(b);g.openErrorNodeWindow(b);
+ const node=s.errorNodes[0];node.x=600;node.y=300;b.y=100;
+ const shot=()=>g.spawnPlayerBullet({x:node.x,y:node.y,vx:0,vy:0,damage:300,radius:5,piercing:true});
+ shot();g.updatePlayerBullets(0);g.updatePlayerBullets(0);assert.equal(node.hp,700);
+ s.playerBullets=[];g.spawnPlayerBullet({x:node.x,y:node.y,vx:0,vy:0,damage:300,radius:5});g.updatePlayerBullets(0);assert.equal(node.hp,400);assert.equal(s.playerBullets.length,0);
+ node.y=g.getPlayerSkillLaserOrigin().y;s.player.skills.laser.damagePerTick=400;g.applyPlayerSkillLaserTick();
+ assert.ok(!s.errorNodes.includes(node));
+});
+test('Error combat timers freeze during pause/rewards and reset fully after defeat and restart',()=>{
+ const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);g.createErrorNodes(b);g.openErrorNodeWindow(b);g.applyErrorCorruption();
+ const window=s.errorNodes[0].windowRemaining,cd=b.errorWaveCooldown;
+ for(const mode of ['PAUSED','REWARD','SUPPLY']) {s.mode=mode;g.updateGame(10);assert.equal(s.player.corruptionRemaining,8);assert.equal(s.errorNodes[0].windowRemaining,window);assert.equal(b.errorWaveCooldown,cd);}
+ s.mode='PLAYING';g.handleBossDefeated();assert.equal(s.errorNodes.length,0);assert.equal(s.errorClones.length,0);assert.equal(s.errorWaves.length,0);assert.equal(s.player.corruptionRemaining,0);
+ g.resetGame();assert.equal(s.errorEchoes.length,0);assert.equal(s.player.corruptionRemaining,0);
+});
+test('Error phase two repeats pulse windows without exceeding four echoes or mutating mechanics during rendering',()=>{
+ const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);
+ let openCount=0,wasOpen=false,sawLocked=false;
+ for(let i=0;i<55*30;i++) {
+  g.updateGame(1/30);
+  const open=s.errorNodes.some(n=>n.windowRemaining>0);
+  if(open&&!wasOpen)openCount++;
+  if(!open&&s.errorClones.length)sawLocked=true;
+  wasOpen=open;
+  assert.ok(s.errorClones.length<=4&&s.errorNodes.length<=4&&s.enemyBullets.length<=96);
+ }
+ assert.ok(openCount>=3);assert.ok(sawLocked);
+ assert.equal(new Set(s.errorClones.map(c=>c.nodeId)).size,s.errorClones.length);
+ const before=JSON.stringify({nodes:s.errorNodes,clones:s.errorClones,waves:s.errorWaves,p:s.player,boss:b});
+ g.renderGame();g.renderGame();
+ assert.equal(JSON.stringify({nodes:s.errorNodes,clones:s.errorClones,waves:s.errorWaves,p:s.player,boss:b}),before);
+});
+test('Every new error split summons exactly four nodes regardless of random positions',()=>{
+ for(const roll of [0,0.25,0.5,0.99]) {
+  const b=errorBossTest();assert.equal(b.errorTeleportCooldown,100);
+  fixedDropRoll(roll,()=>g.createErrorNodes(b));assert.equal(s.errorNodes.length,4);
+  g.createErrorNodes(b);assert.equal(s.errorNodes.length,4);
+  g.openErrorNodeWindow(b);assert.equal(s.errorClones.length,4);
+ }
+ fresh();s.currentTier=12;g.startTierBoss(12);assert.equal(s.boss.errorTeleportCooldown,2.4);
+});
+test('Error nodes refill missing slots only after the slow delay, preserving surviving HP and pair identities',()=>{
+ const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);g.createErrorNodes(b);g.openErrorNodeWindow(b);
+ const removed=s.errorNodes[0],survivor=s.errorNodes[1];g.hitErrorNode(survivor,300);g.hitErrorNode(removed,1000);
+ assert.equal(s.errorNodes.length,3);assert.equal(b.errorNodeCooldown,40);
+ const oldId=removed.id;assert.equal(g.createErrorNodes(b),false);assert.equal(s.errorNodes.length,3);
+ b.errorWaveCooldown=100;b.errorTeleportCooldown=100;
+ g.updateErrorBoss(b,39.9);assert.equal(g.createErrorNodes(b),false);
+ g.updateErrorBoss(b,0.2);assert.equal(b.errorNodeCooldown,0);assert.equal(g.createErrorNodes(b),true);
+ assert.equal(s.errorNodes.length,4);assert.equal(survivor.hp,700);assert.ok(s.errorNodes.includes(survivor));
+ const added=s.errorNodes.find(n=>n.index===removed.index);assert.notEqual(added.id,oldId);assert.equal(added.windowRemaining,0);
+ assert.equal(s.errorClones.length,3);g.openErrorNodeWindow(b);assert.equal(s.errorClones.length,4);
+ assert.equal(new Set(s.errorClones.map(c=>c.nodeId)).size,4);assert.equal(g.createErrorNodes(b),false);
+});
+test('Error node replenishment waits for a pulse even with survivors, then opens new nodes only after passage',()=>{
+ const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);g.createErrorNodes(b);g.openErrorNodeWindow(b);
+ g.hitErrorNode(s.errorNodes[0],1000);b.errorNodeCooldown=0;
+ assert.equal(s.errorNodes.length,3);g.beginErrorWave(b);assert.equal(s.errorNodes.length,4);assert.equal(s.errorClones.length,3);
+ const locked=s.errorNodes.find(n=>n.windowRemaining===0);assert.ok(locked);g.updateErrorBoss(b,0.5);assert.equal(locked.windowRemaining,0);
+ tick(2.5);assert.ok(locked.windowRemaining>0);assert.equal(s.errorClones.length,4);
+ assert.ok(s.errorNodes.every(n=>n.x<g.CONFIG.ENEMY_MIN_X-40));
+});
+test('Enemy spawn sector blocks the player hull and permits shots, with chain encounters exempt',()=>{
+ errorBossTest();const p=s.player;p.x=1100;g.updateGame(0);
+ const box=g.getRotatedBounds(p.x,p.y,p.spec,true,p.scale);assert.ok(box.right<=g.CONFIG.ENEMY_MIN_X-16+1e-6);
+ const event=code=>({code,repeat:false,preventDefault(){}});
+ windowListeners.get('keydown')(event('KeyD'));try {tick(2);}finally{windowListeners.get('keyup')(event('KeyD'));}
+ assert.ok(g.getRotatedBounds(p.x,p.y,p.spec,true,p.scale).right<=g.CONFIG.ENEMY_MIN_X-16+1e-6);
+ s.playerBullets=[];p.fireCooldown=0;g.updateGame(0.01);g.updatePlayerBullets(0.2);assert.ok(s.playerBullets.some(b=>b.x>g.CONFIG.ENEMY_MIN_X));
+ for(const tier of [1,5,8,9,10,12]) {
+  fresh();g.jumpToTierWave(tier);s.player.x=1100;g.updateGame(0);
+  assert.ok(g.getRotatedBounds(s.player.x,s.player.y,s.player.spec,true,s.player.scale).right<=g.CONFIG.ENEMY_MIN_X-16+1e-6);
+  g.startTierBoss(tier);s.player.x=1100;g.updateGame(0);assert.ok(s.player.x<g.CONFIG.ENEMY_MIN_X);
+ }
+ fresh();g.jumpToTierWave(11);s.player.x=1100;g.updateGame(0);assert.equal(s.player.x,1100);
+ g.startTierBoss(11);s.player.x=1100;g.updateGame(0);assert.equal(s.player.x,1100);
+ for(const start of [g.startShadowBoss,g.startRevealedFinalBoss]) {
+  fresh();start();s.player.x=1100;g.updateGame(0);assert.ok(s.player.x<g.CONFIG.ENEMY_MIN_X);
+ }
+});
+test('Error render caches reuse native tint and cardinal hull textures without growing per frame',()=>{
+ const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);g.createErrorNodes(b);g.openErrorNodeWindow(b);g.applyErrorCorruption();
+ g.spriteTintCache.clear();g.errorHullStampCache.clear();g.renderGame();
+ const tintEntries=[...g.spriteTintCache.entries()],hullEntries=[...g.errorHullStampCache.entries()];
+ assert.ok(tintEntries.length>0&&tintEntries.length<=128);assert.ok(hullEntries.length>0&&hullEntries.length<=64);
+ for(let frame=0;frame<10;frame++)g.renderGame();
+ assert.equal(g.spriteTintCache.size,tintEntries.length);assert.equal(g.errorHullStampCache.size,hullEntries.length);
+ for(const [key,value] of tintEntries) {assert.equal(g.spriteTintCache.get(key),value);assert.ok(value.width<=64&&value.height<=64);}
+ for(const [key,value] of hullEntries)assert.equal(g.errorHullStampCache.get(key),value);
+});
+
+test('Error teleport warns before moving, stays inside the right third, and hides for only the shift',()=>{
+ const b=errorBossTest(),x=b.x,y=b.y;g.beginErrorTeleport(b);
+ const target={x:b.errorBlink.targetX,y:b.errorBlink.targetY};assert.ok(target.x>=g.CONFIG.ENEMY_MIN_X);
+ assert.equal(b.errorBlink.timer,0.325);
+ g.updateErrorBoss(b,0.15);assert.equal(b.x,x);assert.equal(b.y,y);
+ g.updateErrorBoss(b,0.18);assert.equal(b.x,target.x);assert.equal(b.y,target.y);assert.equal(b.errorBlink.phase,'SHIFT');assert.equal(g.canDamageBossWithPlayerAttack(b),false);
+ g.updateErrorBoss(b,0.09);assert.equal(b.errorBlink.phase,'ARRIVE');assert.equal(g.canDamageBossWithPlayerAttack(b),true);
+});
+
 function fixedDropRoll(value,fn) {
  vm.runInContext(`globalThis.savedSupplyRandom=Math.random;Math.random=()=>${value}`,context);
  try{return fn();}finally{vm.runInContext('Math.random=globalThis.savedSupplyRandom',context);}
@@ -1697,6 +1943,24 @@ test('Supply drops at the configured 5% boundary once per kill, never on retreat
  const retreat=g.spawnWaveEnemy(1,{enemyIdx:1});retreat.retreating=true;retreat.hp=0;retreat.x=1400;
  fixedDropRoll(0,()=>g.updateGame(0.1));assert.equal(s.supplies.length,0);
 });
+test('Supply chance halves on pickup, not on drop or missed crates, and resets for a new game',()=>{
+ fresh();g.CONFIG.SUPPLY_DROP_CHANCE=configuredSupplyDropChance;
+ const p=s.player,enemy=()=>({x:900,y:100});
+ fixedDropRoll(0.04999,()=>{g.maybeDropSupply(enemy());g.maybeDropSupply(enemy());});
+ assert.equal(s.supplies.length,2);assert.equal(s.supplyPickupCount,0);
+ s.supplies.forEach(item=>{item.x=-100;item.prevX=-100;});g.updateSupplies(0);
+ assert.equal(s.supplies.length,0);assert.equal(s.supplyPickupCount,0);
+ for(const [count,chance] of [[1,0.025],[2,0.0125],[3,0.00625]]) {
+  g.spawnSupply(p.x,p.y);g.updateSupplies(0);
+  assert.equal(s.mode,'SUPPLY');assert.equal(s.supplyPickupCount,count);
+  g.applySupplyChoice('heal');g.applySupplyChoice('heal');assert.equal(s.supplyPickupCount,count);
+  const before=s.supplies.length;
+  fixedDropRoll(chance,()=>g.maybeDropSupply(enemy()));assert.equal(s.supplies.length,before);
+  fixedDropRoll(chance-0.000001,()=>g.maybeDropSupply(enemy()));assert.equal(s.supplies.length,before+1);
+ }
+ g.resetGame();assert.equal(s.supplyPickupCount,0);
+ fixedDropRoll(0.04999,()=>g.maybeDropSupply(enemy()));assert.equal(s.supplies.length,1);
+});
 test('Skill laser kills also roll supply drops at the killed enemy position',()=>{
  fresh();g.CONFIG.SUPPLY_DROP_CHANCE=configuredSupplyDropChance;
  const e=g.spawnWaveEnemy(1,{enemyIdx:1}),m=g.getPlayerSkillLaserOrigin();
@@ -1704,22 +1968,24 @@ test('Skill laser kills also roll supply drops at the killed enemy position',()=
  fixedDropRoll(0,()=>g.applyPlayerSkillLaserTick());
  assert.equal(s.supplies.length,1);assert.equal(s.supplies[0].x,e.x);assert.equal(s.supplies[0].y,e.y);
 });
-test('Supply table has exact 33/33/33/1 bands, caps HP, and subtracts 30 from all cooldowns',()=>{
- const counts={heal:0,cooldown:0,upgrade:0,all:0};
- for(let i=0;i<100;i++){fresh();counts[g.grantSupplyReward((i+0.5)/100)]++;}
- assert.deepEqual(counts,{heal:33,cooldown:33,upgrade:33,all:1});
- fresh();const p=s.player;p.hp=p.maxHp-0.5;g.grantSupplyReward(0);assert.equal(p.hp,p.maxHp);
- p.skills.laser.cooldown=70;p.skills.heal.cooldown=15;p.skills.shield.cooldown=0;
- p.skills.shield.remaining=3;g.grantSupplyReward(0.5);
+test('Supply choices grant only the chosen reward, cap HP, and reduce all cooldowns by 30',()=>{
+ fresh();const p=s.player;p.hp=p.maxHp-0.5;
+ s.pendingSupplyChoices=1;g.openPendingSupplyChoice();
+ assert.equal(s.mode,'SUPPLY');assert.equal(p.hp,4.5);
+ g.applySupplyChoice('all');assert.equal(s.mode,'SUPPLY');
+ g.applySupplyChoice('heal');assert.equal(p.hp,p.maxHp);assert.equal(s.mode,'PLAYING');
+ g.applySupplyChoice('heal');assert.equal(p.hp,p.maxHp);
+ p.skills.laser.cooldown=70;p.skills.heal.cooldown=15;p.skills.shield.cooldown=0;p.skills.shield.remaining=3;
+ s.pendingSupplyChoices=1;g.openPendingSupplyChoice();g.applySupplyChoice('cooldown');
  assert.equal(p.skills.laser.cooldown,40);assert.equal(p.skills.heal.cooldown,0);assert.equal(p.skills.shield.cooldown,0);assert.equal(p.skills.shield.remaining,3);
- p.hp=1;p.skills.laser.cooldown=60;g.grantSupplyReward(0.995);
- assert.equal(p.hp,2);assert.equal(p.skills.laser.cooldown,30);assert.equal(s.pendingSupplyUpgrades,1);
+ assert.equal(s.pendingSupplyUpgrades,0);assert.equal(p.maxHp,5);
 });
 test('Supply upgrade pauses and resumes the same combat without advancing or deleting hazards',()=>{
  fresh();g.startTierBoss(3);const boss=s.boss;boss.entering=false;
  const enemy=g.spawnWaveEnemy(3,{enemyIdx:2});const stage=s.currentTier,elapsed=s.tierWaveElapsed;
  g.spawnEnemyBullet(1000,100,-200,0);const bullet=s.enemyBullets[0];
- const p=s.player;p.weaponLevel=4;g.grantSupplyReward(0.8);g.updateSupplies(0);
+ const p=s.player;p.weaponLevel=4;s.pendingSupplyChoices=1;g.openPendingSupplyChoice();
+ assert.equal(s.mode,'SUPPLY');g.applySupplyChoice('upgrade');
  assert.equal(s.mode,'REWARD');assert.equal(s.rewardSource,'supply');assert.ok(nodes.get('reward-card-2').hidden);
  const x=boss.x;g.updateGame(1);assert.equal(boss.x,x);
  g.applyRewardChoice('equipment');assert.equal(s.mode,'REWARD');
@@ -1730,18 +1996,22 @@ test('Supply upgrade pauses and resumes the same combat without advancing or del
 test('Supply pickup uses swept contact, cannot be claimed twice, and respects pause/reset',()=>{
  fresh();const p=s.player;p.hp=1;p.prevX=p.x;p.prevY=p.y;
  const item=g.spawnSupply(p.x+150,p.y);item.vx=-1000;
- fixedDropRoll(0,()=>g.updateSupplies(0.3));assert.equal(p.hp,2);assert.equal(s.supplies.length,0);
+ g.updateSupplies(0.3);assert.equal(p.hp,1);assert.equal(s.mode,'SUPPLY');assert.equal(s.supplies.length,0);
+ const elapsed=s.tierWaveElapsed;g.updateGame(1);assert.equal(s.tierWaveElapsed,elapsed);
+ g.applySupplyChoice('heal');assert.equal(p.hp,2);
  fixedDropRoll(0,()=>g.updateSupplies(0.3));assert.equal(p.hp,2);
  const other=g.spawnSupply(100,p.y);s.mode='PAUSED';g.updateSupplies(5);assert.equal(other.x,100);
- g.resetGame();assert.equal(s.supplies.length,0);assert.equal(s.pendingSupplyUpgrades,0);
+ g.resetGame();assert.equal(s.supplies.length,0);assert.equal(s.pendingSupplyUpgrades,0);assert.equal(s.pendingSupplyChoices,0);
 });
 test('Multiple upgrade crates queue and maxed players can continue without stage changes',()=>{
  fresh();const p=s.player;p.vitalityLevel=p.weaponLevel=p.mobilityLevel=p.skillLevel=4;
- g.grantSupplyReward(0.8);g.grantSupplyReward(0.8);g.updateSupplies(0);
- assert.equal(s.mode,'REWARD');assert.equal(s.pendingSupplyUpgrades,1);
+ g.spawnSupply(p.x,p.y);g.spawnSupply(p.x,p.y);g.updateSupplies(0);
+ assert.equal(s.mode,'SUPPLY');assert.equal(s.pendingSupplyChoices,1);
+ g.applySupplyChoice('upgrade');assert.equal(s.mode,'REWARD');
  for(let i=1;i<=4;i++)assert.ok(nodes.get(`reward-card-${i}`).hidden);
  assert.equal(nodes.get('reward-continue').hidden,false);
- g.applyRewardChoice('continue');assert.equal(s.mode,'REWARD');assert.equal(s.pendingSupplyUpgrades,0);
+ g.applyRewardChoice('continue');assert.equal(s.mode,'SUPPLY');assert.equal(s.pendingSupplyChoices,0);
+ g.applySupplyChoice('upgrade');assert.equal(s.mode,'REWARD');assert.equal(s.pendingSupplyUpgrades,0);
  g.applyRewardChoice('continue');assert.equal(s.mode,'PLAYING');assert.equal(s.currentTier,1);
 });
 test('New neon bullets, supply crate and single-rim half-size meteors ship with matching geometry',()=>{
@@ -1754,6 +2024,17 @@ test('New neon bullets, supply crate and single-rim half-size meteors ship with 
  g.spawnMeteorFromWarning({y:300,speed:500});const m=s.meteors[0];
  assert.equal(m.scale,4.5);assert.equal(m.radius,40.5);assert.equal(m.spec.size[0],36);assert.equal(m.path,'extras/Meteor_Outlined.png');
  g.spawnEnemyBullet(900,300,-200,0,'Orb');assert.equal(s.enemyBullets[0].collision.radius,2.5);
+});
+
+test('Boss assets are separate from minions and every runtime sprite path resolves after the move',()=>{
+ for(let tier=1;tier<=10;tier++) {
+  const id=`Tier_${String(tier).padStart(2,'0')}`;
+  assert.ok(fs.existsSync(fileURLToPath(new URL(`../assets/bosses/${id}/Boss.png`,import.meta.url))));
+  assert.ok(!fs.existsSync(fileURLToPath(new URL(`../assets/enemies/${id}/Boss.png`,import.meta.url))));
+  for(let enemy=1;enemy<=4;enemy++)assert.ok(fs.existsSync(fileURLToPath(new URL(`../assets/enemies/${id}/Enemy_0${enemy}.png`,import.meta.url))));
+ }
+ for(const path of Object.keys(g.SPRITE_SPECS))assert.ok(fs.existsSync(fileURLToPath(new URL(`../assets/${path}`,import.meta.url))),`Missing sprite ${path}`);
+ for(const path of g.assets.images.keys())assert.ok(fs.existsSync(fileURLToPath(new URL(`../assets/${path}`,import.meta.url))),`Missing preloaded image ${path}`);
 });
 
 console.log(`\n${results.length} scenario checks passed.`);

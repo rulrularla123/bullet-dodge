@@ -23,7 +23,7 @@
     BOSS_FILL_RECT: { x: 5, y: 16, width: 54, height: 2 },
 
     WAVE_DURATION: 60.0,      // Default 60s wave per tier
-    TOTAL_TIERS: 11,
+    TOTAL_TIERS: 12,
 
     PLAYER_MAX_HP: 5,
     PLAYER_SPEED: 350,
@@ -38,6 +38,10 @@
     METEOR_DAMAGE: 2,
     METEOR_SCALE: 4.5, // Half the previous meteor scale of 9
     SUPPLY_DROP_CHANCE: 0.05,
+    ERROR_ENEMY_HP: 1200,
+    ERROR_CORRUPTION_DURATION: 8,
+    ERROR_NODE_RESPAWN_DELAY: 40,
+    ERROR_ENEMY_HP_OVERRIDES: {7:900,10:800}, // Original green-laser / EMP-core pattern IDs.
     SUPPLY_SCALE: 4,
     SUPPLY_SPEED: 180,
 
@@ -55,7 +59,7 @@
     FINAL_VOLLEY_ACTIVE_TIME: 6,
 
     // Boss Phase 2 thresholds & tuning parameters (Tiers 5~8)
-    BOSS_PHASE2_THRESHOLDS: { 5: 0.30, 6: 0.40, 7: 0.10, 8: 0.20, 9: 0.50 },
+    BOSS_PHASE2_THRESHOLDS: { 5: 0.30, 6: 0.40, 7: 0.10, 8: 0.20, 9: 0.50, 12: 0.50 },
     TIER5_DASH_SIDE_INTERVAL: 0.085,
     TIER5_DASH_SIDE_SPEED: 220,
     TIER5_P2_DASH_COUNT: 5,
@@ -94,7 +98,7 @@
   // 2. BACKGROUND LAYOUT (from assets/backgrounds/Space_Unique/manifest.json)
   // ============================================================================
   // Keep established pattern/asset IDs stable while inserting electricity at stage 8.
-  const STAGE_ORDER=[1,2,3,4,5,10,6,7,11,9,8];
+  const STAGE_ORDER=[1,2,3,4,5,10,6,7,11,9,8,12];
   function getStageNumber(patternTier) { return STAGE_ORDER.indexOf(patternTier)+1 || patternTier; }
   function getPatternTier(stageNumber) { return STAGE_ORDER[stageNumber-1] || 1; }
 
@@ -128,7 +132,15 @@
   // ============================================================================
   // 3. VERIFIED SPRITE METADATA (Including Tier_04 Separated Body/Escorts & Tier_06 Wing Pods)
   // ============================================================================
+  const ERROR_SOURCE_TIERS = [7,5,8,6,9,10];
   const SPRITE_SPECS = {
+    'enemies/Tier_12/Enemy_01.png': {"size": [34, 40], "visibleBounds": [4, 2, 26, 31], "muzzles": [{"x": 16.5, "y": 2}, {"x": 9, "y": 10}, {"x": 25, "y": 10}]},
+    'enemies/Tier_12/Enemy_02.png': {"size": [34, 40], "visibleBounds": [2, 10, 30, 25], "muzzles": [{"x": 17, "y": 10}]},
+    'enemies/Tier_12/Enemy_03.png': {"size": [32, 40], "visibleBounds": [1, 1, 30, 39], "muzzles": [{"x": 13, "y": 1}, {"x": 19, "y": 1}]},
+    'enemies/Tier_12/Enemy_04.png': {"size": [32, 40], "visibleBounds": [0, 9, 32, 26], "muzzles": [{"x": 16, "y": 9}, {"x": 9, "y": 11}, {"x": 23, "y": 11}]},
+    'enemies/Tier_12/Enemy_05.png': {"size": [32, 40], "visibleBounds": [0, 6, 32, 26], "muzzles": [{"x": 10, "y": 6}, {"x": 22, "y": 6}]},
+    'enemies/Tier_12/Enemy_06.png': {"size": [32, 32], "visibleBounds": [2, 2, 28, 26], "muzzles": [{"x": 16, "y": 16}]},
+    'bosses/Tier_12/Boss.png': {size:[32,32],visibleBounds:[1,1,30,30],muzzles:[{x:16,y:1}]},
     'player/주인공.png': {
       size: [32, 32],
       visibleBounds: [6, 6, 20, 18],
@@ -144,51 +156,51 @@
     'enemies/Tier_09/Enemy_02.png': {size:[32,32],visibleBounds:[6,7,20,21],muzzles:[{x:16,y:7}]},
     'enemies/Tier_09/Enemy_03.png': {size:[32,32],visibleBounds:[0,7,32,21],muzzles:[{x:10,y:7},{x:22,y:7}]},
     'enemies/Tier_09/Enemy_04.png': {size:[32,32],visibleBounds:[0,2,32,26],muzzles:[{x:10,y:2},{x:22,y:2}]},
-    'enemies/Tier_09/Boss.png': {size:[32,32],visibleBounds:[1,1,30,31],muzzles:[{x:25,y:7},{x:16,y:1},{x:7,y:7}],laserMuzzles:[{x:28,y:24},{x:4,y:24}]},
+    'bosses/Tier_09/Boss.png': {size:[32,32],visibleBounds:[1,1,30,31],muzzles:[{x:25,y:7},{x:16,y:1},{x:7,y:7}],laserMuzzles:[{x:28,y:24},{x:4,y:24}]},
     'enemies/Tier_10/Enemy_01.png': {size:[32,32],visibleBounds:[6,9,20,14],muzzles:[{x:16,y:16}]},
     'enemies/Tier_10/Enemy_02.png': {size:[32,32],visibleBounds:[2,9,28,14],muzzles:[{x:16,y:16}]},
     'enemies/Tier_10/Enemy_03.png': {size:[32,32],visibleBounds:[2,9,28,19],muzzles:[{x:16,y:16}]},
     'enemies/Tier_10/Enemy_04.png': {size:[32,32],visibleBounds:[2,2,28,26],muzzles:[{x:16,y:16}]},
-    'enemies/Tier_10/Boss.png': {size:[32,32],visibleBounds:[1,1,30,30],muzzles:[{x:16,y:16}]},
+    'bosses/Tier_10/Boss.png': {size:[32,32],visibleBounds:[1,1,30,30],muzzles:[{x:16,y:16}]},
     // Tier 01
     'enemies/Tier_01/Enemy_01.png': { size: [32, 32], visibleBounds: [12, 10, 8, 11], muzzles: [{ x: 16.0, y: 10 }] },
     'enemies/Tier_01/Enemy_02.png': { size: [32, 32], visibleBounds: [12, 8, 8, 15], muzzles: [{ x: 16.0, y: 8 }] },
     'enemies/Tier_01/Enemy_03.png': { size: [32, 32], visibleBounds: [12, 6, 8, 19], muzzles: [{ x: 16.0, y: 6 }] },
     'enemies/Tier_01/Enemy_04.png': { size: [32, 32], visibleBounds: [9, 6, 14, 20], muzzles: [{ x: 16.0, y: 6 }] },
-    'enemies/Tier_01/Boss.png':     { size: [32, 32], visibleBounds: [6, 6, 20, 20], muzzles: [{ x: 16.0, y: 6 }] },
+    'bosses/Tier_01/Boss.png':     { size: [32, 32], visibleBounds: [6, 6, 20, 20], muzzles: [{ x: 16.0, y: 6 }] },
     // Tier 02
     'enemies/Tier_02/Enemy_01.png': { size: [32, 32], visibleBounds: [7, 7, 18, 17], muzzles: [{ x: 16.0, y: 7 }] },
     'enemies/Tier_02/Enemy_02.png': { size: [32, 32], visibleBounds: [7, 7, 18, 18], muzzles: [{ x: 16.0, y: 7 }] },
     'enemies/Tier_02/Enemy_03.png': { size: [32, 32], visibleBounds: [6, 6, 20, 19], muzzles: [{ x: 16.0, y: 6 }] },
     'enemies/Tier_02/Enemy_04.png': { size: [32, 32], visibleBounds: [4, 6, 24, 19], muzzles: [{ x: 16.0, y: 6 }, { x: 6.0, y: 11 }, { x: 26.0, y: 11 }] },
-    'enemies/Tier_02/Boss.png':     { size: [32, 32], visibleBounds: [4, 6, 24, 21], muzzles: [{ x: 16.0, y: 6 }, { x: 6.0, y: 11 }, { x: 26.0, y: 11 }] },
+    'bosses/Tier_02/Boss.png':     { size: [32, 32], visibleBounds: [4, 6, 24, 21], muzzles: [{ x: 16.0, y: 6 }, { x: 6.0, y: 11 }, { x: 26.0, y: 11 }] },
     // Tier 03
     'enemies/Tier_03/Enemy_01.png': { size: [32, 32], visibleBounds: [6, 7, 20, 19], muzzles: [{ x: 16.0, y: 7 }] },
     'enemies/Tier_03/Enemy_02.png': { size: [32, 32], visibleBounds: [5, 7, 22, 22], muzzles: [{ x: 16.0, y: 7 }] },
     'enemies/Tier_03/Enemy_03.png': { size: [32, 32], visibleBounds: [5, 6, 22, 24], muzzles: [{ x: 16.0, y: 6 }] },
     'enemies/Tier_03/Enemy_04.png': { size: [32, 32], visibleBounds: [3, 5, 26, 24], muzzles: [{ x: 16.0, y: 5 }] },
-    'enemies/Tier_03/Boss.png':     { size: [32, 32], visibleBounds: [2, 5, 28, 25], muzzles: [{ x: 16.0, y: 5 }, { x: 12.0, y: 9 }, { x: 20.0, y: 9 }] },
+    'bosses/Tier_03/Boss.png':     { size: [32, 32], visibleBounds: [2, 5, 28, 25], muzzles: [{ x: 16.0, y: 5 }, { x: 12.0, y: 9 }, { x: 20.0, y: 9 }] },
     // Tier 04 (Includes separated Boss_Body.png and Escort_01/02.png)
     'enemies/Tier_04/Enemy_01.png': { size: [32, 32], visibleBounds: [6, 5, 20, 22], muzzles: [{ x: 16.0, y: 5 }] },
     'enemies/Tier_04/Enemy_02.png': { size: [32, 32], visibleBounds: [2, 4, 28, 23], muzzles: [{ x: 16.0, y: 4 }] },
     'enemies/Tier_04/Enemy_03.png': { size: [32, 32], visibleBounds: [2, 4, 28, 24], muzzles: [{ x: 16.0, y: 4 }] },
     'enemies/Tier_04/Enemy_04.png': { size: [32, 32], visibleBounds: [2, 4, 28, 24], muzzles: [{ x: 16.0, y: 4 }, { x: 6.5, y: 11 }, { x: 25.5, y: 11 }] },
-    'enemies/Tier_04/Boss.png':     { size: [32, 32], visibleBounds: [1, 4, 30, 27], muzzles: [{ x: 16.0, y: 4 }, { x: 6.5, y: 10 }, { x: 25.5, y: 10 }] },
+    'bosses/Tier_04/Boss.png':     { size: [32, 32], visibleBounds: [1, 4, 30, 27], muzzles: [{ x: 16.0, y: 4 }, { x: 6.5, y: 10 }, { x: 25.5, y: 10 }] },
     'bosses/Tier_04/Boss_Body.png': { size: [32, 32], visibleBounds: [1, 4, 30, 24], muzzles: [{ x: 16.0, y: 4 }, { x: 6.5, y: 10 }, { x: 25.5, y: 10 }] },
-    'bosses/Tier_04/Escort_01.png': { size: [16, 16], visibleBounds: [3, 4, 9, 8],   muzzles: [{ x: 7.0, y: 4, kind: 'escort-nose' }] },
-    'bosses/Tier_04/Escort_02.png': { size: [16, 16], visibleBounds: [3, 4, 9, 8],   muzzles: [{ x: 7.0, y: 4, kind: 'escort-nose' }] },
+    'bosses/Tier_04/Escorts/Escort_01.png': { size: [16, 16], visibleBounds: [3, 4, 9, 8],   muzzles: [{ x: 7.0, y: 4, kind: 'escort-nose' }] },
+    'bosses/Tier_04/Escorts/Escort_02.png': { size: [16, 16], visibleBounds: [3, 4, 9, 8],   muzzles: [{ x: 7.0, y: 4, kind: 'escort-nose' }] },
     // Tier 05
     'enemies/Tier_05/Enemy_01.png': { size: [32, 32], visibleBounds: [5, 5, 22, 22], muzzles: [{ x: 16.0, y: 5 }] },
     'enemies/Tier_05/Enemy_02.png': { size: [32, 32], visibleBounds: [5, 8, 22, 19], muzzles: [{ x: 16.0, y: 8 }] },
     'enemies/Tier_05/Enemy_03.png': { size: [32, 32], visibleBounds: [1, 8, 30, 19], muzzles: [{ x: 11.5, y: 8 }, { x: 16.0, y: 8 }, { x: 20.5, y: 8 }] },
     'enemies/Tier_05/Enemy_04.png': { size: [32, 32], visibleBounds: [1, 7, 30, 24], muzzles: [{ x: 16.0, y: 7 }] },
-    'enemies/Tier_05/Boss.png':     { size: [32, 32], visibleBounds: [1, 6, 30, 26], muzzles: [{ x: 11.0, y: 6 }, { x: 16.0, y: 7 }, { x: 21.0, y: 6 }] },
+    'bosses/Tier_05/Boss.png':     { size: [32, 32], visibleBounds: [1, 6, 30, 26], muzzles: [{ x: 11.0, y: 6 }, { x: 16.0, y: 7 }, { x: 21.0, y: 6 }] },
     // Tier 06 (Boss muzzles specifically on wing missile attachments, NOT center nose!)
     'enemies/Tier_06/Enemy_01.png': { size: [32, 32], visibleBounds: [0, 7, 32, 22], muzzles: [{ x: 16.0, y: 7 }] },
     'enemies/Tier_06/Enemy_02.png': { size: [32, 32], visibleBounds: [0, 7, 32, 24], muzzles: [{ x: 16.0, y: 7 }] },
     'enemies/Tier_06/Enemy_03.png': { size: [32, 32], visibleBounds: [1, 7, 30, 24], muzzles: [{ x: 16.0, y: 7 }] },
     'enemies/Tier_06/Enemy_04.png': { size: [32, 32], visibleBounds: [0, 5, 32, 26], muzzles: [{ x: 16.0, y: 5 }, { x: 9.0, y: 7 }, { x: 23.0, y: 7 }] },
-    'enemies/Tier_06/Boss.png': {
+    'bosses/Tier_06/Boss.png': {
       size: [32, 32],
       visibleBounds: [0, 3, 32, 29],
       muzzles: [
@@ -203,13 +215,13 @@
     'enemies/Tier_07/Enemy_02.png': { size: [34, 40], visibleBounds: [6, 6, 22, 27], muzzles: [{ x: 17.0, y: 6 }, { x: 9.0, y: 10 }, { x: 25.0, y: 10 }] },
     'enemies/Tier_07/Enemy_03.png': { size: [34, 40], visibleBounds: [6, 5, 22, 28], muzzles: [{ x: 16.5, y: 5 }, { x: 9.0, y: 10 }, { x: 25.0, y: 10 }] },
     'enemies/Tier_07/Enemy_04.png': { size: [34, 40], visibleBounds: [5, 2, 24, 31], muzzles: [{ x: 16.5, y: 2 }, { x: 9.0, y: 10 }, { x: 25.0, y: 10 }] },
-    'enemies/Tier_07/Boss.png':     { size: [34, 40], visibleBounds: [0, 3, 34, 33], muzzles: [{ x: 16.5, y: 3, kind: 'laser-nose' }, { x: 11.5, y: 8 }, { x: 22.5, y: 8 }] },
+    'bosses/Tier_07/Boss.png':     { size: [34, 40], visibleBounds: [0, 3, 34, 33], muzzles: [{ x: 16.5, y: 3, kind: 'laser-nose' }, { x: 11.5, y: 8 }, { x: 22.5, y: 8 }] },
     // Tier 08 (Boss central laser emitter at center channel x=16, y=10)
     'enemies/Tier_08/Enemy_01.png': { size: [32, 40], visibleBounds: [3, 11, 26, 25], muzzles: [{ x: 16.0, y: 11 }] },
     'enemies/Tier_08/Enemy_02.png': { size: [32, 40], visibleBounds: [3, 11, 26, 25], muzzles: [{ x: 16.0, y: 11 }] },
     'enemies/Tier_08/Enemy_03.png': { size: [32, 40], visibleBounds: [2, 6, 28, 34], muzzles: [{ x: 11.5, y: 6 }, { x: 20.5, y: 6 }] },
     'enemies/Tier_08/Enemy_04.png': { size: [32, 40], visibleBounds: [2, 1, 28, 39], muzzles: [{ x: 13.0, y: 1 }, { x: 19.0, y: 1 }] },
-    'enemies/Tier_08/Boss.png': {
+    'bosses/Tier_08/Boss.png': {
       size: [32, 40],
       visibleBounds: [0, 1, 32, 39],
       muzzles: [
@@ -243,10 +255,10 @@
       ]
     },
     // Final Boss - 4 Independent Invulnerable Escort Minions
-    'bosses/Final_Boss/Final_Minion_01.png': { size: [16, 16], visibleBounds: [3, 2, 10, 12], muzzles: [{ x: 8.0, y: 2 }] },
-    'bosses/Final_Boss/Final_Minion_02.png': { size: [16, 16], visibleBounds: [3, 2, 10, 12], muzzles: [{ x: 8.0, y: 2 }] },
-    'bosses/Final_Boss/Final_Minion_03.png': { size: [16, 16], visibleBounds: [3, 2, 10, 12], muzzles: [{ x: 8.0, y: 2 }] },
-    'bosses/Final_Boss/Final_Minion_04.png': { size: [16, 16], visibleBounds: [3, 2, 10, 12], muzzles: [{ x: 8.0, y: 2 }] }
+    'bosses/Final_Boss/Escorts/Final_Minion_01.png': { size: [16, 16], visibleBounds: [3, 2, 10, 12], muzzles: [{ x: 8.0, y: 2 }] },
+    'bosses/Final_Boss/Escorts/Final_Minion_02.png': { size: [16, 16], visibleBounds: [3, 2, 10, 12], muzzles: [{ x: 8.0, y: 2 }] },
+    'bosses/Final_Boss/Escorts/Final_Minion_03.png': { size: [16, 16], visibleBounds: [3, 2, 10, 12], muzzles: [{ x: 8.0, y: 2 }] },
+    'bosses/Final_Boss/Escorts/Final_Minion_04.png': { size: [16, 16], visibleBounds: [3, 2, 10, 12], muzzles: [{ x: 8.0, y: 2 }] }
   };
 
   const BULLET_COLORS = ['Red', 'Orange', 'Yellow', 'Lime', 'Cyan', 'Blue', 'Violet', 'Pink'];
@@ -279,7 +291,7 @@
   const BOSS_BAR_IDS = [
     'Tier_01', 'Tier_02', 'Tier_03', 'Tier_04',
     'Tier_05', 'Tier_06', 'Tier_07', 'Tier_08', 'Tier_09', 'Tier_10',
-    'Final_Shadow', 'Final_Revealed', 'Chain_Boss'
+    'Final_Shadow', 'Final_Revealed', 'Chain_Boss', 'Tier_12'
   ];
 
   // Weapon descriptions for Reward UI
@@ -384,24 +396,27 @@
       for (let e = 1; e <= 4; e++) {
         paths.add(`enemies/${tid}/Enemy_0${e}.png`);
       }
-      paths.add(`enemies/${tid}/Boss.png`);
+      paths.add(`bosses/${tid}/Boss.png`);
     }
+
+    for(let i=1;i<=6;i++)paths.add(`enemies/Tier_12/Enemy_0${i}.png`);
+    paths.add('bosses/Tier_12/Boss.png');
 
     paths.add('effects/Electric_Laser/Electric_Laser_Blue_Spritesheet.png');
     paths.add('effects/Electric_Laser/Electric_Laser_Red_Spritesheet.png');
     paths.add('effects/Electric_Laser/Electric_Laser_Spritesheet.png');
 
     // 7. Tier 04 Separated Boss Body & 2 Escorts
-    for (const part of ['Body_Gun','Body_Blade','Head_And_Saws','Blade']) paths.add(`bosses/Chain_Boss/${part}.png`);
+    for (const part of ['Body_Gun','Body_Blade','Head_And_Saws','Blade']) paths.add(`bosses/Chain_Boss/Parts/${part}.png`);
     paths.add('bosses/Tier_04/Boss_Body.png');
-    paths.add('bosses/Tier_04/Escort_01.png');
-    paths.add('bosses/Tier_04/Escort_02.png');
+    paths.add('bosses/Tier_04/Escorts/Escort_01.png');
+    paths.add('bosses/Tier_04/Escorts/Escort_02.png');
 
     // 8. Final Boss (Shadow, Revealed_Body, and 4 independent escorts)
     paths.add('bosses/Final_Boss/Final_Boss_Shadow.png');
     paths.add('bosses/Final_Boss/Final_Boss_Revealed_Body.png');
     for (let m = 1; m <= 4; m++) {
-      paths.add(`bosses/Final_Boss/Final_Minion_0${m}.png`);
+      paths.add(`bosses/Final_Boss/Escorts/Final_Minion_0${m}.png`);
     }
 
     // 9. Space_Unique Background PNGs
@@ -442,16 +457,15 @@
     5: 2700,
     6: 3800,
     7: 5200,
-    8: 7000,
+    8: 10000,
     9: 6500,   // Final_Shadow
-    10: 13000  // Final_Revealed
+    10: 20000, // Final_Revealed
+    12: 10000  // Error boss
   };
 
-  /**
-   * Computes regular enemy max HP from separate tier (1..8) and enemyIdx (1..4) axes.
-   * Doubles regular enemy durability while keeping tier/stage progression.
-   * Uses exponential tier scaling (1.25^(tier-1)) and steeper stage multipliers [1.0, 1.35, 1.8, 2.4].
-   * Guarantees Enemy_01 < 02 < 03 < 04 within every tier, and Tier 1 < 2 < ... < 8 for every stage.
+  /** Regular enemy HP follows displayed campaign stages, never asset/pattern IDs.
+   * Each successive stage grows by 25%; tech levels 1..4 scale independently.
+   * Error variants use a separate fixed HP balance despite reused pattern IDs.
    */
   const SKILL_UPGRADE_STATS = [
     { laserTotal: BOSS_HP_TABLE[1], laserCooldown:120, healAmount:1, healCooldown:180, shieldDuration:4, shieldCooldown:120 },
@@ -488,7 +502,7 @@
   }
 
   function getEnemyMaxHp(tier, enemyIdx) {
-    const t = Math.max(1, Math.min(CONFIG.TOTAL_TIERS, tier===10?getStageNumber(tier):tier));
+    const t = Math.max(1, Math.min(CONFIG.TOTAL_TIERS, getStageNumber(tier)));
     const idx = Math.max(1, Math.min(4, enemyIdx));
     const base = 34 * Math.pow(1.25, t - 1);
     return 2 * Math.ceil(base * ENEMY_STAGE_HP_MULT[idx - 1]);
@@ -657,7 +671,11 @@
     rewardPendingTier: null,
     rewardSource: null,
     pendingSupplyUpgrades: 0,
+    pendingSupplyChoices: 0,
+    supplyPickupCount: 0,
+    errorFx: {age:0,remaining:0,cooldown:7},
     supplies: [],
+    errorNodes: [], errorClones: [], errorWaves: [], errorEchoes: [],
     rewardKeyLock: false,
     rewardsChosenHistory: [],
 
@@ -756,6 +774,7 @@
       invulnTimer: 0.0,
       hitFlashTimer: 0.0,
       stunRemaining: 0.0,
+      corruptionRemaining: 0,
       electrocutionRemaining: 0.0,
       electrocutionColor: 'Blue',
       empRemaining: 0,
@@ -772,6 +791,9 @@
   }
 
   function clearAllCombatHazards() {
+    state.errorNodes=[];state.errorClones=[];state.errorWaves=[];state.errorEchoes=[];
+    if(state.player)state.player.corruptionRemaining=0;
+    for(const bullet of state.playerBullets) {bullet.corrupted=false;bullet.errorMiss=false;}
     state.enemyBullets = [];
     state.electricVolleys = [];
     state.electricSweeps = [];
@@ -809,6 +831,10 @@
     state.rewardPendingTier = null;
     state.rewardSource = null;
     state.pendingSupplyUpgrades = 0;
+    state.pendingSupplyChoices = 0;
+    state.supplyPickupCount = 0;
+    state.errorFx = {age:0,remaining:0,cooldown:7};
+    hideSupplyModal();
     state.supplies = [];
     state.rewardKeyLock = false;
     state.rewardsChosenHistory = [];
@@ -863,7 +889,7 @@
   }
 
   function openRewardSelection(defeatedTier, source = 'boss') {
-    if (state.mode === 'REWARD') return;
+    if (state.mode === 'REWARD' || state.mode === 'SUPPLY') return;
     if(source==='boss') {clearAllCombatHazards();state.boss=null;}
     state.rewardSource=source;
     state.mode = 'REWARD';
@@ -885,7 +911,7 @@
     }
     if (p && statVitEl) {
       const nextMax = p.maxHp + 1;
-      const nextHp = p.hp;
+      const nextHp = p.hp + 1;
       statVitEl.textContent = `현재: ${p.hp}/${p.maxHp} → 선택 후: ${nextHp}/${nextMax}`;
     }
     if (p && statEqEl && descEqEl) {
@@ -935,6 +961,7 @@
       if (choiceType === 'vitality') {
         p.vitalityLevel += 1;
         p.maxHp += 1;
+        p.hp = Math.min(p.maxHp, p.hp + 1);
         state.floatingTexts.push({
           text: `체력 강화! HP ${p.hp}/${p.maxHp}`,
           x: p.x,
@@ -973,7 +1000,7 @@
     state.mode = 'PLAYING';
 
     state.rewardSource=null;
-    if(source==='supply') {openPendingSupplyUpgrade();updateHudBadges();return;}
+    if(source==='supply') {openPendingSupplyUpgrade();openPendingSupplyChoice();updateHudBadges();return;}
 
     // Proceed to the next stage after reward selection
     if (defeatedTier && defeatedTier < CONFIG.TOTAL_TIERS) {
@@ -1006,6 +1033,16 @@
   // 8. SPAWNING ENEMIES, TIER BOSSES, ESCORTS, LASERS, MISSILES & DASHERS
   // ============================================================================
   function spawnWaveEnemy(tier, options = {}) {
+    if(tier===12) {
+      const variant=Math.max(1,Math.min(6,options.errorVariant || options.enemyIdx || 1+Math.floor(Math.random()*6)));
+      const enemy=spawnWaveEnemy(ERROR_SOURCE_TIERS[variant-1],{...options,enemyIdx:4});
+      enemy.path=`enemies/Tier_12/Enemy_0${variant}.png`;
+      enemy.spec=SPRITE_SPECS[enemy.path];
+      enemy.glitch=true;enemy.errorVariant=variant;enemy.stageTier=12;
+      enemy.hp=enemy.maxHp=CONFIG.ERROR_ENEMY_HP_OVERRIDES[enemy.tier] ?? CONFIG.ERROR_ENEMY_HP;
+      enforceRightThirdBound(enemy);
+      return enemy;
+    }
     const enemyIdx = options.enemyIdx || (1 + Math.floor(Math.random() * 4));
     const relPath = `enemies/Tier_${String(tier).padStart(2,'0')}/Enemy_0${enemyIdx}.png`;
     const spec = SPRITE_SPECS[relPath];
@@ -1187,7 +1224,7 @@
   }
 
   function createTier4Escort(idx, boss) {
-    const relPath = `bosses/Tier_04/Escort_0${idx}.png`;
+    const relPath = `bosses/Tier_04/Escorts/Escort_0${idx}.png`;
     const spec = SPRITE_SPECS[relPath];
     const isTop = idx === 1;
     const escort = {
@@ -1318,7 +1355,7 @@
     clearAllCombatHazards();state.enemies=[];state.phase=combat?'BOSS':'WAVE';state.meteorSpawnTimer=1e6;
     if(campaign) {state.currentTier=11;state.cumulativeWaveTime=(getStageNumber(11)-1+(combat?1:0))*CONFIG.WAVE_DURATION;}
     const boss={id:'chain-boss',kind:'CHAIN_BOSS',tier:11,barId:'Chain_Boss',
-      path:'bosses/Chain_Boss/Head_And_Saws.png',spec:{size:[16,16],visibleBounds:[0,0,16,16]},
+      path:'bosses/Chain_Boss/Parts/Head_And_Saws.png',spec:{size:[16,16],visibleBounds:[0,0,16,16]},
       scale:3,x:0,y:0,prevX:0,prevY:0,hp:12000,maxHp:12000,age:0,hitFlash:0,
       entering:!skipEntrance,defeatedHandled:false,trail:[],segments:[],headLaserCooldown:7,laserStartGap:0,
       combat,campaign,travelTime:0,pathState:skipEntrance?'ROAM':combat?'BOSS_ENTER':'WAVE_ENTER',phase2Triggered:false};
@@ -1916,7 +1953,7 @@
 
   function renderChainBoss(boss) {
     const crop=(path,source,x,y,angle)=>{
-      const im=assets.images.get(`bosses/Chain_Boss/${path}.png`);if(!im)return;
+      const im=assets.images.get(`bosses/Chain_Boss/Parts/${path}.png`);if(!im)return;
       ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.rotate(angle);ctx.imageSmoothingEnabled=false;
       ctx.drawImage(im,...source,-source[2]*1.5,-source[3]*1.5,source[2]*3,source[3]*3);ctx.restore();
     };
@@ -1988,6 +2025,9 @@
   function startTierBoss(tier) {
     if(tier===11)return startChainBoss({combat:true,campaign:true});
     state.phase = 'BOSS';
+    state.errorNodes=[];state.errorClones=[];state.errorWaves=[];state.errorEchoes=[];
+    if(state.player)state.player.corruptionRemaining=0;
+    state.errorFx.remaining=0;state.errorFx.cooldown=7;
     state.electricVolleys = [];
     state.electricSweeps = [];
     state.empWaves = [];
@@ -2009,7 +2049,7 @@
     // Tier 04 uses separated Boss_Body.png so rear fighters are not duplicated on the hull
     const relPath = tier === 4
       ? 'bosses/Tier_04/Boss_Body.png'
-      : `enemies/Tier_${String(tier).padStart(2,'0')}/Boss.png`;
+      : `bosses/Tier_${String(tier).padStart(2,'0')}/Boss.png`;
     const spec = SPRITE_SPECS[relPath];
     const maxHp = tier === 10 ? 2300 : tier === 9 ? 9500 : BOSS_HP_TABLE[tier] || (600 + tier * 500);
 
@@ -2017,6 +2057,8 @@
       id: `tier-boss-${tier}-${Math.random().toString(36).slice(2)}`,
       kind: 'TIER_BOSS',
       tier,
+      glitch: tier===12,
+      prototype: false,
       barId: `Tier_${String(tier).padStart(2,'0')}`,
       path: relPath,
       spec,
@@ -2101,6 +2143,7 @@
 
     enforceRightThirdBound(boss);
     state.boss = boss;
+    if(tier===12)initErrorBoss(boss);
 
     if (tier === 4) {
       state.escorts = [
@@ -2164,7 +2207,7 @@
 
     const relPath = 'bosses/Final_Boss/Final_Boss_Revealed_Body.png';
     const spec = SPRITE_SPECS[relPath];
-    const maxHp = BOSS_HP_TABLE[10]; // 13000
+    const maxHp = BOSS_HP_TABLE[10]; // 20000
     const boss = {
       kind: 'FINAL_REVEALED',
       tier: 10,
@@ -2212,7 +2255,7 @@
     const escortProfiles = [
       {
         idx: 1,
-        path: 'bosses/Final_Boss/Final_Minion_01.png',
+        path: 'bosses/Final_Boss/Escorts/Final_Minion_01.png',
         offsetX: -115, offsetY: -135,
         freqX1: 2.3, freqX2: 3.7, freqY1: 1.9, freqY2: 3.1,
         ampX: 48, ampY: 66,
@@ -2226,7 +2269,7 @@
       },
       {
         idx: 2,
-        path: 'bosses/Final_Boss/Final_Minion_02.png',
+        path: 'bosses/Final_Boss/Escorts/Final_Minion_02.png',
         offsetX: -95, offsetY: 135,
         freqX1: 1.8, freqX2: 4.1, freqY1: 2.6, freqY2: 1.7,
         ampX: 52, ampY: 70,
@@ -2240,7 +2283,7 @@
       },
       {
         idx: 3,
-        path: 'bosses/Final_Boss/Final_Minion_03.png',
+        path: 'bosses/Final_Boss/Escorts/Final_Minion_03.png',
         offsetX: 55, offsetY: -175,
         freqX1: 2.9, freqX2: 1.6, freqY1: 2.2, freqY2: 3.8,
         ampX: 45, ampY: 62,
@@ -2254,7 +2297,7 @@
       },
       {
         idx: 4,
-        path: 'bosses/Final_Boss/Final_Minion_04.png',
+        path: 'bosses/Final_Boss/Escorts/Final_Minion_04.png',
         offsetX: 65, offsetY: 175,
         freqX1: 2.1, freqX2: 3.3, freqY1: 2.8, freqY2: 2.0,
         ampX: 48, ampY: 64,
@@ -2313,7 +2356,7 @@
   // 9. PLAYER WEAPON EVOLUTION (Lv0 ~ Lv4) & ENEMY BULLET PATTERNS
   // ============================================================================
   function spawnPlayerBullet(opts) {
-    state.playerBullets.push({
+    const bullet={
       path: opts.path,
       shape: opts.shape || 'Needle',
       size: opts.size || [9, 3],
@@ -2329,7 +2372,9 @@
       damage: opts.damage,
       piercing: opts.piercing === true,
       hitTargets: opts.piercing ? new Set() : null
-    });
+    };
+    if(state.player?.corruptionRemaining>0)infectPlayerBullet(bullet);
+    state.playerBullets.push(bullet);
   }
 
   function firePlayerWeapon(p) {
@@ -2432,6 +2477,7 @@
     }
     const bSpec = BULLET_SHAPES[shape] || BULLET_SHAPES.Orb;
     state.enemyBullets.push({
+      glitch: state.currentTier===12,
       path: `bullets/Colors/${color}/${shape === 'Needle' ? 'Needle' : 'Orb'}.png`,
       shape,
       color,
@@ -2461,7 +2507,7 @@
     if(ports.length!==(isBoss?3:2)) return null;
     const sides=Math.random()<0.5?[0,2]:[2,0];
     const order=isBoss?(Math.random()<0.5?[1,...sides]:[...sides,1]):(Math.random()<0.5?[0,1]:[1,0]);
-    const volley={owner,age:0,warning:0.65,active:false,isBoss,order,
+    const volley={owner,glitch:owner.glitch===true,age:0,warning:0.65,active:false,isBoss,order,
       radius:isBoss?12:9,linkRadius:isBoss?5:3,damage:1,stunDuration:0.3,
       orbs:ports.map((m,i)=>{
         // Independent random draw on every shot. Bounded speeds keep the triangle readable.
@@ -2527,6 +2573,7 @@
     const sheet=assets.images.get('effects/Electric_Laser/Electric_Laser_Spritesheet.png');
     const orb=assets.images.get('bullets/Colors/Cyan/Orb.png');
     for(const v of state.electricVolleys) {
+      if(v.glitch) {renderErrorVolley(v);continue;}
       const frame=Math.floor(v.age*12.5)%7;
       ctx.save();ctx.imageSmoothingEnabled=false;
       for(const [a,b] of getElectricLinks(v.orbs)) {
@@ -3002,6 +3049,7 @@
    */
   function spawnLaserBeam(opts) {
     const beam = {
+      glitch: state.currentTier===12,
       id: Math.random().toString(36).slice(2),
       color: opts.color || 'Blue',
       stage: 1,
@@ -3349,6 +3397,7 @@
 
     // Visual explosion effect (does NOT deal per-frame damage!)
     state.explosions.push({
+      glitch: state.currentTier===12,
       x: m.x,
       y: m.y,
       radius: m.blastRadius,
@@ -3614,6 +3663,7 @@
     else if (boss.tier === 7) enterTier7Phase2(boss);
     else if (boss.tier === 8) enterTier8Phase2(boss);
     else if (boss.tier === 9) startElectricBossField(boss);
+    else if (boss.tier === 12) enterErrorPhase2(boss);
     return true;
   }
 
@@ -4253,6 +4303,7 @@
     const p = state.player;
     if (!p || p.invulnTimer > 0 || p.skills?.shield.remaining > 0 || state.debugInvincible || state.mode !== 'PLAYING') return false;
 
+    if(isErrorBossCombat())applyErrorCorruption();
     if(electricColor) {
       stunDuration=0.3;p.electrocutionRemaining=0.3;p.electrocutionColor=electricColor;
       spawnExplosion(p.x,p.y,electricColor==='Red'?'#ff7186':'#78d8ff',10);
@@ -4301,6 +4352,7 @@
     // Freeze all gameplay, timers, background scroll, and spawns during PAUSED, REWARD, GAMEOVER, CLEAR
     if (!assets.ready || state.mode !== 'PLAYING') return;
 
+    updateErrorEffects(dt);
     advancePlayerSkills(dt);
 
     // 1. Scroll background continuously right-to-left, wrapping at 43,440px
@@ -4342,7 +4394,8 @@
       const pBounds = getRotatedBounds(p.x, p.y, p.spec, true, p.scale);
       const halfW = pBounds.width / 2;
       const halfH = pBounds.height / 2;
-      p.x = Math.max(24 + halfW, Math.min(CONFIG.CANVAS_WIDTH - 24 - halfW, p.x));
+      const rightLimit=isPlayerSectorRestricted()?CONFIG.ENEMY_MIN_X-16-(pBounds.right-p.x):CONFIG.CANVAS_WIDTH-24-halfW;
+      p.x = Math.max(24 + halfW, Math.min(rightLimit, p.x));
       p.y = Math.max(54 + halfH, Math.min(CONFIG.CANVAS_HEIGHT - 16 - halfH, p.y));
 
       if(p.skills.laser.remaining>0 || p.skills.laser.pendingTicks>0) {
@@ -4747,6 +4800,8 @@
       enforceRightThirdBound(boss);
       return;
     }
+
+    if(boss.kind==='TIER_BOSS' && boss.tier===12) {updateErrorBoss(boss,dt);return;}
 
     if(boss.kind==='TIER_BOSS' && boss.tier===10) {
       boss.empFlashTimer=Math.max(0,(boss.empFlashTimer || 0)-dt);
@@ -5428,6 +5483,7 @@
   function canDamageBossWithPlayerAttack(boss) {
     if (!boss || boss.hp<=0 || boss.entering || boss.defeatedHandled || boss.dyingTimer>0) return false;
     if(boss.kind==='CHAIN_BOSS' && !boss.combat)return false;
+    if(boss.tier===12 && boss.errorBlink?.phase==='SHIFT')return false;
     if (['OFFSCREEN','P2_WARN','P2_WAIT'].includes(boss.dashState)) return false;
     if (boss.tier===8 && boss.phase2Active) return false;
     if (boss.tier===7 && boss.phase2Triggered && !state.lasers.some(l=>l.id===boss.p2ActiveBeamId && l.stage===3)) return false;
@@ -5488,6 +5544,9 @@
       const box=getRotatedBounds(entity.x,entity.y,entity.spec,false,entity.scale);
       return box.right>=m.x && box.left<=CONFIG.CANVAS_WIDTH && box.bottom>=m.y-16 && box.top<=m.y+16;
     };
+    for(const node of [...state.errorNodes]) {
+      if(node.x+node.radius>=m.x && Math.abs(node.y-m.y)<=node.radius+16)hitErrorNode(node,damage);
+    }
     const boss=state.boss;
     const chainHits=boss?.kind==='CHAIN_BOSS'?(boss.phase2Triggered?[boss.segments[0]]:boss.segments).map(part=>part.x+22>=m.x && part.x-22<=CONFIG.CANVAS_WIDTH && Math.abs(part.y-m.y)<=38):null;
     if(canDamageBossWithPlayerAttack(boss) && (chainHits ? chainHits.some(Boolean) : hits(boss))) {
@@ -5558,7 +5617,15 @@
         continue;
       }
 
+      if(pb.errorMiss)continue;
       let consumed = false;
+      for(const node of [...state.errorNodes]) {
+        if(node.windowRemaining<=0 || pb.hitTargets?.has(node))continue;
+        if(distSqPointToSegment(node.x,node.y,pb.prevX,pb.prevY,pb.x,pb.y)>(node.radius+pb.radius)**2)continue;
+        pb.hitTargets?.add(node);hitErrorNode(node,pb.damage);
+        if(!pb.piercing) {state.playerBullets.splice(i,1);consumed=true;break;}
+      }
+      if(consumed)continue;
 
       // 1. Check hit against active Boss
       if (canDamageBossWithPlayerAttack(state.boss)) {
@@ -5730,24 +5797,48 @@
   function maybeDropSupply(enemy) {
     if(enemy.supplyRolled)return;
     enemy.supplyRolled=true;
-    if(Math.random()<CONFIG.SUPPLY_DROP_CHANCE)spawnSupply(enemy.x,enemy.y);
+    const chance=CONFIG.SUPPLY_DROP_CHANCE*Math.pow(0.5,state.supplyPickupCount);
+    if(Math.random()<chance)spawnSupply(enemy.x,enemy.y);
   }
 
-  function grantSupplyReward(roll=Math.random()) {
-    const p=state.player;if(!p || p.hp<=0)return;
-    const type=roll<0.33?'heal':roll<0.66?'cooldown':roll<0.99?'upgrade':'all';
-    const messages=[];
-    if(type==='heal'||type==='all') {
+  function grantSupplyReward(type) {
+    const p=state.player;if(!p || p.hp<=0 || !['heal','cooldown','upgrade'].includes(type))return;
+    let message;
+    if(type==='heal') {
       const healed=Math.min(1,p.maxHp-p.hp);p.hp+=healed;
-      messages.push(healed?'+1 HP':'HP 최대');
-    }
-    if(type==='cooldown'||type==='all') {
+      message=healed?'+1 HP':'HP 최대';
+    } else if(type==='cooldown') {
       for(const skill of Object.values(p.skills))skill.cooldown=Math.max(0,skill.cooldown-30);
-      messages.push('스킬 쿨 -30초');
-    }
-    if(type==='upgrade'||type==='all') {state.pendingSupplyUpgrades++;messages.push('강화 선택');}
-    state.floatingTexts.push({text:(type==='all'?'LUCKY! 전부 획득 · ':'보급품 · ')+messages.join(' / '),x:p.x,y:p.y-55,color:'#ffe97e',timer:2.5});
+      message='스킬 쿨 -30초';
+    } else {state.pendingSupplyUpgrades++;message='강화 선택';}
+    state.floatingTexts.push({text:'보급품 · '+message,x:p.x,y:p.y-55,color:'#ffe97e',timer:2.5});
     updatePlayerSkillUI();return type;
+  }
+
+  function hideSupplyModal() {
+    document.getElementById('supply-screen')?.classList.add('hidden');
+  }
+
+  function openPendingSupplyChoice() {
+    if(state.mode!=='PLAYING'||state.pendingSupplyChoices<=0)return;
+    state.pendingSupplyChoices--;
+    state.mode='SUPPLY';
+    const p=state.player;
+    const hp=document.getElementById('supply-stat-heal');
+    if(hp)hp.textContent=`현재: ${p.hp}/${p.maxHp} → ${Math.min(p.maxHp,p.hp+1)}/${p.maxHp}`;
+    const cooldown=document.getElementById('supply-stat-cooldown');
+    if(cooldown)cooldown.textContent=Object.entries(p.skills).map(([id,skill])=>`${{laser:'E',heal:'R',shield:'T'}[id]} ${Math.ceil(skill.cooldown)} → ${Math.ceil(Math.max(0,skill.cooldown-30))}초`).join(' / ');
+    keys.clear();
+    document.getElementById('supply-screen')?.classList.remove('hidden');
+    updateHudBadges();updatePlayerSkillUI();
+  }
+
+  function applySupplyChoice(type) {
+    if(state.mode!=='SUPPLY'||!['heal','cooldown','upgrade'].includes(type))return;
+    grantSupplyReward(type);
+    hideSupplyModal();state.mode='PLAYING';
+    openPendingSupplyUpgrade();openPendingSupplyChoice();
+    updateHudBadges();updatePlayerSkillUI();
   }
 
   function openPendingSupplyUpgrade() {
@@ -5763,11 +5854,11 @@
       const item=state.supplies[i];item.prevX=item.x;item.prevY=item.y;item.x+=item.vx*dt;item.age+=dt;
       // Relative swept collision also catches a player crossing a fast-moving crate.
       if(p&&p.hp>0&&distSqPointToSegment(0,0,item.prevX-(p.prevX??p.x),item.prevY-(p.prevY??p.y),item.x-p.x,item.y-p.y)<=(item.radius+p.hitboxRadius)**2) {
-        state.supplies.splice(i,1);grantSupplyReward();continue;
+        state.supplies.splice(i,1);state.supplyPickupCount++;state.pendingSupplyChoices++;continue;
       }
       if(item.x < -48)state.supplies.splice(i,1);
     }
-    openPendingSupplyUpgrade();
+    openPendingSupplyUpgrade();openPendingSupplyChoice();
   }
 
   function renderSupplies() {
@@ -5816,6 +5907,482 @@
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d', { alpha: false });
 
+  // T12: a bullet-driven signal-corruption encounter. Nodes own their echo one-to-one.
+  function isPlayerSectorRestricted() {return state.currentTier!==11 && state.boss?.kind!=='CHAIN_BOSS';}
+
+  function isErrorBossCombat() {return state.phase==='BOSS' && state.boss?.tier===12 && state.boss.hp>0;}
+
+  function infectPlayerBullet(bullet) {
+    if(bullet.corrupted)return;
+    bullet.corrupted=true;
+    // Roll once per projectile, never every frame or every overlap with a target.
+    bullet.errorMiss=Math.random()>=0.5;
+  }
+
+  function applyErrorCorruption() {
+    const p=state.player;if(!p || p.hp<=0)return;
+    const first=!(p.corruptionRemaining>0);
+    p.corruptionRemaining=CONFIG.ERROR_CORRUPTION_DURATION;
+    for(const bullet of state.playerBullets)infectPlayerBullet(bullet);
+    if(first)state.floatingTexts.push({text:'SIGNAL ERROR · 탄환 명중 50%',x:p.x,y:p.y-52,color:'#ff80cf',timer:1.8});
+  }
+
+  function initErrorBoss(boss) {
+    boss.prototype=false;boss.errorPattern=0;boss.errorShotCooldown=1.1;
+    boss.errorWaveCooldown=3.5;boss.errorTeleportCooldown=2.4;
+    boss.errorNodeCooldown=0;boss.errorNodeGeneration=0;
+    boss.errorBlink=null;boss.errorWaveCharge=0;boss.errorBorn=true;
+  }
+
+  function createErrorNodes(boss) {
+    if(state.errorNodes.length>=4 || (boss.errorNodeCooldown||0)>0)return false;
+    const freeSlots=[1,2,3,4].filter(index=>!state.errorNodes.some(n=>n.index===index));
+    const H=CONFIG.CANVAS_HEIGHT,maxX=CONFIG.ENEMY_MIN_X-65;
+    boss.errorNodeGeneration=(boss.errorNodeGeneration||0)+1;
+    for(const index of freeSlots) {
+      let x,y;
+      for(let trial=0;trial<40;trial++) {
+        x=260+Math.random()*(maxX-260);y=140+Math.random()*(H-260);
+        if(Math.hypot(x-state.player.x,y-state.player.y)>150 && state.errorNodes.every(n=>Math.hypot(n.x-x,n.y-y)>120))break;
+      }
+      if(Math.hypot(x-state.player.x,y-state.player.y)<=150 || state.errorNodes.some(n=>Math.hypot(n.x-x,n.y-y)<100)) {
+        const safe=[[360,180],[680,180],[360,500],[680,500],[520,340]].find(([xx,yy])=>
+          Math.hypot(xx-state.player.x,yy-state.player.y)>150 && state.errorNodes.every(n=>Math.hypot(n.x-xx,n.y-yy)>100));
+        if(safe)[x,y]=safe;
+      }
+      state.errorNodes.push({id:`${boss.id}-node-${boss.errorNodeGeneration}-${index}`,index,x,y,hp:1000,maxHp:1000,
+        radius:24,windowRemaining:0,hitFlash:0});
+    }
+    boss.errorNodeCooldown=CONFIG.ERROR_NODE_RESPAWN_DELAY;
+    return true;
+  }
+
+  function beginErrorWave(boss) {
+    if(boss.errorWaveCharge>0 || state.errorWaves.length)return false;
+    boss.errorCycle=(boss.errorCycle||0)+1;
+    boss.errorWaveCharge=1.1;boss.errorWaveCooldown=22;
+    if(boss.phase2Triggered)createErrorNodes(boss);
+    state.floatingTexts.push({text:boss.phase2Triggered?'ERROR PULSE · 파동 뒤 노드 해제':'ERROR PULSE · 신호 오염',x:CONFIG.CANVAS_WIDTH/2,y:160,color:'#ff89dc',timer:1.5});
+    return true;
+  }
+
+  function openErrorNodeWindow(boss) {
+    for(const node of state.errorNodes) {
+      node.windowRemaining=10;
+      if(!state.errorClones.some(c=>c.nodeId===node.id)) {
+        const angle=node.index*2.399;
+        state.errorClones.push({nodeId:node.id,index:node.index,
+          x:1020+Math.sin(angle)*110,y:100+(node.index-0.5)*(CONFIG.CANVAS_HEIGHT-180)/4,
+          homeY:100+(node.index-0.5)*(CONFIG.CANVAS_HEIGHT-180)/4,
+          age:0,fireCooldown:1.0+node.index*0.35,path:boss.path,spec:boss.spec,scale:2.5});
+      }
+    }
+    if(state.errorNodes.length)state.floatingTexts.push({text:'NODES OPEN · 10초 안에 연결 노드 파괴',x:CONFIG.CANVAS_WIDTH/2,y:190,color:'#7cffff',timer:2.4});
+  }
+
+  function destroyErrorNode(node) {
+    state.errorNodes=state.errorNodes.filter(n=>n!==node);
+    if(state.boss?.tier===12)state.boss.errorNodeCooldown=CONFIG.ERROR_NODE_RESPAWN_DELAY;
+    const clone=state.errorClones.find(c=>c.nodeId===node.id);
+    if(clone) {
+      state.errorEchoes.push({x:clone.x,y:clone.y,path:clone.path,spec:clone.spec,scale:clone.scale,timer:0.6,maxTimer:0.6});
+      spawnExplosion(clone.x,clone.y,'#ff55b5',10);
+    }
+    state.errorClones=state.errorClones.filter(c=>c.nodeId!==node.id);
+    state.enemyBullets=state.enemyBullets.filter(b=>b.errorNodeId!==node.id);
+    spawnExplosion(node.x,node.y,'#00eeff',18);state.score+=200;
+    state.floatingTexts.push({text:`NODE ${node.index} 삭제 · 분열체 제거`,x:node.x,y:node.y-35,color:'#8dffff',timer:1.5});
+    triggerCameraShake(0.12,2);
+  }
+
+  function hitErrorNode(node,damage) {
+    if(node.windowRemaining<=0 || node.hp<=0)return false;
+    node.hp=Math.max(0,node.hp-damage);node.hitFlash=0.1;
+    if(node.hp<=1e-7)destroyErrorNode(node);
+    return true;
+  }
+
+  function spawnErrorBossBullet(x,y,angle,speed,shape='Orb',echo=false) {
+    if(state.enemyBullets.length>=96)return;
+    spawnEnemyBullet(x,y,Math.cos(angle)*speed,Math.sin(angle)*speed,shape,'Pink');
+    const bullet=state.enemyBullets[state.enemyBullets.length-1];
+    if(bullet) {bullet.glitch=true;bullet.errorPower=echo?1.5:2;}
+    return bullet;
+  }
+
+  function fireErrorBossPattern(boss) {
+    if(state.enemyBullets.length>74)return;
+    const ports=getWorldMuzzles(boss.x,boss.y,boss.spec,false,boss.scale),m=ports[0];
+    const aim=Math.atan2(state.player.y-m.y,state.player.x-m.x),pattern=boss.errorPattern++%3;
+    if(pattern===0) {
+      // Broad fan leaves a moving, readable gap instead of a solid wall.
+      const gap=boss.errorPattern%3-1;
+      for(let i=-5;i<=5;i++)if(i!==gap)spawnErrorBossBullet(m.x,m.y,aim+i*0.17,225+Math.abs(i)*7);
+    } else if(pattern===1) {
+      const phase=boss.age*0.55;
+      for(let i=0;i<12;i++)spawnErrorBossBullet(m.x,m.y,phase+i*Math.PI/6,175+(i%2)*25);
+    } else {
+      for(let i=-2;i<=2;i++)spawnErrorBossBullet(m.x,m.y,aim+i*0.12,295,'Needle');
+      for(const side of [-1,1])for(let i=0;i<3;i++)spawnErrorBossBullet(m.x,m.y,Math.PI+side*(0.55+i*0.16),205);
+    }
+  }
+
+  function beginErrorTeleport(boss) {
+    let x=1010+Math.random()*160,y=95+Math.random()*(CONFIG.CANVAS_HEIGHT-190);
+    if(Math.abs(y-boss.y)<150)y=boss.y<CONFIG.CANVAS_HEIGHT/2?CONFIG.CANVAS_HEIGHT-105:105;
+    boss.errorBlink={phase:'WARN',timer:0.325,targetX:x,targetY:y};
+  }
+
+  function updateErrorBoss(boss,dt) {
+    if(!boss.errorBorn)initErrorBoss(boss);
+    if(!boss.phase2Triggered && boss.hp<=boss.maxHp*0.5)checkAndTriggerBossPhase2(boss);
+    boss.errorNodeCooldown=Math.max(0,(boss.errorNodeCooldown||0)-dt);
+    boss.errorWaveCooldown-=dt;
+    if(boss.errorWaveCooldown<=0 && !boss.errorBlink && !boss.errorWaveCharge && !state.errorWaves.length) {
+      beginErrorWave(boss);boss.errorWaveCooldown=22;
+    }
+    if(boss.errorWaveCharge>0) {
+      boss.errorWaveCharge=Math.max(0,boss.errorWaveCharge-dt);
+      if(boss.errorWaveCharge===0) {
+        state.errorWaves.push({x:boss.x,y:boss.y,radius:0,previousRadius:0,age:0,hitPlayer:false,
+          maxRadius:Math.hypot(CONFIG.CANVAS_WIDTH,CONFIG.CANVAS_HEIGHT),speed:1100});
+        state.errorFx.remaining=Math.max(state.errorFx.remaining,1.2);triggerCameraShake(0.22,4);
+      }
+    }
+    for(const node of state.errorNodes) {node.windowRemaining=Math.max(0,node.windowRemaining-dt);node.hitFlash=Math.max(0,node.hitFlash-dt);}
+    for(let i=state.errorWaves.length-1;i>=0;i--) {
+      const wave=state.errorWaves[i];wave.age+=dt;wave.previousRadius=wave.radius;wave.radius+=wave.speed*dt;
+      const p=state.player,distance=p?Math.hypot(p.x-wave.x,p.y-wave.y):Infinity;
+      if(!wave.hitPlayer && distance<=wave.radius+(p?.hitboxRadius||0)) {wave.hitPlayer=true;applyErrorCorruption();}
+      if(wave.radius>=wave.maxRadius) {
+        if(!wave.hitPlayer)applyErrorCorruption(); // The status pulse is unavoidable, including shields.
+        state.errorWaves.splice(i,1);
+        if(boss.phase2Triggered)openErrorNodeWindow(boss);
+      }
+    }
+    const blink=boss.errorBlink;
+    if(blink) {
+      blink.timer-=dt;
+      if(blink.timer<=0) {
+        if(blink.phase==='WARN') {
+          state.errorEchoes.push({x:boss.x,y:boss.y,path:boss.path,spec:boss.spec,scale:boss.scale,timer:0.55,maxTimer:0.55});
+          boss.x=blink.targetX;boss.y=blink.targetY;boss.homeX=boss.x;boss.homeY=boss.y;boss.phaseX=boss.phaseY=0;
+          boss.prevX=boss.x;boss.prevY=boss.y;blink.phase='SHIFT';blink.timer=0.08;triggerCameraShake(0.09,1.5);
+        } else if(blink.phase==='SHIFT') {blink.phase='ARRIVE';blink.timer=0.11;}
+        else {boss.errorBlink=null;boss.errorShotCooldown=Math.max(boss.errorShotCooldown,0.175);}
+      }
+    } else {
+      boss.phaseX+=dt*1.1;boss.phaseY+=dt*0.8;
+      boss.x=boss.homeX+Math.sin(boss.phaseX)*18;boss.y=boss.homeY+Math.sin(boss.phaseY)*35;
+      enforceRightThirdBound(boss);
+      boss.errorTeleportCooldown-=dt;
+      if(boss.errorTeleportCooldown<=0 && !boss.errorWaveCharge && !state.errorWaves.length) {
+        beginErrorTeleport(boss);boss.errorTeleportCooldown=2.1+Math.random()*1.25;
+      }
+    }
+    boss.errorShotCooldown-=dt;
+    if(boss.errorShotCooldown<=0 && !boss.errorBlink && !boss.errorWaveCharge) {
+      fireErrorBossPattern(boss);boss.errorShotCooldown=boss.phase2Triggered?1.45:1.8;
+    }
+    for(const clone of state.errorClones) {
+      clone.age+=dt;clone.y=clone.homeY+Math.sin(clone.age*1.1+clone.index)*25;
+      clone.x=1040+Math.sin(clone.age*0.7+clone.index*2)*100;
+      clone.fireCooldown-=dt;
+      if(clone.fireCooldown<=0) {
+        const port=getWorldMuzzles(clone.x,clone.y,clone.spec,false,clone.scale)[0];
+        const aim=Math.atan2(state.player.y-port.y,state.player.x-port.x);
+        for(let i=-1;i<=1;i++) {const shot=spawnErrorBossBullet(port.x,port.y,aim+i*0.2,190,'Orb',true);if(shot)shot.errorNodeId=clone.nodeId;}
+        clone.fireCooldown=3.2+clone.index*0.2;
+      }
+    }
+    for(let i=state.errorEchoes.length-1;i>=0;i--) {state.errorEchoes[i].timer-=dt;if(state.errorEchoes[i].timer<=0)state.errorEchoes.splice(i,1);}
+  }
+
+  function enterErrorPhase2(boss) {
+    boss.phase2Triggered=true;boss.phase2Active=true;
+    boss.errorWaveCooldown=0;
+    state.floatingTexts.push({text:'PHASE 2 · SIGNAL FORK',x:CONFIG.CANVAS_WIDTH/2,y:180,color:'#ff80df',timer:2.3});
+  }
+
+  function renderSpawnSectorBoundary() {
+    if(!isPlayerSectorRestricted())return;
+    const W=CONFIG.CANVAS_WIDTH,H=CONFIG.CANVAS_HEIGHT;
+    ctx.save();
+    const boundary=CONFIG.ENEMY_MIN_X;
+    ctx.fillStyle='rgba(95,52,125,0.06)';ctx.fillRect(boundary,54,W-boundary,H-54);
+    ctx.strokeStyle='rgba(183,144,218,0.55)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(boundary,54);ctx.lineTo(boundary,H);ctx.stroke();
+    ctx.fillStyle='rgba(181,152,219,0.5)';
+    for(let y=76;y<H;y+=48)ctx.fillRect(boundary-3,y,6,4);
+    ctx.fillStyle='#c8b1dd';ctx.font='12px monospace';ctx.textAlign='right';ctx.fillText('이동 한계',boundary-12,H-22);
+    ctx.textAlign='left';ctx.fillText('ENEMY SECTOR',boundary+12,H-22);
+    ctx.restore();
+  }
+
+  function renderErrorBossMechanics() {
+    if(!isErrorBossCombat())return;
+    const b=state.boss,t=state.errorFx.age,W=CONFIG.CANVAS_WIDTH,H=CONFIG.CANVAS_HEIGHT;
+    ctx.save();ctx.imageSmoothingEnabled=false;
+    // Number and color connect each remote node to exactly one spectral boss.
+    for(const node of state.errorNodes) {
+      const clone=state.errorClones.find(c=>c.nodeId===node.id),color=node.index%2?'#ff75d0':'#72faff';
+      if(clone) {
+        ctx.globalAlpha=node.windowRemaining>0?0.25:0.10;ctx.strokeStyle=color;ctx.lineWidth=1;
+        ctx.setLineDash([3,12]);ctx.beginPath();ctx.moveTo(node.x,node.y);ctx.lineTo(clone.x,clone.y);ctx.stroke();ctx.setLineDash([]);
+      }
+      ctx.globalAlpha=1;ctx.translate(node.x,node.y);
+      const open=node.windowRemaining>0,pulse=2*Math.sin(t*5+node.index);
+      ctx.fillStyle=open?'rgba(0,238,255,0.10)':'rgba(255,60,180,0.07)';
+      ctx.strokeStyle=open?color:'#805b99';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(0,-25-pulse);ctx.lineTo(25+pulse,0);ctx.lineTo(0,25+pulse);ctx.lineTo(-25-pulse,0);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.strokeStyle=open?'#dfffff':'#865b9a';ctx.strokeRect(-14,-14,28,28);
+      ctx.fillStyle=node.hitFlash>0?'#ffffff':open?color:'#6c4382';ctx.fillRect(-5,-5,10,10);
+      for(let k=0;k<4;k++) {const a=t*0.8+k*Math.PI/2;ctx.fillStyle=k%2?'#00eeff':'#ff55b5';ctx.fillRect(Math.cos(a)*32-2,Math.sin(a)*32-2,4,4);}
+      ctx.font='bold 15px monospace';ctx.textAlign='center';ctx.fillStyle=open?'#efffff':'#b38cc2';
+      ctx.fillText(`NODE ${node.index} · ${open?Math.ceil(node.windowRemaining)+'s':'LOCK'}`,0,-40);
+      ctx.fillStyle='#15213a';ctx.fillRect(-29,35,58,5);ctx.fillStyle=color;ctx.fillRect(-29,35,58*node.hp/node.maxHp,5);
+      ctx.fillStyle='#eaffff';ctx.font='13px monospace';ctx.fillText(`${Math.ceil(node.hp)} / 1000`,0,53);
+      ctx.translate(-node.x,-node.y);
+    }
+    for(const clone of state.errorClones) {
+      ctx.globalAlpha=0.68;
+      renderErrorSpriteFringe(clone.path,clone.x,clone.y,clone.spec.size,clone.scale,-Math.PI/2,true);
+      drawTintedSprite(clone.path,clone.x,clone.y,clone.spec.size,clone.scale,-Math.PI/2,clone.index%2?'#ff75d0':'#60faff',0.68);
+      renderErrorEnemyArtifacts({...clone,errorVariant:clone.index+12,phaseOffset:clone.index},-Math.PI/2);
+      ctx.globalAlpha=1;ctx.textAlign='center';ctx.font='bold 14px monospace';ctx.fillStyle=clone.index%2?'#ff9cdc':'#9affff';
+      ctx.fillText(`ECHO ${clone.index} → NODE ${clone.index}`,clone.x,clone.y+49);
+    }
+    for(const echo of state.errorEchoes) {
+      const progress=1-echo.timer/echo.maxTimer;
+      drawTintedSprite(echo.path,echo.x-progress*35,echo.y,echo.spec.size,echo.scale,-Math.PI/2,'#00eeff',(1-progress)*0.55);
+      drawTintedSprite(echo.path,echo.x+progress*45,echo.y,echo.spec.size,echo.scale,-Math.PI/2,'#ff55b5',(1-progress)*0.5);
+    }
+    if(b.errorBlink) {
+      const blink=b.errorBlink,x=blink.targetX,y=blink.targetY;
+      ctx.strokeStyle='#ff8cda';ctx.lineWidth=2;ctx.globalAlpha=0.75;
+      for(const direction of [-1,1]) {
+        ctx.strokeRect(x+direction*30-6,y-28,12,56);
+        ctx.fillStyle=direction>0?'#00eeff':'#ff55b5';ctx.fillRect(x+direction*45,y-12,14,3);
+      }
+      ctx.globalAlpha=1;ctx.fillStyle='#dfffff';ctx.textAlign='center';ctx.font='11px monospace';ctx.fillText('SIGNAL SHIFT',x,y-42);
+    }
+    if(b.errorWaveCharge>0) {
+      const progress=1-b.errorWaveCharge/1.1;
+      ctx.strokeStyle=errorColor();ctx.lineWidth=3;ctx.globalAlpha=0.7;
+      ctx.beginPath();ctx.arc(b.x,b.y,60-35*progress,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=1;ctx.fillStyle='#ffd3ef';ctx.textAlign='center';ctx.font='bold 13px monospace';ctx.fillText('ERROR PULSE',b.x,b.y-65);
+    }
+    for(const wave of state.errorWaves) {
+      // Broken concentric neon arcs expand continuously from the actual boss core.
+      ctx.globalAlpha=Math.max(0.15,1-wave.radius/wave.maxRadius);
+      for(let layer=0;layer<3;layer++) {
+        const radius=Math.max(1,wave.radius-layer*18);ctx.lineWidth=layer===0?7:2;
+        ctx.strokeStyle=layer%2?'#00eeff':'#ff55b5';
+        for(let arc=0;arc<10;arc++) {
+          const start=arc*Math.PI/5+Math.sin(t*3)*0.02;
+          ctx.beginPath();ctx.arc(wave.x,wave.y,radius,start,start+Math.PI/5-0.055);ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha=1;ctx.fillStyle='#aafaff';ctx.textAlign='right';ctx.font='12px monospace';
+    if(b.phase2Triggered) {ctx.fillText(`PHASE 2 · ECHOES ${state.errorClones.length}/4`,W-22,62);ctx.fillText(`NEXT PULSE ${Math.ceil(Math.max(0,b.errorWaveCooldown))}s`,W-22,80);if(state.errorNodes.length<4)ctx.fillText(`NODE REFILL ${Math.ceil(b.errorNodeCooldown)}s + PULSE`,W-22,98);}
+    ctx.restore();
+  }
+
+  function renderErrorCorruptionHUD() {
+    const p=state.player;if(!(p?.corruptionRemaining>0))return;
+    ctx.save();ctx.fillStyle='rgba(25,4,34,0.88)';ctx.fillRect(20,67,258,39);
+    ctx.fillStyle='#ff80cf';ctx.fillRect(20,67,3,39);ctx.font='bold 12px monospace';ctx.textAlign='left';
+    ctx.fillText(`SIGNAL ERROR · ${Math.ceil(p.corruptionRemaining)}s`,30,82);
+    ctx.fillStyle='#d6faff';ctx.font='11px monospace';ctx.fillText('탄환 명중 50% · 재피격 시 갱신',30,98);
+    ctx.fillStyle='#ff55b5';ctx.fillRect(20,104,258*p.corruptionRemaining/CONFIG.ERROR_CORRUPTION_DURATION,2);
+    ctx.restore();
+  }
+
+  // ERROR visual language: intact white collision cores, cyan/magenta channel fringes,
+  // sparse displaced pixel slices and signal dropouts. Rendering never changes hitboxes.
+  function errorColorName(offset=0) {
+    return Math.floor((state.errorFx.age+offset)*5)%2===0?'Pink':'Cyan';
+  }
+  function errorColor(offset=0) {return errorColorName(offset)==='Pink'?'#ff55b5':'#00eeff';}
+  function errorNoise(seed) {const n=Math.sin(seed*127.1+311.7)*43758.5453;return n-Math.floor(n);}
+
+  function updateErrorEffects(dt) {
+    const fx=state.errorFx;
+    if(state.currentTier!==12) {fx.remaining=0;fx.cooldown=7;return;}
+    fx.age+=dt;
+    if(state.player)state.player.corruptionRemaining=Math.max(0,(state.player.corruptionRemaining||0)-dt);
+    if(state.phase!=='WAVE' && state.phase!=='TEST' && !isErrorBossCombat()) {fx.remaining=0;return;}
+    if(fx.remaining>0) {
+      fx.remaining=Math.max(0,fx.remaining-dt);
+      if(fx.remaining===0)fx.cooldown=12+Math.random()*6;
+    } else {
+      fx.cooldown-=dt;
+      if(fx.cooldown<=0)fx.remaining=5;
+    }
+  }
+
+  function renderErrorSpriteFringe(path,x,y,size,scale,rotation,strong=false) {
+    const t=state.errorFx.age,tick=Math.floor(t*12),pulse=errorNoise(tick+Math.floor(x));
+    ctx.save();
+    // Minion hulls have stronger split channels; projectile and boss fringes stay unchanged.
+    const separation=strong?5+Math.floor(pulse*5):3;
+    drawTintedSprite(path,x-separation,y+(strong?-1:0),size,scale,rotation,'#00eeff',strong?0.48:0.28);
+    drawTintedSprite(path,x+separation,y+(strong?1:0),size,scale,rotation,'#ff55b5',strong?0.48:0.28);
+    const r=Math.max(size[0],size[1])*scale*0.38;
+    if(pulse>0.42) {
+      ctx.fillStyle=errorColor(x*0.01);ctx.globalAlpha=0.7;
+      ctx.fillRect(Math.round(x-r-7),Math.round(y+(pulse-0.5)*r),8+Math.floor(pulse*10),2);
+      ctx.fillStyle=errorColor(x*0.01+0.2);
+      ctx.fillRect(Math.round(x+r+3),Math.round(y-r*0.35),5,3);
+    }
+    ctx.restore();
+  }
+
+  let errorHullBuffer=null;
+  const errorHullStampCache=new Map();
+  function renderErrorEnemyArtifacts(enemy,rotation) {
+    const image=assets.images.get(enemy.path);if(!image)return;
+    const [w,h]=enemy.spec.size,scale=enemy.scale;
+    const side=Math.ceil(Math.hypot(w,h)*scale)+8;
+    const cardinal=rotation/(Math.PI/2),cacheable=Math.abs(cardinal-Math.round(cardinal))<1e-6;
+    const key=`${enemy.path}|${w},${h}|${scale}|${Math.round(cardinal)}`;
+    let hull=cacheable?errorHullStampCache.get(key):null;
+    if(!hull) {
+      if(cacheable) {hull=document.createElement('canvas');hull.width=side;hull.height=side;}
+      else {
+        if(!errorHullBuffer)errorHullBuffer=document.createElement('canvas');
+        if(errorHullBuffer.width<side)errorHullBuffer.width=side;
+        if(errorHullBuffer.height<side)errorHullBuffer.height=side;
+        hull=errorHullBuffer;
+      }
+      const stamp=hull.getContext('2d');stamp.save();stamp.clearRect(0,0,side,side);stamp.imageSmoothingEnabled=false;
+      stamp.translate(side/2,side/2);stamp.rotate(rotation);
+      stamp.drawImage(image,-w*scale/2,-h*scale/2,w*scale,h*scale);stamp.restore();
+      if(cacheable) {
+        if(errorHullStampCache.size>=64)errorHullStampCache.delete(errorHullStampCache.keys().next().value);
+        errorHullStampCache.set(key,hull);
+      }
+    }
+    const seed=(enemy.errorVariant||12)*17+(enemy.phaseOffset||0),tick=Math.floor(state.errorFx.age*14);
+    const burst=errorNoise(Math.floor(state.errorFx.age*4)+seed)>0.48;
+    const mainHull=enemy.kind==='TIER_BOSS' && enemy.tier===12;
+    const count=burst?(mainHull?6:4):(mainHull?3:2);
+    ctx.save();
+    // World-horizontal pixel slices, even while the craft rotates during a dash.
+    // Keep the original hull visible beneath them: displacement is visual only.
+    for(let i=0;i<count;i++) {
+      const n=errorNoise(seed+tick+i*23),row=Math.floor(side*(0.25+0.5*errorNoise(seed+tick+i*41)));
+      const height=2+Math.floor(n*(burst?6:3)),shift=(i%2?-1:1)*Math.round(((burst?11:5)+n*(burst?16:7))*(mainHull?1.25:1));
+      ctx.globalAlpha=burst?0.95:0.72;
+      ctx.drawImage(hull,0,row,side,height,Math.round(enemy.x-side/2+shift),Math.round(enemy.y-side/2+row),side,height);
+    }
+    const radius=Math.max(w,h)*scale*0.39;
+    for(let i=0;i<(burst?9:5);i++) {
+      const n=errorNoise(seed+i*11+tick),angle=i*2.399+seed;
+      const x=enemy.x+Math.cos(angle)*(radius+5+n*16),y=enemy.y+Math.sin(angle)*(radius*0.7+n*10);
+      ctx.globalAlpha=0.55+n*0.35;ctx.fillStyle=i%2?'#00eeff':'#ff55b5';
+      ctx.fillRect(Math.round(x),Math.round(y),3+Math.floor(n*(burst?16:9)),1+(i%3));
+      if(i%3===0) {ctx.globalAlpha=0.85;ctx.fillStyle='#efffff';ctx.fillRect(Math.round(x+3),Math.round(y+3),2,2);}
+    }
+    ctx.restore();
+  }
+
+  function renderErrorLine(ax,ay,bx,by,width,seed=0,electric=false,warning=false) {
+    const length=Math.hypot(bx-ax,by-ay);if(length<1)return;
+    const t=state.errorFx.age,tick=Math.floor(t*13),color=errorColor(seed*0.013);
+    ctx.save();ctx.translate(ax,ay);ctx.rotate(Math.atan2(by-ay,bx-ax));
+    if(warning) {
+      // The complete future hit corridor remains visible throughout charge.
+      ctx.fillStyle='rgba(255,85,181,0.10)';ctx.fillRect(0,-width/2,length,width);
+      ctx.fillStyle='rgba(0,238,255,0.28)';ctx.fillRect(0,-width/2,length,1);ctx.fillRect(0,width/2,length,1);
+      ctx.fillStyle=color;ctx.globalAlpha=0.8;ctx.fillRect(0,-0.5,length,1);
+    } else {
+      // One continuous core; never tile short laser sprites end-to-end.
+      ctx.shadowColor=color;ctx.shadowBlur=10;ctx.fillStyle=color;ctx.globalAlpha=0.26;
+      ctx.fillRect(0,-width/2-4,length,width+8);ctx.shadowBlur=0;
+      ctx.globalAlpha=0.88;ctx.fillStyle=color;ctx.fillRect(0,-width/2,length,width);
+      ctx.fillStyle='#edffff';ctx.fillRect(0,-Math.max(1,width*0.12),length,Math.max(2,width*0.24));
+      ctx.globalAlpha=0.5;ctx.fillStyle='#00eeff';ctx.fillRect(0,-width/2-2,length,2);
+      ctx.fillStyle='#ff55b5';ctx.fillRect(0,width/2,length,2);
+      if(electric) {
+        for(let layer=0;layer<2;layer++) {
+          ctx.strokeStyle=layer?'#eaffff':color;ctx.lineWidth=layer?1:2;ctx.globalAlpha=layer?0.9:0.8;
+          ctx.beginPath();ctx.moveTo(0,0);
+          const count=Math.ceil(length/28);
+          for(let i=1;i<count;i++)ctx.lineTo(i*length/count,(errorNoise(i+tick*3+seed)-0.5)*(width+10));
+          ctx.lineTo(length,0);ctx.stroke();
+        }
+      }
+    }
+    const count=Math.min(22,Math.ceil(length/65));
+    for(let i=0;i<count;i++) {
+      const n=errorNoise(seed+i*7+tick),x=errorNoise(seed+i*13+tick*2)*length;
+      if(n<0.38)continue;
+      ctx.globalAlpha=warning?0.3:0.75;ctx.fillStyle=i%2?'#ff55b5':'#00eeff';
+      ctx.fillRect(Math.round(x),Math.round((i%2?1:-1)*(width/2+3+n*8)),4+Math.floor(n*18),1+(i%2));
+    }
+    ctx.restore();
+  }
+
+  function renderErrorLaser(beam) {
+    const length=beam.length??computeRayDistanceToScreenEdge(beam.ox,beam.oy,beam.angle);
+    renderErrorLine(beam.ox,beam.oy,beam.ox+Math.cos(beam.angle)*length,beam.oy+Math.sin(beam.angle)*length,
+      getLaserStageThicknessPx(beam,3),beam.oy,beam.kind==='EMP_CURRENT'||beam.kind.startsWith('ELECTRIC'),beam.stage<3);
+    if(beam.stage<3) {
+      ctx.save();ctx.strokeStyle=errorColor();ctx.lineWidth=2;ctx.beginPath();
+      ctx.arc(beam.ox,beam.oy,5+13*(1-Math.min(1,beam.elapsed/(beam.stage1Time+beam.stage2Time))),0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+  }
+
+  function renderErrorVolley(volley) {
+    for(const [a,b] of getElectricLinks(volley.orbs))renderErrorLine(a.x,a.y,b.x,b.y,volley.linkRadius*2,a.y,true);
+    for(const orb of volley.orbs) {
+      const charge=getElectricOrbCharge(volley,orb);
+      if(orb.cancelled || (!orb.launched && charge===null))continue;
+      const radius=orb.launched?volley.radius:3.2+2.8*Math.min(1,charge);
+      const path=`bullets/Colors/${errorColorName(orb.speed*0.01)}/Orb.png`;
+      renderErrorSpriteFringe(path,orb.x,orb.y,[5,5],radius*2/5,0);
+      drawRotatedSprite(path,orb.x,orb.y,[5,5],radius*2/5,0,false);
+      if(!orb.launched) {ctx.save();ctx.strokeStyle=errorColor();ctx.beginPath();ctx.arc(orb.x,orb.y,22-14*Math.min(1,charge),0,Math.PI*2);ctx.stroke();ctx.restore();}
+    }
+  }
+
+  let errorScreenBuffer=null;
+  function renderErrorScreenEffect() {
+    const fx=state.errorFx;
+    if(state.currentTier!==12 || fx.remaining<=0)return;
+    const W=CONFIG.CANVAS_WIDTH,H=CONFIG.CANVAS_HEIGHT,tick=Math.floor(fx.age*11);
+    const envelope=Math.min(1,(5-fx.remaining)*4,fx.remaining*3);
+    if(!errorScreenBuffer) {errorScreenBuffer=document.createElement('canvas');errorScreenBuffer.width=W;errorScreenBuffer.height=120;}
+    const copy=errorScreenBuffer.getContext('2d'),bands=[];
+    // Snapshot only the five affected rows, before drawing any shifted strip back.
+    for(let i=0;i<5;i++) {
+      const n=errorNoise(tick+i*31),y=64+Math.floor(errorNoise(tick+i*19)*(H-105));
+      const h=5+Math.floor(n*17),shift=Math.round((n-0.5)*36);
+      bands.push({y,h,shift});copy.drawImage(canvas,0,y,W,h,0,i*24,W,h);
+    }
+    ctx.save();ctx.globalAlpha=envelope;
+    ctx.fillStyle='rgba(9,3,25,0.12)';ctx.fillRect(0,50,W,H-50);
+    // Only a few translucent strips shift; the screen and safe lanes remain readable.
+    for(let i=0;i<5;i++) {
+      const {y,h,shift}=bands[i];
+      ctx.globalAlpha=0.5*envelope;ctx.drawImage(errorScreenBuffer,0,i*24,W,h,shift,y,W,h);
+      ctx.globalAlpha=envelope;ctx.fillStyle=i%2?'rgba(255,85,181,0.14)':'rgba(0,238,255,0.13)';ctx.fillRect(0,y,W,h);
+      ctx.fillStyle=i%2?'#00eeff':'#ff55b5';ctx.globalAlpha=0.5*envelope;ctx.fillRect(0,y,W,1);
+    }
+    ctx.globalAlpha=0.35*envelope;
+    for(let i=0;i<12;i++) {
+      const x=Math.floor(errorNoise(tick+i*23)*W),y=70+Math.floor(errorNoise(tick+i*41)*(H-100));
+      ctx.fillStyle=i%3===0?'#ff55b5':i%3===1?'#00eeff':'#020515';
+      ctx.fillRect(x,y,16+Math.floor(errorNoise(i+tick)*90),2+(i%4)*3);
+    }
+    ctx.globalAlpha=envelope;ctx.fillStyle='rgba(7,0,20,0.15)';
+    for(let y=54;y<H;y+=6)ctx.fillRect(0,y,W,1);
+    ctx.fillStyle='#ff8bd0';ctx.font='bold 12px monospace';ctx.textAlign='right';
+    ctx.fillText(`SIGNAL CORRUPTED // ${Math.ceil(fx.remaining)}s`,W-20,H-20);
+    ctx.restore();
+  }
+
   function renderGame() {
     ctx.imageSmoothingEnabled = false;
 
@@ -5843,6 +6410,7 @@
 
     // 1. Streaming Space_Unique Background
     renderBackground();
+    renderSpawnSectorBoundary();
     if (finalBoss && !finalBoss.dyingTimer) renderFinalBossPresence(finalBoss);
 
     // 2. Optional Debug Overlay: Right 1/3 Boundary Line (x = 856)
@@ -5944,7 +6512,9 @@
     // 7. Render Player Bullets (dynamic size, scale, and angle per weapon evolution level)
     for (const pb of state.playerBullets) {
       const rot = ['Needle', 'Crescent'].includes(pb.shape) ? pb.angle : 0;
-      drawRotatedSprite(pb.path, pb.x, pb.y, pb.size, pb.scale, rot, false);
+      if(pb.corrupted)renderErrorSpriteFringe(pb.path,pb.x,pb.y,pb.size,pb.scale,rot,true);
+      ctx.save();if(pb.errorMiss)ctx.globalAlpha=0.42;
+      drawRotatedSprite(pb.path, pb.x, pb.y, pb.size, pb.scale, rot, false);ctx.restore();
     }
 
     // 8. Render Regular Enemies (with pre-fire muzzle telegraph)
@@ -5953,8 +6523,10 @@
       if (e.specialState === 'FLYBY_WARN') continue;
       const movingSpecial = ['FLYBY', 'DASH', 'SUICIDE_APPROACH'].includes(e.specialState);
       const rotation = movingSpecial ? e.specialAngle + Math.PI / 2 : -Math.PI / 2;
+      if(e.glitch)renderErrorSpriteFringe(e.path,e.x,e.y,e.spec.size,e.scale,rotation,true);
       drawRotatedSprite(e.path, e.x, e.y, e.spec.size, e.scale, rotation,
         e.hitFlash > 0 || (e.specialState === 'SUICIDE_ARM' && Math.floor(e.specialTimer * 16) % 2 === 0));
+      if(e.glitch)renderErrorEnemyArtifacts(e,rotation);
       if (e.isTier8Phase2Raider && e.isWeakRaider) {
         ctx.save(); ctx.fillStyle='#ffe366'; ctx.font='bold 12px monospace'; ctx.textAlign='center';
         ctx.fillText('Lv1',Math.round(e.x),Math.round(e.y-32)); ctx.restore();
@@ -5994,7 +6566,7 @@
     // 10. Render Active Boss (and Tier 06 4-wing missile pod status indicators)
     if (state.boss) {
       const b = state.boss;
-      const hiddenOffscreen = b.tier === 5 && ['OFFSCREEN', 'P2_WARN', 'P2_WAIT'].includes(b.dashState);
+      const hiddenOffscreen = (b.tier===12 && b.errorBlink?.phase==='SHIFT') || b.tier === 5 && ['OFFSCREEN', 'P2_WARN', 'P2_WAIT'].includes(b.dashState);
       if(b.kind==='CHAIN_BOSS') {
         renderChainBoss(b);
         for(const beam of state.lasers)if(['CHAIN_HEAD','CHAIN_CURRENT'].includes(beam.kind))renderLaserBeam(beam);
@@ -6004,6 +6576,7 @@
         if (b.kind === 'FINAL_REVEALED' && b.entering) {
           ctx.globalAlpha = Math.max(0.25, 1.0 - b.revealTimer);
         }
+        if(b.glitch)renderErrorSpriteFringe(b.path,b.x,b.y,b.spec.size,b.scale,b.rotation ?? -Math.PI/2,b.tier===12);
         drawRotatedSprite(
           b.path,
           b.x,
@@ -6013,6 +6586,7 @@
           b.rotation ?? -Math.PI / 2,
           b.hitFlash > 0
         );
+        if(b.tier===12)renderErrorEnemyArtifacts(b,b.rotation ?? -Math.PI/2);
         ctx.restore();
       }
 
@@ -6073,13 +6647,17 @@
       const alpha = Math.max(0, ex.timer / ex.maxTimer);
       ctx.save();
       ctx.globalAlpha = alpha * 0.65;
-      ctx.fillStyle = '#ff9b3d';
+      ctx.fillStyle = ex.glitch?errorColor(ex.x*0.01):'#ff9b3d';
       ctx.beginPath();
       ctx.arc(Math.round(msRound(ex.x)), Math.round(msRound(ex.y)), ex.radius, 0, Math.PI * 2);
       ctx.fill();
       ctx.lineWidth = 3;
-      ctx.strokeStyle = '#ffe366';
+      ctx.strokeStyle = ex.glitch?'#d9ffff':'#ffe366';
       ctx.stroke();
+      if(ex.glitch) for(let i=0;i<12;i++) {
+        const angle=i*Math.PI/6,r=ex.radius*(0.6+0.35*errorNoise(i+Math.floor(state.errorFx.age*12)));
+        ctx.fillStyle=i%2?'#00eeff':'#ff55b5';ctx.fillRect(ex.x+Math.cos(angle)*r,ex.y+Math.sin(angle)*r,7,2);
+      }
       ctx.restore();
     }
 
@@ -6104,6 +6682,7 @@
         ctx.restore();
       }
       const blinkSkip = p.invulnTimer > 0 && Math.floor(p.invulnTimer * 16) % 2 === 1;
+      if(p.corruptionRemaining>0) {renderErrorSpriteFringe(p.path,p.x,p.y,p.spec.size,p.scale,Math.PI/2,true);renderErrorEnemyArtifacts({...p,errorVariant:25,phaseOffset:0},Math.PI/2);}
       if (!blinkSkip) {
         drawRotatedSprite(p.path, p.x, p.y, p.spec.size, p.scale, Math.PI / 2, p.hitFlashTimer > 0);
       }
@@ -6119,7 +6698,19 @@
     // 14. Render Enemy Bullets
     for (const eb of state.enemyBullets) {
       const rot = eb.shape === 'Needle' ? eb.angle : 0;
-      drawRotatedSprite(eb.path, eb.x, eb.y, eb.size, eb.scale, rot, false);
+      const errorPath=eb.glitch?`bullets/Colors/${errorColorName(eb.x*0.013+eb.y*0.007)}/${eb.shape==='Needle'?'Needle':'Orb'}.png`:eb.path;
+      if(eb.glitch)renderErrorSpriteFringe(errorPath,eb.x,eb.y,eb.size,eb.scale,rot,eb.errorPower>1);
+      if(eb.errorPower>1) {
+        ctx.save();ctx.globalAlpha=0.75;
+        const r=eb.shape==='Needle'?14:9,tick=Math.floor(state.errorFx.age*15);
+        for(let i=0;i<4;i++) {
+          const n=errorNoise(i*17+tick+eb.x*0.01),sign=i%2?1:-1;
+          ctx.fillStyle=i%2?'#00eeff':'#ff55b5';
+          ctx.fillRect(Math.round(eb.x+sign*(r+3+n*8)),Math.round(eb.y+(i-1.5)*5),5+Math.floor(n*9),2);
+        }
+        ctx.restore();
+      }
+      drawRotatedSprite(errorPath, eb.x, eb.y, eb.size, eb.scale, rot, false);
     }
 
     // 15. Render Particles & Floating Announcements
@@ -6153,11 +6744,14 @@
       ctx.save();ctx.fillStyle=`rgba(195,250,255,${0.12*state.player.skills.laser.flashTimer/0.14})`;
       ctx.fillRect(0,0,CONFIG.CANVAS_WIDTH,CONFIG.CANVAS_HEIGHT);ctx.restore();
     }
+    renderErrorBossMechanics();
     renderEmpScreenEffect();
+    renderErrorScreenEffect();
     ctx.restore(); // Camera vibration never moves health, timer, or boss bar.
 
     // 16. Render Pixel UI (Top-left Player HP, Top-center Timer, Top-center 64x32 Boss Health Bar)
     renderPixelUI();
+    renderErrorCorruptionHUD();
   }
 
   function renderFinalBossPresence(boss) {
@@ -6290,6 +6884,7 @@
   }
 
   function renderLaserBeam(beam) {
+    if(beam.glitch) {renderErrorLaser(beam);return;}
     if(['CHAIN_CURRENT','CHAIN_HEAD'].includes(beam.kind)){renderChainCurrent(beam);return;}
     if(['ELECTRIC_ENEMY','ELECTRIC_BOSS','EMP_CURRENT','CHAIN_CURRENT'].includes(beam.kind)) {
       ctx.save();ctx.imageSmoothingEnabled=false;
@@ -6650,33 +7245,28 @@
   flashCanvas.height = 256;
   const flashCtx = flashCanvas.getContext('2d');
 
-  function drawTintedSprite(relPath, cx, cy, size, scale, angleRad, tintColor, alpha = 0.65) {
-    const img = assets.images.get(relPath);
-    const [w, h] = size;
-    const dw = Math.round(w * scale);
-    const dh = Math.round(h * scale);
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(Math.round(cx), Math.round(cy));
-    if (angleRad !== 0) {
-      ctx.rotate(angleRad);
+  // Native-size tint textures are reusable across every projectile, scale and frame.
+  const spriteTintCache=new Map();
+  function drawTintedSprite(relPath,cx,cy,size,scale,angleRad,tintColor,alpha=0.65) {
+    const img=assets.images.get(relPath),[w,h]=size,dw=Math.round(w*scale),dh=Math.round(h*scale);
+    const key=`${relPath}|${w},${h}|${tintColor}`;
+    let tinted=spriteTintCache.get(key);
+    if(!tinted && img) {
+      tinted=document.createElement('canvas');tinted.width=w;tinted.height=h;
+      const paint=tinted.getContext('2d');paint.imageSmoothingEnabled=false;
+      paint.drawImage(img,0,0,w,h);paint.globalCompositeOperation='source-in';paint.fillStyle=tintColor;paint.fillRect(0,0,w,h);
+      paint.globalCompositeOperation='source-over';
+      if(spriteTintCache.size>=128)spriteTintCache.delete(spriteTintCache.keys().next().value);
+      spriteTintCache.set(key,tinted);
     }
-
-    if (img && flashCtx && typeof flashCtx.clearRect === 'function') {
-      if (flashCanvas.width < dw) flashCanvas.width = dw;
-      if (flashCanvas.height < dh) flashCanvas.height = dh;
-      flashCtx.imageSmoothingEnabled = false;
-      flashCtx.globalCompositeOperation = 'source-over';
-      flashCtx.clearRect(0, 0, dw, dh);
-      flashCtx.drawImage(img, 0, 0, dw, dh);
-      flashCtx.globalCompositeOperation = 'source-in';
-      flashCtx.fillStyle = tintColor;
-      flashCtx.fillRect(0, 0, dw, dh);
-      ctx.drawImage(flashCanvas, 0, 0, dw, dh, Math.round(-dw / 2), Math.round(-dh / 2), dw, dh);
+    ctx.save();ctx.globalAlpha=alpha;
+    if(angleRad===0) {
+      if(tinted)ctx.drawImage(tinted,Math.round(cx)-Math.round(dw/2),Math.round(cy)-Math.round(dh/2),dw,dh);
+      else {ctx.fillStyle=tintColor;ctx.fillRect(Math.round(cx-dw/2),Math.round(cy-dh/2),dw,dh);}
     } else {
-      ctx.fillStyle = tintColor;
-      ctx.fillRect(Math.round(-dw / 2), Math.round(-dh / 2), dw, dh);
+      ctx.translate(Math.round(cx),Math.round(cy));ctx.rotate(angleRad);
+      if(tinted)ctx.drawImage(tinted,-Math.round(dw/2),-Math.round(dh/2),dw,dh);
+      else {ctx.fillStyle=tintColor;ctx.fillRect(-Math.round(dw/2),-Math.round(dh/2),dw,dh);}
     }
     ctx.restore();
   }
@@ -6940,7 +7530,7 @@
 
   function togglePause() {
     // Do not allow pause overlay to skip or override active REWARD selection
-    if (state.mode === 'REWARD') return;
+    if (state.mode === 'REWARD' || state.mode === 'SUPPLY') return;
     if (state.mode === 'PLAYING') {
       state.mode = 'PAUSED';
       showOverlay('PAUSED', '일시정지 상태입니다. ESC 또는 계속하기 버튼을 눌러 재개하세요.', true);
@@ -6999,6 +7589,15 @@
     }
     keys.add(e.code);
 
+    if(state.mode==='SUPPLY') {
+      if(!e.repeat) {
+        const choice={Digit1:'heal',Numpad1:'heal',Digit2:'cooldown',Numpad2:'cooldown',Digit3:'upgrade',Numpad3:'upgrade'}[e.code];
+        if(choice)applySupplyChoice(choice);
+        if(e.code==='KeyN')resetGame();
+      }
+      return;
+    }
+
     // Reward Selection Keys (1, 2, 3, 4) only when reward modal is active
     if (state.mode === 'REWARD') {
       if (!e.repeat) {
@@ -7037,6 +7636,11 @@
 
   window.addEventListener('keyup', (e) => {
     keys.delete(e.code);
+  });
+
+  document.getElementById('supply-screen')?.addEventListener('click',(e)=>{
+    const card=e.target.closest('button[data-supply]');
+    if(card)applySupplyChoice(card.dataset.supply);
   });
 
   // Reward Card Click Listeners
@@ -7197,13 +7801,14 @@
       const b=state.boss?.kind==='CHAIN_BOSS'&&!state.boss.phase2Triggered?state.boss:startChainBoss({combat:true,campaign:true,skipEntrance:true});
       b.combat=true;b.entering=false;b.pathState='ROAM';state.phase='BOSS';b.hp=b.maxHp*0.4;
       beginChainPhase2(b);updateHudBadges();
-    } else if (['trigger-b5-p2', 'trigger-b6-p2', 'trigger-b7-p2', 'trigger-b8-p2', 'trigger-electric-p2'].includes(action)) {
+    } else if (['trigger-b5-p2', 'trigger-b6-p2', 'trigger-b7-p2', 'trigger-b8-p2', 'trigger-electric-p2', 'trigger-error-p2'].includes(action)) {
       const tierMap = {
         'trigger-b5-p2': 5,
         'trigger-b6-p2': 6,
         'trigger-b7-p2': 7,
         'trigger-b8-p2': 8,
-        'trigger-electric-p2': 9
+        'trigger-electric-p2': 9,
+        'trigger-error-p2': 12
       };
       const tier = tierMap[action];
       hideRewardModal();
@@ -7291,6 +7896,8 @@
     spawnSupply,
     maybeDropSupply,
     grantSupplyReward,
+    applySupplyChoice,
+    openPendingSupplyChoice,
     updateSupplies,
     spawnMeteorFromWarning,
     spawnEnemyBullet,
@@ -7371,7 +7978,21 @@
     getElectricLinks,
     getElectricOrbCharge,
     fireEnemyPattern,
+    ERROR_SOURCE_TIERS,
+    updateErrorEffects,
+    renderErrorScreenEffect,
+    renderErrorLaser,
+    renderErrorEnemyArtifacts,
+    spriteTintCache,errorHullStampCache,
+    renderErrorBossMechanics,
+    initErrorBoss,updateErrorBoss,beginErrorWave,enterErrorPhase2,
+    isPlayerSectorRestricted,
+    canDamageBossWithPlayerAttack,
+    applyErrorCorruption,infectPlayerBullet,createErrorNodes,openErrorNodeWindow,hitErrorNode,
+    fireErrorBossPattern,beginErrorTeleport,
+    renderGame,
     firePlayerWeapon,
+    spawnPlayerBullet,
     usePlayerSkill,
     getSkillStats,
     canChooseReward,
@@ -7425,7 +8046,18 @@
       state.player.mobilityLevel = Math.max(0, Math.min(4, Number(params.get('mob')) || 0));
       syncPlayerUpgradeStats(state.player);
     }
-    if(params.get('chainBoss')==='1') {
+    if(params.get('errorDemo')==='1') {
+      jumpToTierWave(12);state.phase='TEST';state.meteorSpawnTimer=1e6;
+      for(let i=1;i<=6;i++) {
+        const e=spawnWaveEnemy(12,{errorVariant:i});e.entering=false;
+        e.x=e.homeX=1050+(i%2)*95;e.y=e.homeY=105+(i-1)*105;
+        e.specialState='NORMAL';e.exemptFromRightThird=false;e.fireCooldown=0.15+i*0.12;
+      }
+      const seconds=Math.max(0,Math.min(10,Number(params.get('simSeconds'))||0));
+      for(let i=0;i<seconds*50;i++)updateGame(0.02);
+    } else if(params.get('errorWave')==='1') {
+      jumpToTierWave(12);
+    } else if(params.get('chainBoss')==='1') {
       const chain=startChainBoss({combat:params.get('wave')!=='1',campaign:true,skipEntrance:params.get('p2')==='1'});
       if(params.get('p2')==='1' && chain.combat){chain.hp=chain.maxHp*0.4;beginChainPhase2(chain);}
       if(params.get('preview')==='lanes' && chain.phase2Triggered)previewChainCorridors(chain);
@@ -7452,6 +8084,7 @@
       startTierBoss(t);
       state.boss.entering = false;
       if(state.boss.kind!=='CHAIN_BOSS')state.boss.x = state.boss.homeX;
+      if(params.get('errorPulse')==='1' && t===12) {beginErrorWave(state.boss);}
       if(params.get('emp')==='1' && t===10) state.boss.empCooldown=0.25;
       if(params.get('sweeps')==='1' && t===9) {state.boss.hp=state.boss.maxHp*0.60;state.boss.attackTimer=100;}
       if(params.get('electricLaser')==='1' && t===9) startElectricBossLasers(state.boss);
@@ -7514,9 +8147,16 @@
       spawnSupply(state.player.x+160,state.player.y);spawnSupply(state.player.x+320,state.player.y-100);
       spawnMeteorFromWarning({y:state.player.y+170,speed:480});state.meteors[0].x=950;
     }
+    if(params.get('errorNodes')==='1' && state.boss?.tier===12) {
+      const b=state.boss;b.hp=b.maxHp*0.5;checkAndTriggerBossPhase2(b);createErrorNodes(b);openErrorNodeWindow(b);
+      applyErrorCorruption();
+    }
+    if(params.get('errorScreen')==='1')state.errorFx.remaining=4.6;
+    if(params.get('supplyChoice')==='1') {state.pendingSupplyChoices++;openPendingSupplyChoice();}
     updateHudBadges();
     if(params.get('shock')==='1') {state.player.invulnTimer=0;damagePlayer(1,'ELECTRIC TEST',0.3,'Cyan');updateHudBadges();}
     if (params.get('paused') === '1') togglePause();
+    if(params.get('errorPreview')==='1' && state.mode==='PAUSED')hideOverlay();
     fitCanvasToViewport();
     renderGame();
     requestAnimationFrame(rafLoop);
