@@ -7,6 +7,7 @@
   const CONFIG = {
     CANVAS_WIDTH: 1284,   // 1284 / 3 = 428, 1284 * 2 / 3 = 856 (exact integer)
     CANVAS_HEIGHT: 724,   // Native height of Space_Unique background (724px)
+    PLAYER_MAX_RIGHT_X: 920, // Player hull right edge; 80px wider than the previous 840px limit.
     ENEMY_MIN_X: 856,     // Math.ceil(1284 * 2 / 3) - rightmost 1/3 boundary
 
     // V2 Visibility & Scale Increase (3x ships & bullets, 2x lasers)
@@ -681,6 +682,7 @@
 
     debugInvincible: false,
     debugShowHitboxes: false,
+    debugShowPlayerRange: false,
 
     player: null,
     enemies: [],
@@ -814,6 +816,9 @@
 
   function resetGame() {
     state.debugInvincible = false;
+    state.debugShowPlayerRange=false;
+    const rangeButton=document.getElementById('btn-player-range');
+    if(rangeButton) {rangeButton.textContent='이동 범위: OFF';rangeButton.classList.remove('active-toggle');}
     const invincibleButton = document.getElementById('btn-invincible');
     if (invincibleButton) {
       invincibleButton.textContent = '무적: OFF';
@@ -4394,7 +4399,7 @@
       const pBounds = getRotatedBounds(p.x, p.y, p.spec, true, p.scale);
       const halfW = pBounds.width / 2;
       const halfH = pBounds.height / 2;
-      const rightLimit=isPlayerSectorRestricted()?CONFIG.ENEMY_MIN_X-16-(pBounds.right-p.x):CONFIG.CANVAS_WIDTH-24-halfW;
+      const rightLimit=isPlayerSectorRestricted()?CONFIG.PLAYER_MAX_RIGHT_X-(pBounds.right-p.x):CONFIG.CANVAS_WIDTH-24-halfW;
       p.x = Math.max(24 + halfW, Math.min(rightLimit, p.x));
       p.y = Math.max(54 + halfH, Math.min(CONFIG.CANVAS_HEIGHT - 16 - halfH, p.y));
 
@@ -6104,17 +6109,23 @@
     state.floatingTexts.push({text:'PHASE 2 · SIGNAL FORK',x:CONFIG.CANVAS_WIDTH/2,y:180,color:'#ff80df',timer:2.3});
   }
 
+  function togglePlayerRange() {
+    state.debugShowPlayerRange=!state.debugShowPlayerRange;
+    const button=document.getElementById('btn-player-range');
+    if(button) {button.textContent=`이동 범위: ${state.debugShowPlayerRange?'ON':'OFF'}`;button.classList.toggle('active-toggle',state.debugShowPlayerRange);}
+  }
+
   function renderSpawnSectorBoundary() {
-    if(!isPlayerSectorRestricted())return;
+    if(!state.debugShowPlayerRange || !isPlayerSectorRestricted())return;
     const W=CONFIG.CANVAS_WIDTH,H=CONFIG.CANVAS_HEIGHT;
     ctx.save();
-    const boundary=CONFIG.ENEMY_MIN_X;
+    const boundary=CONFIG.PLAYER_MAX_RIGHT_X;
     ctx.fillStyle='rgba(95,52,125,0.06)';ctx.fillRect(boundary,54,W-boundary,H-54);
     ctx.strokeStyle='rgba(183,144,218,0.55)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(boundary,54);ctx.lineTo(boundary,H);ctx.stroke();
     ctx.fillStyle='rgba(181,152,219,0.5)';
     for(let y=76;y<H;y+=48)ctx.fillRect(boundary-3,y,6,4);
     ctx.fillStyle='#c8b1dd';ctx.font='12px monospace';ctx.textAlign='right';ctx.fillText('이동 한계',boundary-12,H-22);
-    ctx.textAlign='left';ctx.fillText('ENEMY SECTOR',boundary+12,H-22);
+    ctx.textAlign='left';ctx.fillText('PLAYER LIMIT',boundary+12,H-22);
     ctx.restore();
   }
 
@@ -7856,6 +7867,8 @@
       state.debugInvincible = !state.debugInvincible;
       btn.textContent = `무적: ${state.debugInvincible ? 'ON' : 'OFF'}`;
       btn.classList.toggle('active-toggle', state.debugInvincible);
+    } else if(action==='toggle-player-range') {
+      togglePlayerRange();
     } else if (action === 'toggle-hitboxes') {
       state.debugShowHitboxes = !state.debugShowHitboxes;
       btn.textContent = `판정/총구/1/3선: ${state.debugShowHitboxes ? 'ON' : 'OFF'}`;
@@ -7987,6 +8000,7 @@
     renderErrorBossMechanics,
     initErrorBoss,updateErrorBoss,beginErrorWave,enterErrorPhase2,
     isPlayerSectorRestricted,
+    togglePlayerRange,renderSpawnSectorBoundary,
     canDamageBossWithPlayerAttack,
     applyErrorCorruption,infectPlayerBullet,createErrorNodes,openErrorNodeWindow,hitErrorNode,
     fireErrorBossPattern,beginErrorTeleport,

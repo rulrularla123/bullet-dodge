@@ -1883,23 +1883,34 @@ test('Error node replenishment waits for a pulse even with survivors, then opens
  tick(2.5);assert.ok(locked.windowRemaining>0);assert.equal(s.errorClones.length,4);
  assert.ok(s.errorNodes.every(n=>n.x<g.CONFIG.ENEMY_MIN_X-40));
 });
-test('Enemy spawn sector blocks the player hull and permits shots, with chain encounters exempt',()=>{
+test('Player movement limit blocks the hull and permits shots, with chain encounters exempt',()=>{
  errorBossTest();const p=s.player;p.x=1100;g.updateGame(0);
- const box=g.getRotatedBounds(p.x,p.y,p.spec,true,p.scale);assert.ok(box.right<=g.CONFIG.ENEMY_MIN_X-16+1e-6);
+ const box=g.getRotatedBounds(p.x,p.y,p.spec,true,p.scale);assert.ok(box.right<=g.CONFIG.PLAYER_MAX_RIGHT_X+1e-6);
  const event=code=>({code,repeat:false,preventDefault(){}});
  windowListeners.get('keydown')(event('KeyD'));try {tick(2);}finally{windowListeners.get('keyup')(event('KeyD'));}
- assert.ok(g.getRotatedBounds(p.x,p.y,p.spec,true,p.scale).right<=g.CONFIG.ENEMY_MIN_X-16+1e-6);
- s.playerBullets=[];p.fireCooldown=0;g.updateGame(0.01);g.updatePlayerBullets(0.2);assert.ok(s.playerBullets.some(b=>b.x>g.CONFIG.ENEMY_MIN_X));
+ assert.ok(g.getRotatedBounds(p.x,p.y,p.spec,true,p.scale).right<=g.CONFIG.PLAYER_MAX_RIGHT_X+1e-6);
+ s.playerBullets=[];p.fireCooldown=0;g.updateGame(0.01);g.updatePlayerBullets(0.05);assert.ok(s.playerBullets.some(b=>b.x>g.CONFIG.PLAYER_MAX_RIGHT_X));
  for(const tier of [1,5,8,9,10,12]) {
   fresh();g.jumpToTierWave(tier);s.player.x=1100;g.updateGame(0);
-  assert.ok(g.getRotatedBounds(s.player.x,s.player.y,s.player.spec,true,s.player.scale).right<=g.CONFIG.ENEMY_MIN_X-16+1e-6);
-  g.startTierBoss(tier);s.player.x=1100;g.updateGame(0);assert.ok(s.player.x<g.CONFIG.ENEMY_MIN_X);
+  assert.ok(g.getRotatedBounds(s.player.x,s.player.y,s.player.spec,true,s.player.scale).right<=g.CONFIG.PLAYER_MAX_RIGHT_X+1e-6);
+  g.startTierBoss(tier);s.player.x=1100;g.updateGame(0);assert.ok(s.player.x<g.CONFIG.PLAYER_MAX_RIGHT_X);
  }
  fresh();g.jumpToTierWave(11);s.player.x=1100;g.updateGame(0);assert.equal(s.player.x,1100);
  g.startTierBoss(11);s.player.x=1100;g.updateGame(0);assert.equal(s.player.x,1100);
  for(const start of [g.startShadowBoss,g.startRevealedFinalBoss]) {
-  fresh();start();s.player.x=1100;g.updateGame(0);assert.ok(s.player.x<g.CONFIG.ENEMY_MIN_X);
+  fresh();start();s.player.x=1100;g.updateGame(0);assert.ok(s.player.x<g.CONFIG.PLAYER_MAX_RIGHT_X);
  }
+});
+test('Player movement expands by 80px and its range marker is hidden until enabled in verification',()=>{
+ fresh();assert.equal(g.CONFIG.PLAYER_MAX_RIGHT_X,920);assert.equal(g.state.debugShowPlayerRange,false);
+ rectDraws.length=0;g.renderSpawnSectorBoundary();assert.equal(rectDraws.length,0);
+ g.togglePlayerRange();assert.equal(s.debugShowPlayerRange,true);assert.match(nodes.get('btn-player-range').textContent,/ON/);
+ g.renderSpawnSectorBoundary();assert.ok(rectDraws.length>0);
+ const p=s.player;p.x=1100;g.updateGame(0);const box=g.getRotatedBounds(p.x,p.y,p.spec,true,p.scale);
+ assert.equal(box.right,920);assert.equal(box.right-840,80);
+ g.togglePlayerRange();assert.equal(s.debugShowPlayerRange,false);
+ g.jumpToTierWave(11);g.togglePlayerRange();rectDraws.length=0;g.renderSpawnSectorBoundary();assert.equal(rectDraws.length,0);
+ g.resetGame();assert.equal(s.debugShowPlayerRange,false);assert.match(nodes.get('btn-player-range').textContent,/OFF/);
 });
 test('Error render caches reuse native tint and cardinal hull textures without growing per frame',()=>{
  const b=errorBossTest();b.hp=5000;g.checkAndTriggerBossPhase2(b);g.createErrorNodes(b);g.openErrorNodeWindow(b);g.applyErrorCorruption();

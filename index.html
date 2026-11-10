@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bullet Hell Dodging — Pixel Space Shooter V4</title>
-  <link rel="stylesheet" href="style.css?v=20261110-error-release" />
+  <link rel="stylesheet" href="style.css?v=20261110-player-range-debug" />
 </head>
 <body>
   <div id="app">
@@ -207,6 +207,7 @@
         <button type="button" data-action="damage-boss">보스 -25%</button>
         <button type="button" data-action="kill-boss">보스 격파</button>
         <button type="button" data-action="toggle-invincible" id="btn-invincible">무적: OFF</button>
+        <button type="button" data-action="toggle-player-range" id="btn-player-range" title="플레이어 이동 한계 표시 · 연결형 보스 제외">이동 범위: OFF</button>
         <button type="button" data-action="toggle-hitboxes" id="btn-hitboxes">판정/총구/1/3선: OFF</button>
         <button type="button" data-action="heal-player">회복</button>
         <span id="asset-warning" class="asset-warning"></span>
@@ -214,6 +215,6 @@
     </section>
   </div>
 
-  <script src="game.js?v=20261110-error-release"></script>
+  <script src="game.js?v=20261110-player-range-debug"></script>
 </body>
 </html>
