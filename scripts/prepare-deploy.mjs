@@ -35,7 +35,7 @@ for (let i = 1; i <= parts; i++) {
   requested.add(`backgrounds/Space_Unique/rendered/Part_${String(i).padStart(2, '0')}.svg`);
 }
 
-const files = ['index.html', 'style.css', 'game.js', ...[...requested].sort().map(rel => `assets/${rel}`)];
+const files = ['index.html', 'style.css', 'error-hands.js', 'error-phase3.js', 'game.js', ...[...requested].sort().map(rel => `assets/${rel}`)];
 // Validate all input paths before replacing the previous generated package.
 for (const rel of files) {
   const source = path.resolve(root, rel);

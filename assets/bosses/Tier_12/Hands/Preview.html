@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오류 보스 · 양손 관절 미리보기</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080e1d;color:#d7e4f5;font:14px system-ui,sans-serif}main{max-width:1320px;margin:auto;padding:20px}h1{font-size:22px;margin:0 0 8px}p{line-height:1.6;color:#aabbd1}canvas{display:block;width:100%;background:#080e1d;border:1px solid #26354b;image-rendering:pixelated}.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px;background:#101a2d;border:1px solid #26354b}button{background:#1c2e49;color:#e2edfa;border:1px solid #476486;padding:9px 14px;border-radius:4px;cursor:pointer}button:hover{border-color:#77e7f2}label{display:flex;align-items:center;gap:7px}input[type=range]{width:105px;accent-color:#67e6ed}.sources{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px}.source{border:1px solid #26354b;padding:14px;background:#101a2d;flex:1;min-width:210px}.source img{image-rendering:pixelated;width:96px;height:192px;object-fit:contain;background:#d9dfe8;float:left;margin-right:16px}.source h2{font-size:15px;margin-top:0}.source p{font-size:13px}.notice{color:#99a8bf;font-size:12px}
+</style>
+<main><h1>오류 보스 · 양손 관절 미리보기</h1><p>아래팔 → 두 번째 팔 → 손바닥 → 엄지와 손가락 3개. 위·아래 손은 서로 반전된 한 쌍입니다.</p>
+<canvas id="hands" width="1284" height="724" aria-label="검은색 양손과 관절 애니메이션"></canvas>
+<div class="controls"><button id="emerge">3페이즈 진입 재생</button><label>진입 시간<input id="introTime" type="range" min="0" max="6" step="0.05" value="0"></label><label><input id="intro" type="checkbox" checked>진입 연출</label><button id="play">일시정지</button><button data-curl="0">손 펴기</button><button data-curl="0.65">잡기</button><button data-curl="1">주먹 쥐기</button><label><input id="auto" type="checkbox" checked>자동 굽힘</label><label>손가락<input id="curl" type="range" min="0" max="1" step="0.01" value="0"></label><label>팔꿈치<input id="elbow" type="range" min="0" max="1" step="0.01" value="0.5"></label><label>손목<input id="wrist" type="range" min="-35" max="35" step="1" value="0"></label><label><input id="joints" type="checkbox">관절 표시</label><label><input id="original" type="checkbox">흰 배경·원본 확인</label></div>
+<p class="notice">검정 손 원본은 수정하지 않았습니다. 오류 효과는 본체 뒤에만 표시합니다. 이 화면은 관절·진입 연출 미리보기입니다. 실제 패턴은 게임의 B12 3페이즈 전투에서 확인할 수 있습니다.</p>
+<div class="sources"><section class="source"><img src="Part1_Arm.png"><h2>첫 번째 팔</h2><p>팔의 가장 아래 부분.<br>아래쪽 끝을 고정하고 위쪽 끝에 다음 팔을 연결합니다.</p></section><section class="source"><img src="Part2_Arm.png"><h2>두 번째 팔</h2><p>팔꿈치에서 손목으로 연결되는 부분입니다.</p></section><section class="source"><img src="Hands.png"><h2>손 부품</h2><p>위: 엄지의 두 조각<br>중간: 끝마디·두 번째 마디를 손가락 3개에 재사용<br>아래: 손바닥</p></section></div>
+</main>
+<script src="../../../../error-hands.js"></script><script>
+const canvas=document.getElementById('hands'),ctx=canvas.getContext('2d'),images=new Map();let age=0,last=0,playing=true,ready=false;
+const controls=Object.fromEntries(['auto','curl','elbow','wrist','joints','original','intro'].map(id=>[id,document.getElementById(id)]));
+document.getElementById('emerge').onclick=()=>{age=0;playing=true;controls.intro.checked=true;document.getElementById('play').textContent='일시정지';};
+document.getElementById('introTime').oninput=e=>{age=Number(e.target.value);playing=false;controls.intro.checked=true;document.getElementById('play').textContent='재생';};
+document.getElementById('play').onclick=()=>{playing=!playing;document.getElementById('play').textContent=playing?'일시정지':'재생';};
+document.querySelectorAll('[data-curl]').forEach(button=>button.onclick=()=>{controls.auto.checked=false;controls.intro.checked=false;controls.curl.value=button.dataset.curl;});controls.curl.oninput=()=>controls.auto.checked=false;
+Promise.all([...new Set([...Object.values(ErrorHands.PARTS).map(p=>p.file),'bosses/Tier_12/Boss.png'])].map(file=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{images.set(file,img);resolve();};img.onerror=reject;img.src=file==='bosses/Tier_12/Boss.png'?'../Boss.png':file.split('/').pop();}))).then(()=>ready=true);
+function frame(now){const dt=last?Math.min(0.05,(now-last)/1000):0;last=now;if(playing)age+=dt;
+ctx.fillStyle=controls.original.checked?'#e0e4ea':'#080e1d';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle=controls.original.checked?'#c5cbd4':'#111e31';ctx.lineWidth=1;
+for(let x=0;x<canvas.width;x+=32){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}for(let y=0;y<canvas.height;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+if(ready&&controls.intro.checked)ErrorHands.renderEmergence(ctx,images,{time:age,style:controls.original.checked?'original':'error',joints:controls.joints.checked});
+else if(ready)ErrorHands.renderPair(ctx,images,{time:age,curl:controls.auto.checked?null:Number(controls.curl.value),elbow:Number(controls.elbow.value),wrist:Number(controls.wrist.value)*Math.PI/180,style:controls.original.checked?'original':'error',joints:controls.joints.checked});
+requestAnimationFrame(frame);}requestAnimationFrame(frame);
+</script></html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bullet Hell Dodging — Pixel Space Shooter V4</title>
-  <link rel="stylesheet" href="style.css?v=20261110-player-range-debug" />
+  <link rel="stylesheet" href="style.css?v=20261110-error-hands" />
 </head>
 <body>
   <div id="app">
@@ -192,6 +192,18 @@
         <button type="button" data-action="trigger-b8-dash">T11 돌진묶음</button>
         <button type="button" data-action="trigger-b8-p2">B11 2페이즈(돌진편대)</button>
         <button type="button" data-action="trigger-error-p2">B12 2페이즈(오류 노드)</button>
+        <button type="button" data-action="preview-error-hands">B12 3페이즈 진입 미리보기</button>
+        <button type="button" data-action="error-phase3-combat">B12 3페이즈 전투</button>
+        <button type="button" data-action="error-hand-swing">B12 양손 휘두르기</button>
+        <button type="button" data-action="error-hand-thrust">B12 손끝 찌르기 · 3피해</button>
+        <button type="button" data-action="error-hand-hook">B12 교차 휘어잡기</button>
+        <button type="button" data-action="error-hand-rake">B12 손가락 긁기</button>
+        <button type="button" data-action="error-hand-gap">B12 양방향 교차 레이저</button>
+        <button type="button" data-action="error-hand-wrap">B12 양손 교차 갈퀴</button>
+        <button type="button" data-action="error-hand-laser">B12 손 레이저</button>
+        <button type="button" data-action="error-hand-edge">B12 위·아래 팔</button>
+        <button type="button" data-action="error-hand-rear">B12 후방 팔</button>
+        <button type="button" data-action="error-hand-grab">B12 붙잡기·압착</button>
         <button type="button" data-action="trigger-final-rush">최종 무지개 4레이저</button>
         <button type="button" data-action="trigger-escort-laser">호위기 레이저</button>
       </div>
@@ -207,6 +219,7 @@
         <button type="button" data-action="damage-boss">보스 -25%</button>
         <button type="button" data-action="kill-boss">보스 격파</button>
         <button type="button" data-action="toggle-invincible" id="btn-invincible">무적: OFF</button>
+        <button type="button" id="btn-boss-range" data-action="toggle-boss-range">보스 이동 범위: OFF</button>
         <button type="button" data-action="toggle-player-range" id="btn-player-range" title="플레이어 이동 한계 표시 · 연결형 보스 제외">이동 범위: OFF</button>
         <button type="button" data-action="toggle-hitboxes" id="btn-hitboxes">판정/총구/1/3선: OFF</button>
         <button type="button" data-action="heal-player">회복</button>
@@ -215,6 +228,8 @@
     </section>
   </div>
 
-  <script src="game.js?v=20261110-player-range-debug"></script>
+  <script src="error-hands.js?v=20261111-hand-choreography-v3"></script>
+  <script src="error-phase3.js?v=20261111-hand-choreography-v3"></script>
+  <script src="game.js?v=20261111-hand-choreography-v3"></script>
 </body>
 </html>

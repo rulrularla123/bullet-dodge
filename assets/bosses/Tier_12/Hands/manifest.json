@@ -1,0 +1,154 @@
+{
+  "hands": 2,
+  "originals": [
+    {
+      "file": "Hands.png",
+      "original": "hands.png",
+      "size": [
+        32,
+        64
+      ],
+      "sha256": "a4ff7d01d11baf75dd9a5ba2b991242dde787dec8819f978f588d3f464ce2c85"
+    },
+    {
+      "file": "Part1_Arm.png",
+      "original": "part1 arm.png",
+      "size": [
+        32,
+        64
+      ],
+      "sha256": "bc8a5968d5a7bc8fde20075a9a8ca007bf4a8fb695d6cfd6dc01a11bd5610cca"
+    },
+    {
+      "file": "Part2_Arm.png",
+      "original": "part2 arm.png",
+      "size": [
+        32,
+        64
+      ],
+      "sha256": "1b46cfbc970a2ebd33a07e41e5266a78c4c8e7f5de05e25ae3fef11f2c5cd433"
+    }
+  ],
+  "parts": {
+    "arm1": {
+      "file": "bosses/Tier_12/Hands/Part1_Arm.png",
+      "rect": [
+        12,
+        9,
+        8,
+        38
+      ],
+      "root": [
+        5,
+        37
+      ],
+      "end": [
+        1,
+        0
+      ]
+    },
+    "arm2": {
+      "file": "bosses/Tier_12/Hands/Part2_Arm.png",
+      "rect": [
+        11,
+        12,
+        9,
+        39
+      ],
+      "root": [
+        6,
+        38
+      ],
+      "end": [
+        4,
+        0
+      ]
+    },
+    "palm": {
+      "file": "bosses/Tier_12/Hands/Hands.png",
+      "rect": [
+        12,
+        46,
+        7,
+        8
+      ],
+      "root": [
+        4,
+        7
+      ],
+      "end": [
+        3.5,
+        0
+      ]
+    },
+    "thumbBase": {
+      "file": "bosses/Tier_12/Hands/Hands.png",
+      "rect": [
+        16,
+        5,
+        10,
+        5
+      ],
+      "root": [
+        9,
+        2
+      ],
+      "end": [
+        0,
+        1
+      ]
+    },
+    "thumbTip": {
+      "file": "bosses/Tier_12/Hands/Hands.png",
+      "rect": [
+        4,
+        5,
+        8,
+        8
+      ],
+      "root": [
+        7,
+        1
+      ],
+      "end": [
+        0,
+        7
+      ]
+    },
+    "fingerBase": {
+      "file": "bosses/Tier_12/Hands/Hands.png",
+      "rect": [
+        19,
+        23,
+        4,
+        16
+      ],
+      "root": [
+        2,
+        15
+      ],
+      "end": [
+        1.5,
+        0
+      ]
+    },
+    "fingerTip": {
+      "file": "bosses/Tier_12/Hands/Hands.png",
+      "rect": [
+        7,
+        17,
+        4,
+        22
+      ],
+      "root": [
+        1.5,
+        21
+      ],
+      "end": [
+        2,
+        0
+      ]
+    }
+  },
+  "notes": "Unmodified black PNGs; each hand has two arm links, a palm, a two-part thumb, and three two-part fingers. Runtime glitch is behind the original black mask. Phase-three behavior is not active."
+}

@@ -358,6 +358,7 @@
     paths.add('extras/Meteor_Outlined.png');
     paths.add('pickups/Space_Supply.png');
     paths.add('bullets/Player_Piercing_Crescent.png');
+    for(const file of ['Hands.png','Part1_Arm.png','Part2_Arm.png'])paths.add(`bosses/Tier_12/Hands/${file}`);
 
     // 2. UI Hearts & Font Glyphs
     paths.add('ui/player/Heart_Full.png');
@@ -677,12 +678,14 @@
     errorFx: {age:0,remaining:0,cooldown:7},
     supplies: [],
     errorNodes: [], errorClones: [], errorWaves: [], errorEchoes: [],
+    errorHandDemo: null,
     rewardKeyLock: false,
     rewardsChosenHistory: [],
 
     debugInvincible: false,
     debugShowHitboxes: false,
     debugShowPlayerRange: false,
+    debugShowBossRange: false,
 
     player: null,
     enemies: [],
@@ -794,6 +797,8 @@
 
   function clearAllCombatHazards() {
     state.errorNodes=[];state.errorClones=[];state.errorWaves=[];state.errorEchoes=[];
+    stopErrorHandPreview();
+    if(state.boss?.errorP3)state.boss.errorP3=null;
     if(state.player)state.player.corruptionRemaining=0;
     for(const bullet of state.playerBullets) {bullet.corrupted=false;bullet.errorMiss=false;}
     state.enemyBullets = [];
@@ -816,7 +821,9 @@
 
   function resetGame() {
     state.debugInvincible = false;
-    state.debugShowPlayerRange=false;
+    state.debugShowPlayerRange=false;state.debugShowBossRange=false;
+    const bossRangeButton=document.getElementById('btn-boss-range');
+    if(bossRangeButton) {bossRangeButton.textContent='보스 이동 범위: OFF';bossRangeButton.classList.remove('active-toggle');}
     const rangeButton=document.getElementById('btn-player-range');
     if(rangeButton) {rangeButton.textContent='이동 범위: OFF';rangeButton.classList.remove('active-toggle');}
     const invincibleButton = document.getElementById('btn-invincible');
@@ -2028,6 +2035,7 @@
   }
 
   function startTierBoss(tier) {
+    stopErrorHandPreview();
     if(tier===11)return startChainBoss({combat:true,campaign:true});
     state.phase = 'BOSS';
     state.errorNodes=[];state.errorClones=[];state.errorWaves=[];state.errorEchoes=[];
@@ -2482,7 +2490,7 @@
     }
     const bSpec = BULLET_SHAPES[shape] || BULLET_SHAPES.Orb;
     state.enemyBullets.push({
-      glitch: state.currentTier===12,
+      glitch: isErrorAttackContext(),
       path: `bullets/Colors/${color}/${shape === 'Needle' ? 'Needle' : 'Orb'}.png`,
       shape,
       color,
@@ -3054,7 +3062,7 @@
    */
   function spawnLaserBeam(opts) {
     const beam = {
-      glitch: state.currentTier===12,
+      glitch: isErrorAttackContext(),
       id: Math.random().toString(36).slice(2),
       color: opts.color || 'Blue',
       stage: 1,
@@ -3402,7 +3410,7 @@
 
     // Visual explosion effect (does NOT deal per-frame damage!)
     state.explosions.push({
-      glitch: state.currentTier===12,
+      glitch: isErrorAttackContext(),
       x: m.x,
       y: m.y,
       radius: m.blastRadius,
@@ -4357,6 +4365,13 @@
     // Freeze all gameplay, timers, background scroll, and spawns during PAUSED, REWARD, GAMEOVER, CLEAR
     if (!assets.ready || state.mode !== 'PLAYING') return;
 
+    if(state.boss?.errorP3?.capture) {
+      updateErrorPhase3(state.boss,dt);state.errorFx.age+=dt;
+      state.cameraShake.timer=Math.max(0,state.cameraShake.timer-dt);
+      for(let i=state.particles.length-1;i>=0;i--){const pt=state.particles[i];pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;pt.life-=dt;if(pt.life<=0)state.particles.splice(i,1);}
+      return;
+    }
+    if(state.errorHandDemo)state.errorHandDemo.age+=dt;
     updateErrorEffects(dt);
     advancePlayerSkills(dt);
 
@@ -4399,7 +4414,9 @@
       const pBounds = getRotatedBounds(p.x, p.y, p.spec, true, p.scale);
       const halfW = pBounds.width / 2;
       const halfH = pBounds.height / 2;
-      const rightLimit=isPlayerSectorRestricted()?CONFIG.PLAYER_MAX_RIGHT_X-(pBounds.right-p.x):CONFIG.CANVAS_WIDTH-24-halfW;
+      const rightLimit=state.boss?.errorP3
+        ? Math.min(state.boss.errorP3.playerMaxRight,CONFIG.PLAYER_MAX_RIGHT_X)-(pBounds.right-p.x)
+        : isPlayerSectorRestricted()?CONFIG.PLAYER_MAX_RIGHT_X-(pBounds.right-p.x):CONFIG.CANVAS_WIDTH-24-halfW;
       p.x = Math.max(24 + halfW, Math.min(rightLimit, p.x));
       p.y = Math.max(54 + halfH, Math.min(CONFIG.CANVAS_HEIGHT - 16 - halfH, p.y));
 
@@ -4434,7 +4451,7 @@
     // 4. Time-based Meteor Spawning (paused during Tier 08 Ultimate & Phase 2 Corridor Barrage to prevent unfair overlap)
     const isTier8Ult = state.boss && state.boss.tier === 8 &&
       (state.boss.laserMode === 'ULTIMATE' || state.boss.phase2Active);
-    if (!isTier8Ult) {
+    if (!isTier8Ult && !state.boss?.errorP3) {
       state.meteorSpawnTimer -= dt;
       if (state.meteorSpawnTimer <= 0) {
         scheduleMeteorWarning();
@@ -5488,7 +5505,7 @@
   function canDamageBossWithPlayerAttack(boss) {
     if (!boss || boss.hp<=0 || boss.entering || boss.defeatedHandled || boss.dyingTimer>0) return false;
     if(boss.kind==='CHAIN_BOSS' && !boss.combat)return false;
-    if(boss.tier===12 && boss.errorBlink?.phase==='SHIFT')return false;
+    if(boss.tier===12 && (boss.errorP3 || boss.errorBlink?.phase==='SHIFT'))return false;
     if (['OFFSCREEN','P2_WARN','P2_WAIT'].includes(boss.dashState)) return false;
     if (boss.tier===8 && boss.phase2Active) return false;
     if (boss.tier===7 && boss.phase2Triggered && !state.lasers.some(l=>l.id===boss.p2ActiveBeamId && l.stage===3)) return false;
@@ -5553,6 +5570,9 @@
       if(node.x+node.radius>=m.x && Math.abs(node.y-m.y)<=node.radius+16)hitErrorNode(node,damage);
     }
     const boss=state.boss;
+    if(boss?.errorP3)for(const hand of boss.errorP3.hands) {
+      if(getErrorHandTargets(hand).some(t=>t.x+t.radius>=m.x && Math.abs(t.y-m.y)<=t.radius+16))window.ErrorPhase3.hit(boss.errorP3,hand,damage);
+    }
     const chainHits=boss?.kind==='CHAIN_BOSS'?(boss.phase2Triggered?[boss.segments[0]]:boss.segments).map(part=>part.x+22>=m.x && part.x-22<=CONFIG.CANVAS_WIDTH && Math.abs(part.y-m.y)<=38):null;
     if(canDamageBossWithPlayerAttack(boss) && (chainHits ? chainHits.some(Boolean) : hits(boss))) {
       const multiplier=chainHits?(chainHits[0]?1.5:0.5):1;
@@ -5632,6 +5652,18 @@
       }
       if(consumed)continue;
 
+      if(state.boss?.errorP3) {
+        const p3=state.boss.errorP3;
+        if(pb.piercing&&!pb.hitTargets)pb.hitTargets=new Set();
+        for(const hand of p3.hands) {
+          if(hand.hp<=0 || pb.hitTargets?.has(hand))continue;
+          if(!getErrorHandTargets(hand).some(t=>distSqPointToSegment(t.x,t.y,pb.prevX,pb.prevY,pb.x,pb.y)<(t.radius+pb.radius)**2))continue;
+          if(!window.ErrorPhase3.hit(p3,hand,pb.damage))continue;
+          pb.hitTargets?.add(hand);
+          if(!pb.piercing) {state.playerBullets.splice(i,1);consumed=true;break;}
+        }
+      }
+      if(consumed)continue;
       // 1. Check hit against active Boss
       if (canDamageBossWithPlayerAttack(state.boss)) {
         let hitBoss,damageMultiplier=1;
@@ -5742,6 +5774,11 @@
   function handleBossDefeated() {
     const boss = state.boss;
     if (!boss || boss.defeatedHandled) return;
+    if(boss.errorP3 && !boss.errorP3Complete) {boss.hp=1;return;}
+    if(boss.tier===12 && !boss.errorP3Complete) {
+      if(!boss.errorP3)enterErrorPhase3(boss);
+      return;
+    }
     boss.defeatedHandled = true;
 
     // Every boss heals current HP by one; this never changes maximum HP.
@@ -5915,6 +5952,10 @@
   // T12: a bullet-driven signal-corruption encounter. Nodes own their echo one-to-one.
   function isPlayerSectorRestricted() {return state.currentTier!==11 && state.boss?.kind!=='CHAIN_BOSS';}
 
+  function isErrorAttackContext() {
+    return isErrorBossCombat() || (state.currentTier===12 && ['WAVE','TEST'].includes(state.phase));
+  }
+
   function isErrorBossCombat() {return state.phase==='BOSS' && state.boss?.tier===12 && state.boss.hp>0;}
 
   function infectPlayerBullet(bullet) {
@@ -6040,6 +6081,7 @@
 
   function updateErrorBoss(boss,dt) {
     if(!boss.errorBorn)initErrorBoss(boss);
+    if(boss.errorP3) {updateErrorPhase3(boss,dt);return;}
     if(!boss.phase2Triggered && boss.hp<=boss.maxHp*0.5)checkAndTriggerBossPhase2(boss);
     boss.errorNodeCooldown=Math.max(0,(boss.errorNodeCooldown||0)-dt);
     boss.errorWaveCooldown-=dt;
@@ -6109,6 +6151,131 @@
     state.floatingTexts.push({text:'PHASE 2 · SIGNAL FORK',x:CONFIG.CANVAS_WIDTH/2,y:180,color:'#ff80df',timer:2.3});
   }
 
+  function enterErrorPhase3(boss) {
+    if(!boss || boss.tier!==12 || boss.errorP3)return false;
+    clearAllCombatHazards();state.supplies=[];
+    boss.hp=1;boss.entering=false;boss.errorBlink=null;boss.errorWaveCharge=0;
+    boss.errorP3=window.ErrorPhase3.create(CONFIG.CANVAS_WIDTH,CONFIG.CANVAS_HEIGHT);
+    const bounds=boss.errorP3.bossBounds;
+    boss.x=Math.max(bounds.left,Math.min(bounds.right,boss.x));boss.y=Math.max(bounds.top,Math.min(bounds.bottom,boss.y));
+    boss.errorP3.startX=boss.x;boss.errorP3.startY=boss.y;
+    boss.scale=2;state.meteorSpawnTimer=1e6;
+    state.floatingTexts.push({text:'PHASE 3 · HANDS OF ERROR',x:CONFIG.CANVAS_WIDTH/2,y:180,color:'#ff80cf',timer:3});
+    triggerCameraShake(0.3,4);return true;
+  }
+
+  function getErrorHandTargets(hand) {
+    if(!hand.pose || hand.hp<=0)return [];
+    const pose=hand.pose;
+    const world=q=>({x:q.x,y:pose.root.y+(q.y-pose.root.y)*(pose.mirror||1)});
+    // Overlapping samples cover the full rendered limbs, including both
+    // digit joints and thumb. A projectile still damages each hand only once.
+    const targets=[];
+    for(const piece of pose.pieces) {
+      const radius=piece.part==='palm'?28:piece.part.startsWith('arm')?20:16;
+      const a=world(piece.start),b=world(piece.end),steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/16));
+      for(let i=0;i<=steps;i++)targets.push({x:a.x+(b.x-a.x)*i/steps,y:a.y+(b.y-a.y)*i/steps,radius});
+    }
+    return targets;
+  }
+
+  function beginErrorPlayerCapture(boss,pose,force=false) {
+    const p=state.player,p3=boss?.errorP3;
+    if(!p3||!pose||p3.capture||p3.ending||(!force&&state.debugInvincible)||p.hp<=0)return false;
+    if(!window.ErrorPhase3.beginCapture(p3,pose,p))return false;
+    p.hp=0;p.hitFlashTimer=0;p.invulnTimer=0;p.corruptionRemaining=0;
+    p.skills.laser.remaining=0;p.skills.laser.pendingTicks=0;p.skills.shield.remaining=0;
+    state.playerBullets=[];triggerCameraShake(0.16,2.5);updateHudBadges();return true;
+  }
+
+  function renderCapturedPlayer(capture) {
+    const p=state.player;if(!p||capture.playerOpacity<=0)return;
+    ctx.save();ctx.globalAlpha=capture.playerOpacity;ctx.translate(capture.playerPos.x,capture.playerPos.y);
+    ctx.rotate(Math.sin(capture.age*9)*0.1);ctx.scale(capture.playerScaleX,capture.playerScaleY);
+    renderErrorSpriteFringe(p.path,0,0,p.spec.size,p.scale,Math.PI/2,true);
+    drawRotatedSprite(p.path,0,0,p.spec.size,p.scale,Math.PI/2,capture.age>0.95);ctx.restore();
+  }
+
+  function updateErrorPhase3(boss,dt) {
+    const p3=boss.errorP3;
+    if(!p3)return;
+    if(p3.capture) {
+      const done=window.ErrorPhase3.updateCapture(p3,dt,state.player,{shake:triggerCameraShake,
+        burst:at=>{spawnExplosion(at.x,at.y,'#00eeff',18);spawnExplosion(at.x,at.y,'#ff55b5',14);}});
+      if(done)triggerGameOver();return;
+    }
+    const settle=Math.min(1,p3.age/5.9),blend=settle*settle*(3-2*settle);
+    const roam=Math.max(0,p3.age-p3.intro),r=p3.bossBounds;
+    if(p3.age<p3.intro) {
+      const targetX=(r.left+r.right)/2,targetY=(r.top+r.bottom)/2;
+      boss.x=p3.startX+(targetX-p3.startX)*blend;boss.y=p3.startY+(targetY-p3.startY)*blend;
+      p3.motion={vx:0,vy:0};
+    } else {
+      const motion=p3.motion||(p3.motion={vx:0,vy:0}),player=state.player;
+      const laserActive=p3.hands.some(h=>h.hp>0&&['LASER_WARN','LASER','PAIR_WARN','PAIR_ACTIVE'].includes(h.stage));
+      for(let elapsed=0;elapsed<dt-1e-9;) {
+        const step=Math.min(1/120,dt-elapsed),t=roam+elapsed;
+        motion.laserSlow=(motion.laserSlow||0)+((laserActive?1:0)-(motion.laserSlow||0))*(1-Math.exp(-step*4));
+        const wrapApproach=p3.pair?.kind==='wrap'&&p3.pair.age<1.25;
+        const maxVX=p3.pair?(wrapApproach?180:0):160-125*motion.laserSlow,maxVY=p3.pair?(wrapApproach?130:0):210-165*motion.laserSlow;
+        const targetX=p3.pair?.kind==='wrap'?r.left+24:Math.max(r.left,Math.min(r.right,player.x+330+Math.sin(t*0.9)*75+Math.cos(t*0.47)*35));
+        const targetY=p3.pair?.kind==='wrap'?p3.pair.center:Math.max(r.top,Math.min(r.bottom,player.y+Math.sin(t*1.05)*105+Math.cos(t*0.61)*30));
+        motion.vx=Math.max(-maxVX,Math.min(maxVX,motion.vx+Math.max(-420,Math.min(420,(targetX-boss.x)*5-motion.vx*4))*step));
+        motion.vy=Math.max(-maxVY,Math.min(maxVY,motion.vy+Math.max(-640,Math.min(640,(targetY-boss.y)*6-motion.vy*4))*step));
+        boss.x=Math.max(r.left,Math.min(r.right,boss.x+motion.vx*step));boss.y=Math.max(r.top,Math.min(r.bottom,boss.y+motion.vy*step));elapsed+=step;
+      }
+    }
+    const outcome=window.ErrorPhase3.update(p3,dt,{body:boss,player:state.player,
+      corrupt:applyErrorCorruption,damage:damagePlayer,shake:triggerCameraShake,
+      kill:pose=>{if(state.debugInvincible || state.player.hp<=0)return;if(pose)beginErrorPlayerCapture(boss,pose);else{state.player.hp=0;triggerCameraShake(0.3,6);triggerGameOver();}}});
+    if(outcome==='DELETING') {
+      state.player.corruptionRemaining=0;state.playerBullets=[];
+      state.floatingTexts.push({text:'ERROR SOURCE DELETED',x:CONFIG.CANVAS_WIDTH/2,y:230,color:'#9cffff',timer:1.7});
+    }
+    if(outcome==='DONE') {boss.errorP3Complete=true;boss.hp=0;handleBossDefeated();}
+  }
+
+  function startErrorPhase3Test() {
+    if(state.player.hp<=0)state.player.hp=state.player.maxHp;
+    hideRewardModal();hideSupplyModal();hideOverlay();
+    state.currentTier=12;state.phase='BOSS';state.mode='PLAYING';
+    startTierBoss(12);state.boss.entering=false;state.boss.x=1000;state.boss.y=CONFIG.CANVAS_HEIGHT/2;
+    enterErrorPhase3(state.boss);state.player.x=CONFIG.CANVAS_WIDTH/2;state.player.y=CONFIG.CANVAS_HEIGHT/2;
+  }
+
+  function stopErrorHandPreview() {
+    if(!state.errorHandDemo)return;
+    state.errorHandDemo=null;
+    if(state.player)state.player.fireCooldown=0;
+    state.meteorSpawnTimer=CONFIG.METEOR_MIN_INTERVAL;
+  }
+
+  function previewErrorHandAttack(kind) {
+    if(!state.boss?.errorP3 || state.boss.errorP3.ending || state.boss.errorP3.capture || state.boss.errorP3.hands.every(h=>h.hp<=0))startErrorPhase3Test();
+    state.mode='PLAYING';hideOverlay();
+    if(state.player.hp<=0)state.player.hp=state.player.maxHp;
+    window.ErrorPhase3.previewAttack(state.boss.errorP3,state.boss,state.player,kind);
+    if(kind==='grab') {
+      const h=state.boss.errorP3.hands[0];
+      const root={x:state.boss.x-5,y:state.boss.y-12};
+      const base=window.ErrorPhase3.poseAt(root,{x:root.x-210,y:root.y-24},3.6,Math.PI,0.08,1);
+      base.facing=Math.atan2(base.arm2.end.y-base.arm2.start.y,base.arm2.end.x-base.arm2.start.x)+0.18;
+      h.pose=window.ErrorPhase3.fingerPose(base,'reach',0);
+      const pocket=window.ErrorPhase3.handCavity?window.ErrorPhase3.handCavity(h.pose):window.ErrorPhase3.palm(h.pose);
+      state.player.x=pocket.x-10;
+      state.player.y=pocket.y+4;
+      beginErrorPlayerCapture(state.boss,h.pose,true);
+    }
+  }
+
+  function startErrorHandPreview() {
+    hideRewardModal();hideSupplyModal();hideOverlay();clearAllCombatHazards();state.boss=null;
+    state.currentTier=12;state.phase='TEST';state.mode='PLAYING';
+    state.errorHandDemo={age:0};state.player.fireCooldown=0;state.meteorSpawnTimer=1e6;
+    state.floatingTexts.push({text:'3페이즈 양팔 출현 연출 · 플레이어 발사 테스트',x:CONFIG.CANVAS_WIDTH/2,y:120,color:'#d4e8ff',timer:3});
+    updateHudBadges();
+  }
+
   function togglePlayerRange() {
     state.debugShowPlayerRange=!state.debugShowPlayerRange;
     const button=document.getElementById('btn-player-range');
@@ -6116,7 +6283,7 @@
   }
 
   function renderSpawnSectorBoundary() {
-    if(!state.debugShowPlayerRange || !isPlayerSectorRestricted())return;
+    if(!state.debugShowPlayerRange || !isPlayerSectorRestricted() || state.boss?.errorP3)return;
     const W=CONFIG.CANVAS_WIDTH,H=CONFIG.CANVAS_HEIGHT;
     ctx.save();
     const boundary=CONFIG.PLAYER_MAX_RIGHT_X;
@@ -6132,6 +6299,7 @@
   function renderErrorBossMechanics() {
     if(!isErrorBossCombat())return;
     const b=state.boss,t=state.errorFx.age,W=CONFIG.CANVAS_WIDTH,H=CONFIG.CANVAS_HEIGHT;
+    if(b.errorP3) {window.ErrorPhase3.render(b.errorP3,ctx,assets.images,b,{debugRanges:state.debugShowPlayerRange,debugBossRange:state.debugShowBossRange,laserModel:renderHandLaserModel,capturedPlayer:renderCapturedPlayer});return;}
     ctx.save();ctx.imageSmoothingEnabled=false;
     // Number and color connect each remote node to exactly one spectral boss.
     for(const node of state.errorNodes) {
@@ -6219,9 +6387,11 @@
 
   function updateErrorEffects(dt) {
     const fx=state.errorFx;
-    if(state.currentTier!==12) {fx.remaining=0;fx.cooldown=7;return;}
+    if(!isErrorAttackContext()) {fx.remaining=0;fx.cooldown=7;return;}
     fx.age+=dt;
+    if(state.errorHandDemo) {fx.remaining=0;return;}
     if(state.player)state.player.corruptionRemaining=Math.max(0,(state.player.corruptionRemaining||0)-dt);
+    if(state.boss?.errorP3) {fx.remaining=0;return;}
     if(state.phase!=='WAVE' && state.phase!=='TEST' && !isErrorBossCombat()) {fx.remaining=0;return;}
     if(fx.remaining>0) {
       fx.remaining=Math.max(0,fx.remaining-dt);
@@ -6361,7 +6531,7 @@
   let errorScreenBuffer=null;
   function renderErrorScreenEffect() {
     const fx=state.errorFx;
-    if(state.currentTier!==12 || fx.remaining<=0)return;
+    if(!isErrorAttackContext() || fx.remaining<=0)return;
     const W=CONFIG.CANVAS_WIDTH,H=CONFIG.CANVAS_HEIGHT,tick=Math.floor(fx.age*11);
     const envelope=Math.min(1,(5-fx.remaining)*4,fx.remaining*3);
     if(!errorScreenBuffer) {errorScreenBuffer=document.createElement('canvas');errorScreenBuffer.width=W;errorScreenBuffer.height=120;}
@@ -6422,6 +6592,7 @@
     // 1. Streaming Space_Unique Background
     renderBackground();
     renderSpawnSectorBoundary();
+    if(state.errorHandDemo && window.ErrorHands)window.ErrorHands.renderEmergence(ctx,assets.images,{time:state.errorHandDemo.age,width:CONFIG.CANVAS_WIDTH,height:CONFIG.CANVAS_HEIGHT});
     if (finalBoss && !finalBoss.dyingTimer) renderFinalBossPresence(finalBoss);
 
     // 2. Optional Debug Overlay: Right 1/3 Boundary Line (x = 856)
@@ -6587,6 +6758,7 @@
         if (b.kind === 'FINAL_REVEALED' && b.entering) {
           ctx.globalAlpha = Math.max(0.25, 1.0 - b.revealTimer);
         }
+        if(b.errorP3?.ending)ctx.globalAlpha=Math.max(0,1-b.errorP3.ending/1.4);
         if(b.glitch)renderErrorSpriteFringe(b.path,b.x,b.y,b.spec.size,b.scale,b.rotation ?? -Math.PI/2,b.tier===12);
         drawRotatedSprite(
           b.path,
@@ -6672,8 +6844,8 @@
       ctx.restore();
     }
 
-    // 13. Render Player (rotated +90 deg CW to face right, scaled by mobility upgrade)
-    if (state.player) {
+    // 13. Render Player (captured player is layered inside the gripping hand).
+    if (state.player && !state.boss?.errorP3?.capture) {
       const p = state.player;
       if(p.skills.shield.remaining>0) {
         const bounds=getRotatedBounds(p.x,p.y,p.spec,true,p.scale);
@@ -6842,6 +7014,29 @@
       }
       ctx.restore();
     }
+  }
+
+  const handLaserModelCache=new Map();
+  function renderHandLaserModel(beam) {
+    const length=Math.round(Math.hypot(beam.b.x-beam.a.x,beam.b.y-beam.a.y)),stage=beam.stage||3;
+    const color=Math.floor(beam.time*9)%2?'Pink':'Cyan',key=`${color}:${stage}:${length}`;
+    let image=handLaserModelCache.get(key);
+    if(!image) {
+      const original=getLaserStrip(color,stage,length,2);if(!original)return;
+      image=document.createElement('canvas');image.width=length;image.height=32;
+      const c=image.getContext('2d');c.imageSmoothingEnabled=false;
+      c.save();c.translate(length,0);c.scale(-1,1);c.drawImage(original,0,0,length,32);c.restore();
+      const mask=c.createLinearGradient(0,0,length,0);
+      if(mask?.addColorStop) {
+        mask.addColorStop(0,'rgba(255,255,255,1)');mask.addColorStop(0.84,'rgba(255,255,255,1)');mask.addColorStop(1,'rgba(255,255,255,0)');
+        c.globalCompositeOperation='destination-in';c.fillStyle=mask;c.fillRect(0,0,length,32);c.globalCompositeOperation='source-over';
+      }
+      handLaserModelCache.set(key,image);if(handLaserModelCache.size>12)handLaserModelCache.delete(handLaserModelCache.keys().next().value);
+    }
+    const halfSpan=Math.round(48*((beam.halfWidth||18)/18));
+    ctx.save();ctx.translate(beam.a.x,beam.a.y);ctx.rotate(beam.angle);if(Math.cos(beam.angle)<0)ctx.scale(1,-1);
+    ctx.imageSmoothingEnabled=false;ctx.globalAlpha=stage<3?0.65:1;
+    ctx.drawImage(image,0,-halfSpan,length,halfSpan*2);ctx.restore();
   }
 
   const laserStripCache = new Map();
@@ -7433,11 +7628,13 @@
 
     // 3. Top-Center Boss Health Bar (64x32 native at 4x = 256x128)
     if (state.boss && state.phase !== 'WAVE') {
+      const handBars=state.boss.errorP3?.hands;
+      for(const [barIndex,health] of (handBars||[state.boss]).entries()) {
       const barId = state.boss.barId;
       const barScale = CONFIG.BOSS_BAR_SCALE;
       const barW = CONFIG.BOSS_BAR_NATIVE_W * barScale;
       const barH = CONFIG.BOSS_BAR_NATIVE_H * barScale;
-      const barX = Math.round((CONFIG.CANVAS_WIDTH - barW) / 2);
+      const barX = Math.round((CONFIG.CANVAS_WIDTH - barW) / 2+(handBars?(barIndex===0?-145:145):0));
       const barY = 38;
 
       const emptyImg = assets.images.get(`ui/boss_bars/${barId}_Empty.png`);
@@ -7448,9 +7645,9 @@
         ctx.drawImage(emptyImg, barX, barY, barW, barH);
       }
 
-      const ratio = Math.max(0, Math.min(1, state.boss.hp / state.boss.maxHp));
+      const ratio = Math.max(0, Math.min(1, health.hp / health.maxHp));
       const fillRect = CONFIG.BOSS_FILL_RECT;
-      const fillNativeW = state.boss.hp > 0 ? Math.max(1, Math.round(fillRect.width * ratio)) : 0;
+      const fillNativeW = health.hp > 0 ? Math.max(1, Math.round(fillRect.width * ratio)) : 0;
 
       if (fillImg && fillNativeW > 0) {
         ctx.drawImage(
@@ -7465,6 +7662,11 @@
 
       if (frameImg) {
         ctx.drawImage(frameImg, barX, barY, barW, barH);
+      }
+      if(handBars) {
+        ctx.save();ctx.textAlign='center';ctx.fillStyle=health.hp>0?'#b8faff':'#915576';ctx.font='bold 12px monospace';
+        ctx.fillText(`${barIndex===0?'UPPER':'LOWER'} HAND · ${Math.ceil(health.hp)} / 10000`,barX+barW/2,barY+barH-8);ctx.restore();
+      }
       }
     }
   }
@@ -7854,19 +8056,28 @@
     } else if (action === 'damage-boss') {
       if (state.boss) {
         state.boss.entering = false;
-        state.boss.hp = Math.max(1, Math.floor(state.boss.hp - state.boss.maxHp * 0.25));
+        if(state.boss.errorP3)for(const h of state.boss.errorP3.hands)window.ErrorPhase3.hit(state.boss.errorP3,h,2500);
+        else state.boss.hp = Math.max(1, Math.floor(state.boss.hp - state.boss.maxHp * 0.25));
         checkAndTriggerBossPhase2(state.boss);
         updateHudBadges();
       }
     } else if (action === 'kill-boss') {
       if (state.boss) {
-        state.boss.hp = 0;
-        handleBossDefeated();
+        if(state.boss.errorP3) {state.boss.errorP3.age=Math.max(6,state.boss.errorP3.age);for(const h of state.boss.errorP3.hands)window.ErrorPhase3.hit(state.boss.errorP3,h,10000);}
+        else {state.boss.hp = 0;handleBossDefeated();}
       }
     } else if (action === 'toggle-invincible') {
       state.debugInvincible = !state.debugInvincible;
       btn.textContent = `무적: ${state.debugInvincible ? 'ON' : 'OFF'}`;
       btn.classList.toggle('active-toggle', state.debugInvincible);
+    } else if(action==='preview-error-hands') {
+      startErrorHandPreview();
+    } else if(action==='error-phase3-combat') {
+      startErrorPhase3Test();
+    } else if(action==='error-hand-swing'||action==='error-hand-laser'||action==='error-hand-edge'||action==='error-hand-grab'||action==='error-hand-rear'||action==='error-hand-thrust'||action==='error-hand-hook'||action==='error-hand-rake'||action==='error-hand-gap'||action==='error-hand-wrap') {
+      previewErrorHandAttack(action.slice('error-hand-'.length));
+    } else if(action==='toggle-boss-range') {
+      state.debugShowBossRange=!state.debugShowBossRange;btn.textContent=`보스 이동 범위: ${state.debugShowBossRange?'ON':'OFF'}`;btn.classList.toggle('active-toggle',state.debugShowBossRange);
     } else if(action==='toggle-player-range') {
       togglePlayerRange();
     } else if (action === 'toggle-hitboxes') {
@@ -7994,12 +8205,15 @@
     ERROR_SOURCE_TIERS,
     updateErrorEffects,
     renderErrorScreenEffect,
-    renderErrorLaser,
+    renderErrorLaser,renderHandLaserModel,handLaserModelCache,
     renderErrorEnemyArtifacts,
     spriteTintCache,errorHullStampCache,
     renderErrorBossMechanics,
     initErrorBoss,updateErrorBoss,beginErrorWave,enterErrorPhase2,
+    enterErrorPhase3,updateErrorPhase3,startErrorPhase3Test,previewErrorHandAttack,beginErrorPlayerCapture,renderCapturedPlayer,getErrorHandTargets,errorPhase3:window.ErrorPhase3,
     isPlayerSectorRestricted,
+    isErrorAttackContext,startErrorHandPreview,
+    errorHands:window.ErrorHands,
     togglePlayerRange,renderSpawnSectorBoundary,
     canDamageBossWithPlayerAttack,
     applyErrorCorruption,infectPlayerBullet,createErrorNodes,openErrorNodeWindow,hitErrorNode,
@@ -8060,7 +8274,9 @@
       state.player.mobilityLevel = Math.max(0, Math.min(4, Number(params.get('mob')) || 0));
       syncPlayerUpgradeStats(state.player);
     }
-    if(params.get('errorDemo')==='1') {
+    if(params.get('errorHands')==='1') {
+      startErrorHandPreview();
+    } else if(params.get('errorDemo')==='1') {
       jumpToTierWave(12);state.phase='TEST';state.meteorSpawnTimer=1e6;
       for(let i=1;i<=6;i++) {
         const e=spawnWaveEnemy(12,{errorVariant:i});e.entering=false;
@@ -8098,6 +8314,8 @@
       startTierBoss(t);
       state.boss.entering = false;
       if(state.boss.kind!=='CHAIN_BOSS')state.boss.x = state.boss.homeX;
+      if(params.get('p3')==='1' && t===12) {enterErrorPhase3(state.boss);state.player.x=CONFIG.CANVAS_WIDTH/2;}
+      if(params.get('handAttack') && t===12)previewErrorHandAttack(params.get('handAttack'));
       if(params.get('errorPulse')==='1' && t===12) {beginErrorWave(state.boss);}
       if(params.get('emp')==='1' && t===10) state.boss.empCooldown=0.25;
       if(params.get('sweeps')==='1' && t===9) {state.boss.hp=state.boss.maxHp*0.60;state.boss.attackTimer=100;}

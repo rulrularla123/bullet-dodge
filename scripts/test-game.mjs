@@ -25,6 +25,8 @@ const windowListeners = new Map();
 const window = { location: { search: '' }, addEventListener(name,handler) {windowListeners.set(name,handler);} };
 const context = vm.createContext({ window, document, Image, console, URLSearchParams,
   requestAnimationFrame() {}, setTimeout, clearTimeout });
+vm.runInContext(fs.readFileSync(fileURLToPath(new URL('../error-hands.js',import.meta.url)),'utf8'),context);
+vm.runInContext(fs.readFileSync(fileURLToPath(new URL('../error-phase3.js',import.meta.url)),'utf8'),context);
 vm.runInContext(source, context);
 await new Promise(resolve => setTimeout(resolve, 0));
 const g = window.__GAME_DEBUG__, s = g.state;
@@ -34,6 +36,12 @@ function fresh() {
   s.player.invulnTimer = 1e6; s.meteorSpawnTimer = 1e6;
 }
 function tick(seconds, fps = 60) { for (let i = 0; i < seconds * fps; i++) g.updateGame(1 / fps); }
+function finishErrorHandsForTest() {
+ const b=s.boss;if(!b?.errorP3)g.enterErrorPhase3(b);
+ b.errorP3.age=6;
+ for(const h of b.errorP3.hands)g.errorPhase3.hit(b.errorP3,h,10000);
+ g.updateErrorPhase3(b,0.01);g.updateErrorPhase3(b,1.9);
+}
 const results = [];
 function test(name, callback) { callback(); results.push(name); console.log(`PASS ${name}`); }
 test('Lethal projectile triggers Tier 6 suicide, while other tiers die normally', () => {
@@ -840,7 +848,7 @@ test('Electricity and rush-fleet stages lead to error stage 12 before the final 
  fresh();g.startTierBoss(9);g.handleBossDefeated();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);
  g.applyRewardChoice('skills');assert.equal(s.currentTier,8);assert.equal(g.getStageNumber(s.currentTier),11);assert.equal(s.phase,'WAVE');
  g.startTierBoss(8);g.handleBossDefeated();assert.equal(s.phase,'WAVE');assert.equal(s.currentTier,12);
- g.startTierBoss(12);g.handleBossDefeated();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,12);
+ g.startTierBoss(12);g.handleBossDefeated();finishErrorHandsForTest();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,12);
  g.applyRewardChoice('skills');assert.equal(s.phase,'FINAL_SHADOW');
  g.jumpToTierWave(g.getPatternTier(9));assert.equal(s.currentTier,11);assert.equal(s.boss.kind,'CHAIN_BOSS');
 });
@@ -935,7 +943,7 @@ test('Electric minion charging and beams attach to actual gun tips, not the old 
  v.orbs.forEach((o,i)=>{assert.equal(o.x,tips[i].x);assert.equal(o.y,tips[i].y);});
 });
 for(const fps of [30,60]) test(`Two electric lasers finish the long muzzle charge together and immediately use live electric art (${fps}fps)`,()=>{
- fresh();const e=g.spawnWaveEnemy(9,{enemyIdx:3});e.entering=false;e.x=e.homeX;e.fireCooldown=100;
+ fresh();const e=g.spawnWaveEnemy(9,{enemyIdx:3});e.entering=false;e.x=e.homeX=920;e.y=e.homeY=362;e.fireCooldown=100;
  g.fireElectricEnemyLaser(e);const [a,b]=s.lasers;
  const sheet=g.assets.images.get('effects/Electric_Laser/Electric_Laser_Spritesheet.png');
  let index=imageDraws.length;g.step(0);
@@ -1677,6 +1685,433 @@ test('Front patrol reaches both vertical ends quickly with changing speed, and p
  const y=b.y,velocity=b.frontPatrol.velocity;s.mode='PAUSED';g.updateGame(3);assert.equal(b.y,y);assert.equal(b.frontPatrol.velocity,velocity);
 });
 
+function phase3Test(active=true) {
+ fresh();s.currentTier=12;g.startTierBoss(12);const b=s.boss;b.entering=false;b.x=1000;b.y=362;
+ g.enterErrorPhase3(b);s.player.x=420;s.player.y=362;
+ if(active) {b.errorP3.age=6;g.updateErrorPhase3(b,0.001);}
+ return b;
+}
+test('A lethal error-body hit starts phase three instead of healing, rewarding or advancing',()=>{
+ fresh();s.currentTier=12;g.startTierBoss(12);const b=s.boss;b.entering=false;b.x=1000;b.y=300;b.hp=1;
+ s.player.hp=2;g.spawnEnemyBullet(900,300,-100,0);g.createErrorNodes(b);
+ g.spawnPlayerBullet({x:b.x,y:b.y,vx:0,vy:0,damage:100,radius:8});g.updatePlayerBullets(0);
+ assert.equal(s.boss,b);assert.ok(b.errorP3);assert.equal(b.hp,1);assert.equal(s.mode,'PLAYING');assert.equal(s.phase,'BOSS');assert.equal(s.player.hp,2);
+ assert.deepEqual(Array.from(b.errorP3.hands,h=>h.hp),[10000,10000]);
+ for(const list of ['enemyBullets','lasers','errorNodes','errorClones','errorWaves','meteors','enemies'])assert.equal(s[list].length,0);
+ assert.equal(g.canDamageBossWithPlayerAttack(b),false);
+});
+test('Hand emergence grants no hand damage, pauses, and holds the spawn source inside the aircraft',()=>{
+ const b=phase3Test(false),p3=b.errorP3;
+ assert.equal(g.errorPhase3.hit(p3,p3.hands[0],10000),false);
+ for(const mode of ['PAUSED','REWARD','SUPPLY']) {s.mode=mode;g.updateGame(1);assert.equal(p3.age,0);}
+ s.mode='PLAYING';g.updateGame(0.5);assert.ok(p3.age>0);
+ for(const h of p3.hands)if(h.pose)assert.ok(Math.abs(h.pose.root.x-b.x)<10);
+ assert.equal(p3.right-p3.left,g.CONFIG.CANVAS_WIDTH*0.8);
+});
+test('Ordinary and piercing shots damage each hand independently, once per piercing target, while keeping body HP separate',()=>{
+ const b=phase3Test(),p3=b.errorP3,h=p3.hands[0],other=p3.hands[1],at=g.errorPhase3.palm(h.pose);
+ g.spawnPlayerBullet({x:at.x,y:at.y,vx:0,vy:0,damage:123,radius:5});g.updatePlayerBullets(0);
+ assert.equal(h.hp,9877);assert.equal(other.hp,10000);assert.equal(b.hp,1);assert.equal(s.playerBullets.length,0);
+ g.spawnPlayerBullet({x:at.x,y:at.y,vx:0,vy:0,damage:200,radius:5,piercing:true});g.updatePlayerBullets(0);g.updatePlayerBullets(0);
+ assert.equal(h.hp,9677);
+ s.playerBullets=[];g.spawnPlayerBullet({x:b.x,y:b.y,vx:0,vy:0,damage:100000,radius:5});g.updatePlayerBullets(0);assert.equal(b.hp,1);
+});
+test('Skill laser keeps guaranteed ticks on hand targets and cannot damage the phase-three body',()=>{
+ const b=phase3Test(),p3=b.errorP3,h=p3.hands[0];
+ const m=g.getPlayerSkillLaserOrigin(),dy=m.y-g.errorPhase3.palm(h.pose).y;
+ h.pose=g.errorPhase3.poseAt({x:900,y:m.y+10},{x:700,y:m.y},3.6);
+ p3.hands[1].pose=g.errorPhase3.poseAt({x:900,y:50},{x:700,y:50},3.6);
+ s.player.skills.laser.damagePerTick=200;g.applyPlayerSkillLaserTick();
+ assert.equal(h.hp,9800);assert.equal(p3.hands[1].hp,10000);assert.equal(b.hp,1);
+});
+test('Glitch ground applies eight-second corruption with zero HP loss even through shield and invulnerability',()=>{
+ const b=phase3Test(),p3=b.errorP3;
+ for(const h of p3.hands)h.timer=100;
+ g.errorPhase3.addPool(p3,{x:400,y:362},{x:460,y:362},22);
+ s.player.hp=3;s.player.skills.shield.remaining=10;s.player.invulnTimer=100;
+ g.updateErrorPhase3(b,0.45);assert.equal(s.player.hp,3);assert.equal(s.player.corruptionRemaining,8);
+ s.player.x=300;s.player.corruptionRemaining=0;g.updateErrorPhase3(b,0.01);assert.equal(s.player.corruptionRemaining,0);
+});
+test('Boundary hands warn during entry and instantly kill after entry, including through shields and hit invulnerability',()=>{
+ const b=phase3Test(false),p3=b.errorP3;s.player.x=80;s.player.skills.shield.remaining=10;s.player.invulnTimer=100;
+ g.updateErrorPhase3(b,2);assert.equal(s.mode,'PLAYING');assert.equal(s.player.hp,5);
+ p3.age=6;g.updateErrorPhase3(b,0.01);assert.equal(s.mode,'GAMEOVER');assert.equal(s.player.hp,0);
+ const b2=phase3Test();s.player.x=b2.errorP3.right+20;g.updateErrorPhase3(b2,0.01);assert.equal(s.player.hp,0);
+});
+test('Hand lasers warn first, have a short fixed range, leave status-only ground, and stop immediately on down',()=>{
+ const b=phase3Test(),p3=b.errorP3,h=p3.hands[0];
+ h.origin=g.errorPhase3.palm(h.pose);h.aim=Math.PI;h.stage='LASER_WARN';h.timer=0.5;
+ g.updateErrorPhase3(b,0.1);assert.equal(h.laser,null);assert.equal(p3.pools.length,0);
+ g.updateErrorPhase3(b,0.41);assert.equal(h.stage,'LASER');assert.ok(h.laser);
+ assert.ok(Math.abs(Math.hypot(h.laser.b.x-h.laser.a.x,h.laser.b.y-h.laser.a.y)-500)<1e-6);assert.ok(p3.pools.length>0);
+ assert.equal(g.errorPhase3.hit(p3,h,10000),true);assert.equal(h.laser,null);
+ g.updateErrorPhase3(b,0.1);assert.equal(h.stage,'DOWN');assert.equal(p3.hands[1].hp,10000);
+});
+test('Small top/bottom arms warn, scratch once, leave a ground trail and retract',()=>{
+ const b=phase3Test(),p3=b.errorP3;s.debugInvincible=true;p3.miniTimer=0;
+ g.updateErrorPhase3(b,0.02);assert.equal(p3.minis.length,1);assert.ok(p3.minis[0].age<1);assert.equal(p3.pools.length,0);
+ const m=p3.minis[0];
+ for(let i=0;i<120;i++)g.updateErrorPhase3(b,0.02);
+ assert.ok(p3.pools.length>0);assert.ok(m.age>2);
+ for(let i=0;i<100;i++)g.updateErrorPhase3(b,0.02);
+ assert.ok(!p3.minis.includes(m));
+});
+test('Both hand deaths remove every hazard before deletion, reward only once and restore normal combat on the next stage',()=>{
+ const b=phase3Test(),p3=b.errorP3;s.player.hp=2;
+ g.errorPhase3.addPool(p3,{x:400,y:362},{x:500,y:362});
+ g.errorPhase3.hit(p3,p3.hands[0],10000);g.updateErrorPhase3(b,0.01);assert.equal(s.phase,'BOSS');assert.equal(s.player.hp,2);
+ g.errorPhase3.hit(p3,p3.hands[1],10000);s.player.x=80;
+ g.updateErrorPhase3(b,0.01);assert.ok(p3.ending>0);assert.equal(p3.pools.length,0);assert.equal(p3.minis.length,0);assert.equal(s.player.hp,2);
+ g.updateErrorPhase3(b,1.9);assert.equal(s.boss,null);assert.equal(s.mode,'REWARD');assert.equal(s.player.hp,3);
+ g.handleBossDefeated();assert.equal(s.player.hp,3);
+ g.applyRewardChoice('skills');assert.equal(s.phase,'FINAL_SHADOW');assert.equal(g.isErrorAttackContext(),false);
+});
+for(const fps of [30,60])test(`Phase-three patterns repeat with bounded trails, no old attacks and pure rendering (${fps}fps)`,()=>{
+ const b=phase3Test();s.debugInvincible=true;let laser=false,mini=false,ground=false;
+ for(let frame=0;frame<35*fps;frame++) {
+  g.updateGame(1/fps);laser ||= b.errorP3.hands.some(h=>h.laser);mini ||= b.errorP3.minis.length>0;ground ||= b.errorP3.pools.length>0;
+  assert.ok(b.errorP3.pools.length<=100);assert.ok(b.errorP3.minis.length<=2);
+  for(const actor of [...b.errorP3.hands,...b.errorP3.minis])if(actor.pose)for(const piece of actor.pose.pieces)assert.ok([piece.start.x,piece.start.y,piece.end.x,piece.end.y,piece.rotation].every(Number.isFinite),'non-finite animated joint');
+ }
+ assert.ok(laser&&mini&&ground);
+ for(const list of ['enemyBullets','lasers','errorNodes','errorClones','errorWaves','meteors'])assert.equal(s[list].length,0);
+ const before=JSON.stringify(b.errorP3);g.renderGame();g.renderGame();assert.equal(JSON.stringify(b.errorP3),before);
+ g.resetGame();assert.equal(s.boss,null);assert.equal(s.player.corruptionRemaining,0);
+});
+
+test('Fog consumes equal ten-percent edges while the boss patrol has independent bounds',()=>{
+ const b=phase3Test(),p3=b.errorP3,r=p3.bossBounds,W=g.CONFIG.CANVAS_WIDTH;
+ assert.equal(p3.left,W*0.1);assert.equal(p3.right,W*0.9);
+ assert.ok(r.left>p3.left+32&&r.right<p3.right-32);
+ s.debugInvincible=true;
+ for(let frame=0;frame<25*30;frame++) {g.updateGame(1/30);assert.ok(b.x>=r.left-0.001&&b.x<=r.right+0.001);assert.ok(b.y>=r.top-0.001&&b.y<=r.bottom+0.001);}
+ const age=p3.age;g.updateErrorPhase3(b,0);const x=b.x,y=b.y;p3.left=10;p3.right=W-10;
+ g.updateErrorPhase3(b,0);assert.equal(b.x,x);assert.equal(b.y,y);assert.equal(p3.age,age);
+});
+
+test('Phase-three fog has no range outline until the verification range toggle is enabled',()=>{
+ const b=phase3Test(),p3=b.errorP3,strokes=[];
+ const painter=new Proxy({}, {get:(obj,key)=>key==='stroke'?()=>strokes.push(obj.strokeStyle):(obj[key]??(()=>{})),set:(obj,key,value)=>{obj[key]=value;return true;}});
+ g.errorPhase3.render(p3,painter,g.assets.images,b);assert.ok(!strokes.includes('#ff489b'));
+ g.errorPhase3.render(p3,painter,g.assets.images,b,{debugRanges:true});assert.equal(strokes.filter(c=>c==='#ff489b').length,2);
+});
+
+test('Main swings use mirrored joint arcs with constant links, extended elbows and continuous finger motion',()=>{
+ const H=g.errorPhase3,upRoot={x:900,y:350},downRoot={x:900,y:374};
+ const world=(pose,q)=>({x:q.x,y:pose.root.y+(q.y-pose.root.y)*pose.mirror});
+ let previous=null,minY=Infinity,maxY=-Infinity;
+ for(let frame=0;frame<=120;frame++) {
+  const up=H.swingPose(upRoot,0,frame/120),down=H.swingPose(downRoot,1,frame/120);
+  for(const key of ['arm1','arm2','palm']) {
+   const a=world(up,up[key].end),b=world(down,down[key].end);
+   assert.ok(Math.abs(a.x-b.x)<1e-7);assert.ok(Math.abs(a.y+b.y-724)<1e-7);
+  }
+  const tip=world(up,up.fingers[1].tip.end),lower=world(down,down.fingers[1].tip.end);
+  assert.ok(Math.abs(tip.x-lower.x)<1e-7&&Math.abs(tip.y+lower.y-724)<1e-7);
+  if(previous)assert.ok(Math.hypot(tip.x-previous.x,tip.y-previous.y)<15);
+  previous=tip;minY=Math.min(minY,tip.y);maxY=Math.max(maxY,tip.y);
+  const a1=Math.atan2(up.arm1.end.y-up.root.y,up.arm1.end.x-up.root.x),a2=Math.atan2(up.arm2.end.y-up.arm2.start.y,up.arm2.end.x-up.arm2.start.x);
+  const flex=Math.atan2(Math.sin(a2-a1),Math.cos(a2-a1));assert.ok(flex<-0.07&&flex>-0.3);
+  assert.ok(Math.abs(Math.hypot(up.arm1.end.x-up.root.x,up.arm1.end.y-up.root.y)-Math.hypot(4,44.4)*3.6)<1e-7);
+ }
+ assert.ok(maxY-minY>300);
+});
+test('Main arm contact is instant death through shields and damage invulnerability, while entry arms are harmless',()=>{
+ const b=phase3Test(),h=b.errorP3.hands[0],pose=h.pose;
+ const q={x:(pose.arm2.start.x+pose.arm2.end.x)/2,y:(pose.arm2.start.y+pose.arm2.end.y)/2};
+ s.player.x=q.x;s.player.y=q.y;s.player.invulnTimer=100;s.player.skills.shield.remaining=10;
+ g.updateErrorPhase3(b,0.001);assert.equal(s.player.hp,0);assert.ok(b.errorP3.capture);assert.equal(s.mode,'PLAYING');g.updateGame(2);assert.equal(s.mode,'GAMEOVER');
+ const b2=phase3Test(false);g.updateErrorPhase3(b2,2);const p2=b2.errorP3.hands[0].pose;
+ s.player.x=p2.arm1.end.x;s.player.y=p2.arm1.end.y;g.updateErrorPhase3(b2,0.01);assert.equal(s.player.hp,5);
+});
+test('Hand laser slowly sweeps the existing fixed-width model, follows the palm and paints ground',()=>{
+ const b=phase3Test(),p3=b.errorP3,h=p3.hands[0];s.debugInvincible=true;p3.hands[1].timer=100;p3.miniTimer=100;
+ h.stage='LASER_WARN';h.timer=0.05;h.aim=Math.PI;h.windupPose=h.pose;
+ g.updateErrorPhase3(b,0.06);const angle=h.laser.angle,origin={...h.laser.a};
+ for(let frame=0;frame<96;frame++) {
+  g.updateErrorPhase3(b,1/60);
+  if(h.laser) {
+   const a=g.errorPhase3.palm(h.pose);assert.ok(Math.hypot(a.x-h.laser.a.x,a.y-h.laser.a.y)<1e-7);
+   assert.ok(Math.abs(Math.atan2(Math.sin(h.pose.facing*h.pose.mirror-h.laser.angle),Math.cos(h.pose.facing*h.pose.mirror-h.laser.angle)))<1e-7);
+  }
+ }
+ assert.ok(h.laser.angle-angle>0.1&&h.laser.angle-angle<0.23);assert.ok(Math.hypot(origin.x-h.laser.a.x,origin.y-h.laser.a.y)>5);assert.ok(p3.pools.length>10);
+ const beam=h.laser,nx=-Math.sin(beam.angle),ny=Math.cos(beam.angle);
+ assert.ok(g.errorPhase3.laserHits({x:beam.b.x+nx*10,y:beam.b.y+ny*10,hitboxRadius:2},beam));
+ assert.equal(g.errorPhase3.laserHits({x:beam.b.x+nx*80,y:beam.b.y+ny*80,hitboxRadius:2},beam),false);
+ for(let frame=0;frame<180;frame++)g.updateErrorPhase3(b,1/60);assert.equal(h.laser,null);
+});
+test('Top and bottom arms retain full size and make one long continuous rake before retracting',()=>{
+ for(const top of [true,false]) {
+  const b=phase3Test(),p3=b.errorP3;s.debugInvincible=true;for(const h of p3.hands)h.timer=100;p3.miniTimer=100;
+  const m={x:500,top,direction:1,age:0,previous:null,pose:null};p3.minis.push(m);
+  let firstX=null,lastX=null,activeFrames=0;
+  for(let frame=0;frame<4.1*60;frame++) {
+   g.updateErrorPhase3(b,1/60);
+   if(m.age>=1.66&&m.age<=3.14) {
+    const x=m.pose.arm2.end.x;firstX??=x;lastX=x;activeFrames++;
+    assert.equal(m.pose.arm1.scale,3.6);assert.equal(m.pose.mirror,top?1:-1);
+   }
+  }
+  assert.ok(lastX-firstX>290);assert.ok(activeFrames>85);assert.ok(!p3.minis.includes(m));assert.ok(p3.pools.length>0);
+ }
+});
+test('Animation preview fires normally and cannot leave the long disabled-fire cooldown in any next encounter',()=>{
+ for(const enter of [()=>g.startTierBoss(7),()=>g.jumpToTierWave(3),()=>g.startShadowBoss(),()=>g.startErrorPhase3Test()]) {
+  fresh();g.startErrorHandPreview();g.updateGame(0.1);assert.ok(s.playerBullets.length>0);
+  s.player.fireCooldown=1e6;enter();assert.equal(s.errorHandDemo,null);assert.ok(s.player.fireCooldown<1);
+  s.playerBullets=[];s.player.fireCooldown=0;g.updateGame(0.1);assert.ok(s.playerBullets.length>0);
+ }
+});
+
+test('Full-size top and bottom arm segments are lethal through shield and invulnerability',()=>{
+ for(const top of [true,false]) {
+  const b=phase3Test(),p3=b.errorP3;s.debugInvincible=true;for(const h of p3.hands)h.timer=100;p3.miniTimer=100;
+  const m={x:500,top,direction:1,age:0,previous:null,pose:null};p3.minis.push(m);
+  for(let i=0;i<125;i++)g.updateErrorPhase3(b,1/60);
+  const pose=m.pose,q={x:(pose.arm2.start.x+pose.arm2.end.x)/2,y:(pose.arm2.start.y+pose.arm2.end.y)/2};
+  s.player.x=q.x;s.player.y=pose.root.y+(q.y-pose.root.y)*pose.mirror;
+  s.debugInvincible=false;s.player.invulnTimer=100;s.player.skills.shield.remaining=10;
+  g.updateErrorPhase3(b,0.001);assert.equal(s.player.hp,0);assert.ok(b.errorP3.capture);assert.equal(s.mode,'PLAYING');g.updateGame(2);assert.equal(s.mode,'GAMEOVER');
+ }
+});
+test('Verification attack replay resumes a paused scene and starts both mirrored hands',()=>{
+ phase3Test();s.mode='PAUSED';g.previewErrorHandAttack('laser');assert.equal(s.mode,'PLAYING');
+ assert.equal(s.boss.errorP3.hands.filter(h=>h.stage==='LASER_WARN').length,2);
+ s.mode='PAUSED';g.previewErrorHandAttack('swing');assert.equal(s.mode,'PLAYING');assert.ok(s.boss.errorP3.hands.every(h=>h.stage==='SCRATCH_WARN'));
+});
+
+test('Hand lasers reuse the existing pixel model and keep a bounded mask cache',()=>{
+ phase3Test();g.handLaserModelCache.clear();imageDraws.length=0;
+ const beam={a:{x:600,y:300},b:{x:283,y:300},angle:Math.PI,stage:3,time:0};
+ for(let i=0;i<20;i++)g.renderHandLaserModel({...beam,time:i/10,stage:1+i%3});
+ assert.ok(g.handLaserModelCache.size<=6);
+ assert.ok(imageDraws.some(args=>args[0]===g.assets.images.get('lasers/Cyan/Laser_Cyan_Stage_03_Body.png')));
+ assert.ok(imageDraws.some(args=>args[0]===g.assets.images.get('lasers/Pink/Laser_Pink_Stage_03_Tip.png')));
+});
+test('Rake, laser and crush use distinct two-joint finger and opposing thumb poses',()=>{
+ const H=g.errorPhase3,base=H.poseAt({x:900,y:350},{x:720,y:250});
+ const rake=H.fingerPose(base,'rake',0.55),laser=H.fingerPose(base,'laser',0.55),grip=H.fingerPose(base,'crush',1);
+ const geometry=p=>p.fingers.flatMap(f=>[f.base.end.x,f.base.end.y,f.tip.end.x,f.tip.end.y]);
+ assert.notDeepEqual(geometry(rake),geometry(laser));assert.notDeepEqual(geometry(grip),geometry(laser));assert.notDeepEqual(geometry(grip),geometry(rake));
+ assert.ok(Math.abs(rake.fingerAngles[0].tip-rake.fingerAngles[2].tip)>0.1);
+ for(const p of [rake,laser,grip])for(const f of [...p.fingers,p.thumb]) {
+  assert.equal(f.base.end.x,f.tip.start.x);assert.equal(f.base.end.y,f.tip.start.y);
+ }
+ assert.ok(Math.abs(grip.thumbAngles.tip-laser.thumbAngles.tip)>0.5);
+});
+test('Edge arms use random positions across the arena and varied rooted elbow/hand poses',()=>{
+ const p=g.errorPhase3.create(1284,724),xs=new Set(),sides=new Set(),depths=new Set();
+ for(let i=0;i<80;i++) {
+  const arm=g.errorPhase3.createEdgeArm(p);xs.add(Math.round(arm.x));sides.add(arm.elbowSide);depths.add(Math.round(arm.depth));
+  assert.ok(arm.x>=p.left+110&&arm.x<=p.right-110);assert.ok(arm.span>=240&&arm.span<=350);assert.ok(arm.depth>=170&&arm.depth<=205);
+ }
+ assert.ok(xs.size>40&&sides.size===1&&sides.has(-1)&&depths.size>10);
+});
+for(const top of [null,true,false])test(`Contact capture reaches, closes separate fingers, crushes the ship and then shows game over (${top})`,()=>{
+ const b=phase3Test(),p3=b.errorP3;s.debugInvincible=true;
+ let pose=p3.hands[0].pose;
+ if(top!==null) {
+  for(const h of p3.hands)h.timer=100;p3.miniTimer=100;
+  const m={x:500,top,direction:1,age:0,previous:null,pose:null};p3.minis.push(m);
+  for(let i=0;i<125;i++)g.updateErrorPhase3(b,1/60);pose=m.pose;
+ }
+ const raw={x:(pose.arm2.start.x+pose.arm2.end.x)/2,y:(pose.arm2.start.y+pose.arm2.end.y)/2};
+ s.player.x=raw.x;s.player.y=pose.root.y+(raw.y-pose.root.y)*(pose.mirror||1);
+ s.debugInvincible=false;s.player.invulnTimer=100;s.player.skills.shield.remaining=10;
+ g.updateErrorPhase3(b,0.001);assert.equal(s.player.hp,0);assert.ok(p3.capture);assert.equal(s.mode,'PLAYING');
+ const age=p3.capture.age;s.mode='PAUSED';g.updateGame(2);assert.equal(p3.capture.age,age);s.mode='PLAYING';
+ const health=p3.hands.map(h=>h.hp);assert.equal(g.errorPhase3.hit(p3,p3.hands[0],1000),false);assert.equal(g.usePlayerSkill('heal'),false);
+ let previous=p3.capture.pose;for(let frame=0;frame<84;frame++) {
+  g.updateGame(1/60);const c=p3.capture;
+  for(const part of c.pose.pieces)assert.ok([part.start.x,part.start.y,part.end.x,part.end.y].every(Number.isFinite));
+  assert.ok(Math.hypot(c.pose.palm.end.x-previous.palm.end.x,c.pose.palm.end.y-previous.palm.end.y)<40);previous=c.pose;
+ }
+ assert.ok(p3.capture.playerScaleX<0.2&&p3.capture.playerScaleY<0.5);assert.equal(p3.capture.playerOpacity,0);assert.equal(p3.capture.burst,true);
+ assert.deepEqual(p3.hands.map(h=>h.hp),health);assert.equal(s.playerBullets.length,0);g.renderGame();
+ g.updateGame(0.5);assert.equal(s.mode,'GAMEOVER');
+ g.previewErrorHandAttack('laser');assert.equal(s.mode,'PLAYING');assert.equal(s.player.hp,s.player.maxHp);assert.ok(!s.boss.errorP3.capture);
+});
+
+test('Long-range laser retains slower tracking and anatomical swing timing',()=>{
+ const b=phase3Test(),p3=b.errorP3,H=g.errorPhase3,B=H.BALANCE;
+ assert.equal(B.laserLength,500);assert.equal(B.laserCharge,1.35);assert.equal(B.laserDuration,3.8);assert.equal(B.swingDuration,0.78);
+ assert.ok(B.laserSweep/B.laserDuration<0.15);
+ assert.ok(Math.abs(H.palm(p3.hands[0].pose).y-H.palm(p3.hands[1].pose).y)>290);
+ let min=Infinity,max=-Infinity;
+ for(let i=0;i<=120;i++){const p=H.swingPose({x:900,y:350},0,i/120),y=p.fingers[1].tip.end.y;min=Math.min(min,y);max=Math.max(max,y);}
+ assert.ok(max-min>350);
+});
+test('Beam-tip fragments are sky blue while the existing pixel laser is reused',()=>{
+ const b=phase3Test(),p3=b.errorP3,h=p3.hands[0],fills=[];p3.pools=[];
+ h.laser={a:{x:900,y:350},b:{x:400,y:350},angle:Math.PI,halfWidth:18};
+ const painter=new Proxy({}, {get:(obj,key)=>key==='fillRect'?(...r)=>fills.push({color:obj.fillStyle,r}):(obj[key]??(()=>{})),set:(obj,key,value)=>{obj[key]=value;return true;}});
+ let model=0;g.errorPhase3.render(p3,painter,g.assets.images,b,{laserModel:()=>model++});assert.equal(model,1);
+ const tip=fills.filter(f=>f.r[0]>320&&f.r[0]<470&&f.r[1]>280&&f.r[1]<420);
+ assert.ok(tip.length>=24);assert.ok(tip.every(f=>['#88e7ff','#52caff','#c8f6ff','#329fff'].includes(f.color)));
+});
+test('Boss pressure follows player position smoothly inside independent patrol bounds',()=>{
+ const run=(x,y)=>{
+  const b=phase3Test(),p3=b.errorP3;s.debugInvincible=true;s.player.x=x;s.player.y=y;p3.miniTimer=100;for(const h of p3.hands)h.timer=100;
+  for(let i=0;i<180;i++) {const old={x:b.x,y:b.y};g.updateErrorPhase3(b,1/60);assert.ok(Math.abs(b.x-old.x)<=160/60+0.01);assert.ok(Math.abs(b.y-old.y)<=210/60+0.01);assert.ok(b.x>=p3.bossBounds.left&&b.x<=p3.bossBounds.right);}
+  return {x:b.x,y:b.y};
+ };
+ const left=run(250,180),right=run(1000,540);assert.ok(right.x-left.x>150);assert.ok(right.y-left.y>100);
+});
+test('Rear arms emerge from the left fog, rake into the arena and retain the capture cinematic',()=>{
+ const b=phase3Test(),p3=b.errorP3,H=g.errorPhase3;s.debugInvincible=true;for(const h of p3.hands)h.timer=100;p3.miniTimer=100;
+ const m=H.createEdgeArm(p3,'rear');m.y=350;m.span=310;m.depth=185;m.direction=1;m.elbowSide=-1;p3.minis.push(m);
+ for(let i=0;i<125;i++)g.updateErrorPhase3(b,1/60);
+ assert.equal(m.edge,'rear');assert.equal(m.pose.mirror,1);assert.equal(m.pose.root.x,p3.left-58);assert.ok(m.pose.arm2.end.x>p3.left+100);
+ for(const piece of m.pose.pieces)assert.ok([piece.start.x,piece.start.y,piece.end.x,piece.end.y,piece.rotation].every(Number.isFinite));
+ s.player.x=(m.pose.arm2.start.x+m.pose.arm2.end.x)/2;s.player.y=(m.pose.arm2.start.y+m.pose.arm2.end.y)/2;
+ s.debugInvincible=false;s.player.invulnTimer=100;s.player.skills.shield.remaining=10;g.updateErrorPhase3(b,0.001);
+ assert.equal(s.player.hp,0);assert.equal(p3.capture.owner,m);g.updateGame(2);assert.equal(s.mode,'GAMEOVER');
+ const edges=new Set();for(let i=0;i<100;i++)edges.add(H.createEdgeArm(p3).edge);assert.deepEqual([...edges].sort(),['bottom','rear','top']);
+});
+
+test('Windup, swing and recovery retain one anatomical elbow side and limited wrists',()=>{
+ const b=phase3Test();s.debugInvincible=true;g.previewErrorHandAttack('swing');b.errorP3.miniTimer=100;
+ const angle=part=>Math.atan2(part.end.y-part.start.y,part.end.x-part.start.x);
+ for(let i=0;i<4*120;i++) {
+  g.updateErrorPhase3(b,1/120);
+  for(const h of b.errorP3.hands) {
+   const p=h.pose,a1=angle(p.arm1),a2=angle(p.arm2),flex=Math.atan2(Math.sin(a2-a1),Math.cos(a2-a1));
+   const wrist=Math.atan2(Math.sin(p.facing-a2-0.22),Math.cos(p.facing-a2-0.22));
+   assert.ok(flex<-.07&&flex>-2.2,'elbow inverted or hyperextended');assert.ok(Math.abs(wrist)<=1.05+1e-7,'wrist folded backward');
+  }
+ }
+});
+test('Laser warning settles before firing, caps turn speed, slows the boss while each hand attacks independently',()=>{
+ const b=phase3Test(),p3=b.errorP3;s.debugInvincible=true;g.previewErrorHandAttack('laser');p3.miniTimer=100;
+ let previous=null,lastWarning=null,seen=0,peakTipSpeed=0;
+ for(let frame=0;frame<12*120;frame++) {
+  const warned=p3.hands.find(h=>h.stage==='LASER_WARN'&&h.timer<0.08);
+  if(warned)lastWarning={h:warned,angle:warned.pose.facing*(warned.pose.mirror||1),origin:{...g.errorPhase3.palm(warned.pose)}};
+  g.updateErrorPhase3(b,1/120);
+  const active=p3.hands.filter(h=>h.stage==='LASER');assert.ok(active.length<=2);
+  if(active.length) {
+   const h=active[0],beam=h.laser;seen++;
+
+   if(previous?.h===h) {
+    const delta=Math.abs(Math.atan2(Math.sin(beam.angle-previous.angle),Math.cos(beam.angle-previous.angle)));
+    assert.ok(delta<=g.errorPhase3.BALANCE.laserTurnRate/120+1e-7);
+    peakTipSpeed=Math.max(peakTipSpeed,Math.hypot(beam.b.x-previous.tip.x,beam.b.y-previous.tip.y)*120);
+   } else if(lastWarning?.h===h) {
+    assert.ok(Math.abs(Math.atan2(Math.sin(beam.angle-lastWarning.angle),Math.cos(beam.angle-lastWarning.angle)))<0.01);
+    assert.ok(Math.hypot(beam.a.x-lastWarning.origin.x,beam.a.y-lastWarning.origin.y)<3);
+   }
+   assert.ok(Math.abs(p3.motion.vx)<40&&Math.abs(p3.motion.vy)<50);
+   previous={h,angle:beam.angle,tip:{...beam.b}};
+  } else previous=null;
+ }
+ assert.ok(seen>3*120);assert.ok(peakTipSpeed<g.CONFIG.PLAYER_FOCUS_SPEED,'beam sweep overtook focus movement');
+});
+test('Top and bottom rakes preserve handedness and move consistently with their claw pose',()=>{
+ const H=g.errorPhase3;
+ for(const top of [true,false]) {
+  const b=phase3Test(),p3=b.errorP3;s.debugInvincible=true;p3.miniTimer=100;for(const h of p3.hands)h.timer=100;
+  const m=H.createEdgeArm(p3,top);m.x=500;m.span=310;m.depth=185;p3.minis.push(m);let lastX=-Infinity;
+  assert.equal(m.direction,1);assert.equal(m.elbowSide,-1);
+  for(let i=0;i<4.05*120;i++) {
+   g.updateErrorPhase3(b,1/120);
+   if(m.age>=1.65&&m.age<=3.15) {
+    assert.ok(m.pose.arm2.end.x>=lastX-1e-7,'rake reversed without mirroring the fingers');lastX=m.pose.arm2.end.x;
+    const a1=Math.atan2(m.pose.arm1.end.y-m.pose.arm1.start.y,m.pose.arm1.end.x-m.pose.arm1.start.x),a2=Math.atan2(m.pose.arm2.end.y-m.pose.arm2.start.y,m.pose.arm2.end.x-m.pose.arm2.start.x);
+    assert.ok(Math.atan2(Math.sin(a2-a1),Math.cos(a2-a1))<0);
+   }
+  }
+ }
+});
+
+test('Error stage flags stop at victory even when the internal current tier still equals twelve',()=>{
+ fresh();s.currentTier=12;g.startTierBoss(12);g.applyErrorCorruption();
+ g.handleBossDefeated();finishErrorHandsForTest();assert.equal(s.mode,'REWARD');g.applyRewardChoice('skills');
+ assert.equal(s.phase,'FINAL_SHADOW');assert.equal(s.currentTier,12);assert.equal(g.isErrorAttackContext(),false);
+ g.spawnEnemyBullet(1000,300,-200,0);assert.equal(s.enemyBullets.at(-1).glitch,false);
+ const laserEnemy=g.spawnWaveEnemy(7,{enemyIdx:4});g.fireSmallEnemyLaser(laserEnemy);assert.equal(s.lasers.at(-1).glitch,false);
+ assert.equal(s.player.corruptionRemaining,0);
+ s.errorFx.remaining=3;rectDraws.length=0;g.renderErrorScreenEffect();assert.equal(rectDraws.length,0);
+ g.startRevealedFinalBoss();g.spawnEnemyBullet(1000,300,-200,0);g.fireFinalPrimaryLasers(s.boss);
+ assert.equal(s.enemyBullets.at(-1).glitch,false);assert.ok(s.lasers.length>0&&s.lasers.every(l=>!l.glitch));
+});
+test('Error attack tagging is limited to its own wave, test scene and live boss, not other phases or bosses',()=>{
+ for(const phase of ['WAVE','TEST']) {
+  fresh();s.currentTier=12;s.phase=phase;g.spawnEnemyBullet(1000,300,-200,0);assert.equal(s.enemyBullets[0].glitch,true);
+ }
+ fresh();s.currentTier=12;g.startTierBoss(12);g.spawnEnemyBullet(1000,300,-200,0);assert.equal(s.enemyBullets[0].glitch,true);
+ g.startTierBoss(7);g.spawnEnemyBullet(1000,300,-200,0);assert.equal(s.enemyBullets.at(-1).glitch,false);
+});
+test('Hand assembly has two arm links, a palm, a two-part thumb and exactly three two-part fingers',()=>{
+ const H=g.errorHands;assert.ok(H);
+ for(const curl of [0,0.5,1]) {
+  const hand=H.buildHand({curl,scale:5.2,root:{x:1200,y:200}});
+  assert.equal(hand.fingers.length,3);assert.equal(hand.pieces.length,11);
+  assert.equal(hand.arm1.end.x,hand.arm2.start.x);assert.equal(hand.arm1.end.y,hand.arm2.start.y);
+  assert.equal(hand.arm2.end.x,hand.palm.start.x);assert.equal(hand.arm2.end.y,hand.palm.start.y);
+  for(const finger of [...hand.fingers,hand.thumb]) {
+   assert.equal(finger.base.end.x,finger.tip.start.x);assert.equal(finger.base.end.y,finger.tip.start.y);
+  }
+  for(const part of hand.pieces) {
+   assert.ok([part.start.x,part.start.y,part.end.x,part.end.y,part.rotation].every(Number.isFinite));
+   assert.ok(Math.hypot(part.end.x-part.start.x,part.end.y-part.start.y)>10);
+  }
+ }
+});
+test('Upper and lower hands are mirrored, retain continuous joint positions and bend without tip jumps',()=>{
+ const H=g.errorHands;const poses=H.renderPair(draw,g.assets.images,{width:1284,height:724,time:0,curl:0,elbow:0.5,wrist:0});
+ assert.equal(poses.length,2);assert.equal(poses[0].mirror,1);assert.equal(poses[1].mirror,-1);
+ const world=(p,q)=>({x:q.x,y:p.root.y+(q.y-p.root.y)*p.mirror});
+ const a=world(poses[0],poses[0].arm2.end),b=world(poses[1],poses[1].arm2.end);
+ assert.ok(Math.abs(a.x-b.x)<1e-8);assert.ok(Math.abs(a.y+b.y-724)<1e-8);
+ let previous=H.buildHand({curl:0});
+ for(let i=1;i<=100;i++) {
+  const next=H.buildHand({curl:i/100});
+  for(let f=0;f<3;f++)assert.ok(Math.hypot(next.fingers[f].tip.end.x-previous.fingers[f].tip.end.x,next.fingers[f].tip.end.y-previous.fingers[f].tip.end.y)<12);
+  previous=next;
+ }
+});
+test('Emergence plants hands on the aircraft before elbows emerge, then releases into a bent pose',()=>{
+ const H=g.errorHands;
+ for(let index=0;index<2;index++) {
+  const planted=H.buildEmergenceHand(1.4+index*0.3,index);
+  const extracted=H.buildEmergenceHand(3.65+index*0.3,index);
+  assert.equal(planted.grip,1);assert.equal(extracted.release,0);
+  assert.ok(Math.hypot(planted.arm2.end.x-extracted.arm2.end.x,planted.arm2.end.y-extracted.arm2.end.y)<1e-6);
+  assert.ok(extracted.arm1.end.y<planted.arm1.end.y-80);
+  let previous=H.buildEmergenceHand(0,index);
+  for(let frame=1;frame<=720;frame++) {
+   const pose=H.buildEmergenceHand(frame/120,index);
+   assert.equal(pose.root.x,1189);assert.equal(pose.root.y,index===0?352:372);
+   for(const piece of pose.pieces)assert.ok([piece.start.x,piece.start.y,piece.end.x,piece.end.y,piece.rotation].every(Number.isFinite));
+   assert.ok(Math.hypot(pose.arm2.end.x-previous.arm2.end.x,pose.arm2.end.y-previous.arm2.end.y)<4);
+   previous=pose;
+  }
+  const final=H.buildEmergenceHand(6,index);
+  assert.ok(final.arm1.end.y<final.arm2.end.y-50);
+  assert.ok(final.arm2.end.x<final.arm1.end.x-70);
+  assert.ok(Math.hypot(final.arm1.end.x-final.root.x,final.arm1.end.y-final.root.y)>150);
+ }
+});
+
+test('Hand atlas frames stay within the three untouched PNGs and preload in the actual game',()=>{
+ const manifest=JSON.parse(fs.readFileSync(fileURLToPath(new URL('../assets/bosses/Tier_12/Hands/manifest.json',import.meta.url))));
+ assert.equal(manifest.hands,2);assert.equal(manifest.originals.length,3);
+ for(const part of Object.values(g.errorHands.PARTS)) {
+  const [x,y,w,h]=part.rect;assert.ok(x>=0&&y>=0&&w>0&&h>0&&x+w<=32&&y+h<=64);
+  assert.ok(g.assets.images.has(part.file));
+  const png=fs.readFileSync(fileURLToPath(new URL('../assets/'+part.file,import.meta.url)));
+  assert.equal(png.readUInt32BE(16),32);assert.equal(png.readUInt32BE(20),64);
+ }
+});
+test('Hand preview is isolated from boss combat, pauses properly and clears on boss entry',()=>{
+ fresh();g.startErrorHandPreview();assert.equal(s.boss,null);assert.equal(s.phase,'TEST');assert.ok(s.errorHandDemo);
+ const age=s.errorHandDemo.age;s.mode='PAUSED';g.updateGame(1);assert.equal(s.errorHandDemo.age,age);
+ s.mode='PLAYING';g.updateGame(0.25);assert.equal(s.errorHandDemo.age,age+0.25);
+ assert.equal(s.enemyBullets.length,0);assert.equal(s.lasers.length,0);g.renderGame();
+ g.startTierBoss(12);assert.equal(s.errorHandDemo,null);assert.equal(s.boss.hp,10000);
+});
+
 test('Requested boss health applies to fleet, error and final form, including the skill one-third rule',()=>{
  for(const [tier,hp] of [[8,10000],[12,10000]]) {
   fresh();s.currentTier=tier;g.startTierBoss(tier);assert.equal(s.boss.hp,hp);assert.equal(s.boss.maxHp,hp);
@@ -2046,6 +2481,249 @@ test('Boss assets are separate from minions and every runtime sprite path resolv
  }
  for(const path of Object.keys(g.SPRITE_SPECS))assert.ok(fs.existsSync(fileURLToPath(new URL(`../assets/${path}`,import.meta.url))),`Missing sprite ${path}`);
  for(const path of g.assets.images.keys())assert.ok(fs.existsSync(fileURLToPath(new URL(`../assets/${path}`,import.meta.url))),`Missing preloaded image ${path}`);
+});
+
+test('All four melee styles keep fixed bones, one elbow branch, mirrored anatomy and continuous recovery',()=>{
+ const H=g.errorPhase3,angle=part=>Math.atan2(part.end.y-part.start.y,part.end.x-part.start.x);
+ for(const kind of ['swing','thrust','hook','rake']) {
+  const b=phase3Test();s.debugInvincible=true;g.previewErrorHandAttack(kind);b.errorP3.miniTimer=100;
+  let previous=null,active=0;
+  for(let frame=0;frame<4*120;frame++) {
+   g.updateErrorPhase3(b,1/120);
+   for(const h of b.errorP3.hands) {
+    const p=h.pose,a1=angle(p.arm1),a2=angle(p.arm2),flex=Math.atan2(Math.sin(a2-a1),Math.cos(a2-a1));
+    assert.ok(flex<-.07&&flex>-2.2,kind+' elbow');
+    assert.ok(Math.abs(Math.atan2(Math.sin(p.facing-a2-.22),Math.cos(p.facing-a2-.22)))<=1.050001,kind+' wrist');
+    assert.ok(Math.abs(Math.hypot(p.arm1.end.x-p.arm1.start.x,p.arm1.end.y-p.arm1.start.y)-Math.hypot(4,44.4)*3.6)<.001);
+    assert.equal(p.mirror,h.index?-1:1);
+   }
+   const at=H.palm(b.errorP3.hands[0].pose);
+   if(previous)assert.ok(Math.hypot(at.x-previous.x,at.y-previous.y)<24,kind+' abrupt jump');
+   previous=at;if(b.errorP3.hands[0].stage==='SCRATCH')active++;
+  }
+  assert.ok(active>0,kind+' never struck');
+ }
+});
+test('Thrust extends the actual elbow without stretching bones and melee variants rotate in live combat',()=>{
+ const H=g.errorPhase3,root={x:900,y:350};
+ const early=H.attackPose(root,0,0,'THRUST'),late=H.attackPose(root,0,.62,'THRUST');
+ const radius=p=>Math.hypot(p.arm2.end.x-root.x,p.arm2.end.y-root.y);
+ assert.ok(radius(late)-radius(early)>100);
+ const b=phase3Test();s.debugInvincible=true;b.errorP3.miniTimer=1000;const seen=new Set();
+ for(let i=0;i<100*60;i++){g.updateErrorPhase3(b,1/60);for(const h of b.errorP3.hands)if(h.stage==='SCRATCH')seen.add(h.attackKind);}
+ for(const kind of H.MELEE_KINDS)assert.ok(seen.has(kind),kind+' absent');
+});
+test('Corruption pools spread from contact rather than appearing at full size, with matching status contact',()=>{
+ const b=phase3Test(),p=b.errorP3;for(const h of p.hands)h.timer=100;p.miniTimer=100;
+ const pool=g.errorPhase3.addPool(p,{x:400,y:362},{x:460,y:362},22);
+ assert.equal(pool.b.x,400);assert.ok(pool.width<10);
+ s.player.x=450;s.player.corruptionRemaining=0;g.updateErrorPhase3(b,.01);assert.equal(s.player.corruptionRemaining,0);
+ g.updateErrorPhase3(b,.45);assert.equal(pool.b.x,460);assert.equal(pool.width,22);assert.equal(s.player.corruptionRemaining,8);
+});
+
+test('Both mirrored hands accept shots across every arm, wrist, thumb and finger segment with no target gaps',()=>{
+ for(const index of [0,1]) {
+  const b=phase3Test(),p3=b.errorP3,h=p3.hands[index];p3.hands[1-index].hp=0;
+  h.pose=g.errorPhase3.attackPose({x:950,y:360},index,.45,'HOOK');
+  const world=q=>({x:q.x,y:h.pose.root.y+(q.y-h.pose.root.y)*(h.pose.mirror||1)});
+  const targets=g.getErrorHandTargets(h);
+  for(const piece of h.pose.pieces)for(let u=0;u<=1;u+=.125) {
+   const a=world(piece.start),z=world(piece.end),at={x:a.x+(z.x-a.x)*u,y:a.y+(z.y-a.y)*u};
+   assert.ok(targets.some(t=>Math.hypot(at.x-t.x,at.y-t.y)<t.radius),piece.part+' uncovered');
+  }
+  for(const piece of h.pose.pieces) {
+   const a=world(piece.start),z=world(piece.end),hp=h.hp;
+   g.spawnPlayerBullet({x:(a.x+z.x)/2,y:(a.y+z.y)/2,vx:0,vy:0,damage:17,radius:3,piercing:true});
+   g.updatePlayerBullets(0);g.updatePlayerBullets(0);assert.equal(h.hp,hp-17,piece.part+' must hit once');s.playerBullets=[];
+  }
+ }
+});
+test('Skill laser can damage the full forearm once per tick rather than once per overlapping sample',()=>{
+ const b=phase3Test(),p3=b.errorP3,h=p3.hands[0];p3.hands[1].hp=0;
+ const origin=g.getPlayerSkillLaserOrigin();
+ h.pose=g.errorPhase3.poseAt({x:950,y:origin.y+100},{x:700,y:origin.y-100},3.6);
+ const forearm=h.pose.arm2;s.player.y+=(forearm.start.y+forearm.end.y)/2-g.getPlayerSkillLaserOrigin().y;
+ s.player.skills.laser.damagePerTick=41;g.applyPlayerSkillLaserTick();assert.equal(h.hp,9959);
+});
+
+test('Rebuilt broad sweep starts extended, stays long through impact and opens trailing finger joints',()=>{
+ const H=g.errorPhase3,root={x:950,y:360};
+ for(const kind of ['SWING','RAKE'])for(let i=0;i<=100;i++) {
+  const p=H.attackPose(root,0,i/100,kind),l1=Math.hypot(p.arm1.end.x-root.x,p.arm1.end.y-root.y),l2=Math.hypot(p.arm2.end.x-p.arm2.start.x,p.arm2.end.y-p.arm2.start.y);
+  assert.ok(Math.hypot(p.arm2.end.x-root.x,p.arm2.end.y-root.y)>.98*(l1+l2),'sweep folded its elbow');
+ }
+ const ready=H.swingPose(root,0,0),impact=H.swingPose(root,0,.55),finish=H.swingPose(root,0,1);
+ for(let i=0;i<3;i++) {
+  const delta=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
+  assert.ok(Math.abs(delta(impact.fingerAngles[i].base,impact.fingerAngles[i].tip))<.2,'impact digit remains curled');
+  assert.ok(delta(impact.fingerAngles[i].tip,ready.fingerAngles[i].tip)>.2,'no trailing finger release');
+  assert.ok(delta(finish.fingerAngles[i].tip,impact.fingerAngles[i].tip)<-.1,'no follow-through finger relaxation');
+ }
+});
+
+test('Hands start mixed attacks independently and simultaneous laser previews fire both beams',()=>{
+ const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;g.previewErrorHandAttack('laser');p.miniTimer=100;
+ for(let i=0;i<100;i++)g.updateErrorPhase3(b,1/60);
+ assert.ok(p.hands.every(h=>h.stage==='LASER'&&h.laser));
+ const other=p.hands[1];other.stage='IDLE';other.timer=0;other.cycles=0;other.laser=null;
+ g.updateErrorPhase3(b,.01);assert.equal(p.hands[0].stage,'LASER');assert.equal(other.stage,'SCRATCH_WARN');
+});
+test('Wall arms retain full fixed bone lengths during emergence, sweep and withdrawal',()=>{
+ for(const side of [true,false,'rear']) {
+  const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;p.miniTimer=100;for(const h of p.hands)h.timer=100;
+  const m=g.errorPhase3.createEdgeArm(p,side);p.minis.push(m);
+  for(let i=0;i<240;i++) {
+   g.updateErrorPhase3(b,1/60);const pose=m.pose;
+   assert.ok(Math.abs(Math.hypot(pose.arm1.end.x-pose.arm1.start.x,pose.arm1.end.y-pose.arm1.start.y)-Math.hypot(4,44.4)*3.6)<1e-6);
+   assert.ok(Math.abs(Math.hypot(pose.arm2.end.x-pose.arm2.start.x,pose.arm2.end.y-pose.arm2.start.y)-Math.hypot(2,38)*3.6)<1e-6);
+  }
+ }
+});
+
+test('Sweeping fingertip contact captures instantly through shields without requiring arm overlap',()=>{
+ const b=phase3Test(),p=b.errorP3;g.previewErrorHandAttack('swing');s.debugInvincible=true;p.miniTimer=100;p.hands[1].hp=0;
+ for(let i=0;i<80;i++)g.updateErrorPhase3(b,1/60);
+ const pose=p.hands[0].pose,tip=pose.fingers[1].tip.end;s.player.x=tip.x;s.player.y=tip.y;
+ assert.ok(g.errorPhase3.handHits(s.player,pose,pose));assert.ok(!g.errorPhase3.armsHit(s.player,pose,pose));
+ s.debugInvincible=false;s.player.skills.shield.remaining=10;s.player.invulnTimer=100;
+ g.updateErrorPhase3(b,.001);assert.equal(s.player.hp,0);assert.ok(p.capture);
+});
+test('Phase-three player hull cannot cross the boss front sector while shots remain unrestricted',()=>{
+ const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;for(const h of p.hands)h.timer=100;p.miniTimer=100;
+ s.player.x=1100;g.updateGame(0);
+ assert.ok(g.getRotatedBounds(s.player.x,s.player.y,s.player.spec,true,s.player.scale).right<=p.playerMaxRight+1e-6);
+ s.player.fireCooldown=0;g.updateGame(.01);g.updatePlayerBullets(.1);assert.ok(s.playerBullets.some(shot=>shot.x>p.playerMaxRight));
+});
+test('Closed grip retains articulated finger bends instead of reversing distal joints through the palm',()=>{
+ const pose=g.errorPhase3.fingerPose(g.errorPhase3.swingPose({x:950,y:360},0,.5),'crush',1);
+ for(const f of pose.fingers) {
+  const base=Math.atan2(f.base.end.y-f.base.start.y,f.base.end.x-f.base.start.x),tip=Math.atan2(f.tip.end.y-f.tip.start.y,f.tip.end.x-f.tip.start.x);
+  assert.ok(Math.abs(Math.atan2(Math.sin(tip-base),Math.cos(tip-base)))<2.1);
+ }
+});
+
+test('Pointed stab deals exactly three HP once without fatal arm contact or capture and aligns forearm, wrist and fingers',()=>{
+ const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;g.previewErrorHandAttack('thrust');p.hands[1].hp=0;
+ for(let i=0;i<75;i++)g.updateErrorPhase3(b,1/60);
+ const h=p.hands[0],tip=h.pose.fingers[1].tip.end;s.player.x=tip.x;s.player.y=tip.y;
+ s.debugInvincible=false;s.player.invulnTimer=0;s.player.skills.shield.remaining=0;s.player.hp=5;
+ g.updateErrorPhase3(b,.001);assert.equal(s.player.hp,2);assert.ok(!p.capture);assert.ok(h.stabHit);
+ s.player.invulnTimer=0;g.updateErrorPhase3(b,.001);assert.equal(s.player.hp,2);
+ const forearmAngle=Math.atan2(h.pose.arm2.end.y-h.pose.arm2.start.y,h.pose.arm2.end.x-h.pose.arm2.start.x);
+ const palmAngle=Math.atan2(h.pose.palm.end.y-h.pose.palm.start.y,h.pose.palm.end.x-h.pose.palm.start.x);
+ assert.ok(Math.abs(Math.atan2(Math.sin(palmAngle-forearmAngle),Math.cos(palmAngle-forearmAngle)))<.2,'thrust wrist misaligned from forearm');
+ for(const f of h.pose.fingers){const a=Math.atan2(f.base.end.y-f.base.start.y,f.base.end.x-f.base.start.x),z=Math.atan2(f.tip.end.y-f.tip.start.y,f.tip.end.x-f.tip.start.x);assert.ok(Math.abs(Math.atan2(Math.sin(z-a),Math.cos(z-a)))<.05);}
+});
+test('Boss-relative bidirectional lasers start at outer ends, sweep into a cross and preserve a boss-centered safe pocket',()=>{
+ for(const bodyY of [190,362,535]) {
+  const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;b.y=bodyY;g.previewErrorHandAttack('gap');
+  g.updateErrorPhase3(b,.7);assert.ok(p.hands.every(h=>h.laser===null));
+  for(let i=0;i<60;i++)g.updateErrorPhase3(b,1/60);
+  assert.ok(p.hands.every(h=>h.laser));
+  assert.equal(p.pair.center,bodyY);
+  // Start of active firing aims toward outer vertical ends using arm rotation while keeping wrists natural
+  assert.ok(Math.sin(p.hands[0].laser.angle)<-.5,'upper beam should start aimed toward top end');
+  assert.ok(Math.sin(p.hands[1].laser.angle)>.5,'lower beam should start aimed toward bottom end');
+  for(const h of p.hands) {
+   const a2=Math.atan2(h.pose.arm2.end.y-h.pose.arm2.start.y,h.pose.arm2.end.x-h.pose.arm2.start.x);
+   const wrist=Math.atan2(Math.sin(h.pose.facing-a2-.22),Math.cos(h.pose.facing-a2-.22));
+   assert.ok(Math.abs(wrist)<.25,'gap laser wrist bent unnaturally');
+   for(let x=p.bossBounds.left-210;x<p.bossBounds.left-45;x+=25)assert.ok(!g.errorPhase3.laserHits({x,y:bodyY,hitboxRadius:16},h.laser),'boss-relative center pocket hit during early sweep');
+  }
+  // Advance to end of active sweep: beams narrow forward and cross in an X while preserving the central pocket near the boss
+  for(let i=0;i<145;i++)g.updateErrorPhase3(b,1/60);
+  assert.ok(p.hands.every(h=>h.laser));
+  assert.ok(Math.sin(p.hands[0].laser.angle)>.05,'upper beam should cross downward');
+  assert.ok(Math.sin(p.hands[1].laser.angle)<-.05,'lower beam should cross upward');
+  for(const h of p.hands)for(let x=p.bossBounds.left-210;x<p.bossBounds.left-45;x+=25)assert.ok(!g.errorPhase3.laserHits({x,y:bodyY,hitboxRadius:16},h.laser),'boss-relative center pocket hit at crossed end');
+  for(let i=0;i<60;i++)g.updateErrorPhase3(b,1/60);
+  assert.equal(p.pair,null);assert.ok(p.hands.every(h=>h.laser===null));
+ }
+});
+test('Two-hand claw wrap and hook snatch open wide, cross over in front of the boss with elbow/wrist curl, and uncross on return',()=>{
+ const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;g.previewErrorHandAttack('wrap');
+ let startUpperY=null,startLowerY=null,endUpperY=null,endLowerY=null;
+ for(let i=0;i<160;i++) {
+  g.updateErrorPhase3(b,1/60);
+  if(p.hands[0].stage==='PAIR_ACTIVE') {
+   const uPalm=g.errorPhase3.palm(p.hands[0].pose),lPalm=g.errorPhase3.palm(p.hands[1].pose);
+   if(startUpperY===null){startUpperY=uPalm.y;startLowerY=lPalm.y;}
+   endUpperY=uPalm.y;endLowerY=lPalm.y;
+   assert.ok(p.hands.every(h=>h.stage==='PAIR_ACTIVE'));assert.equal(p.hands[1].pose.mirror,-1);
+  }
+ }
+ assert.ok(startUpperY<b.y-150&&startLowerY>b.y+150,'hands must open wide before crossing');
+ assert.ok(endUpperY>b.y+90&&endLowerY<b.y-90&&endUpperY>endLowerY,'upper and lower hands must cross past each other in front of the boss');
+ assert.ok(p.hands.every(h=>h.stage==='RETURN'&&h.uncrossReturn),'hands must enter uncrossing return');
+ for(let i=0;i<40;i++)g.updateErrorPhase3(b,1/60);
+ const midUpperY=g.errorPhase3.palm(p.hands[0].pose).y,midLowerY=g.errorPhase3.palm(p.hands[1].pose).y;
+ assert.ok(midUpperY< midLowerY,'hands must uncross during recovery before returning to idle');
+ assert.equal(p.pair,null);assert.ok(p.pools.length>0);
+});
+test('Execution curls fingers inward into the palm before the thumb wraps over them while keeping wrist aligned and player inside the cavity',()=>{
+ const b=phase3Test(),p=b.errorP3;g.previewErrorHandAttack('grab');
+ const basePose=g.errorPhase3.swingPose({x:950,y:360},0,.5);
+ const earlyCrush=g.errorPhase3.fingerPose(basePose,'crush',.34);
+ assert.ok(earlyCrush.fingerAngles[1].tip<-.8,'fingers should already be curling inward at u=0.34');
+ assert.ok(Math.abs(earlyCrush.thumbAngles.base-(-.95))<.02,'thumb must wait until after fingers begin curling');
+ for(let i=0;i<120;i++) {
+  g.errorPhase3.updateCapture(p,1/120,s.player,{shake(){},burst(){}});
+  const pose=p.capture.pose,a2=Math.atan2(pose.arm2.end.y-pose.arm2.start.y,pose.arm2.end.x-pose.arm2.start.x);
+  const wrist=Math.atan2(Math.sin(pose.facing-a2-.22),Math.cos(pose.facing-a2-.22));assert.ok(Math.abs(wrist)<.35);
+  if(p.capture.age>=.45) {
+   const cav=g.errorPhase3.handCavity(pose);
+   assert.ok(Math.hypot(s.player.x-cav.x,s.player.y-cav.y)<6,'captured player drifted outside hand cavity');
+  }
+ }
+ const pose=p.capture.pose;
+ for(const f of pose.fingers){const a=Math.atan2(f.base.end.y-f.base.start.y,f.base.end.x-f.base.start.x),z=Math.atan2(f.tip.end.y-f.tip.start.y,f.tip.end.x-f.tip.start.x);assert.ok(Math.atan2(Math.sin(z-a),Math.cos(z-a))<-.5,'fingers must curl in palmar direction toward thumb');}
+});
+
+test('Rear wall hand is painted before the fog with its root hidden inside the fog, while normal palm hit flash no longer draws a square',()=>{
+ const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;g.previewErrorHandAttack('rear');
+ for(let i=0;i<120;i++) {
+  g.updateErrorPhase3(b,1/60);
+  if(p.minis[0]?.pose)assert.ok(p.minis[0].pose.root.x<=p.left-50,'rear wall arm root must stay hidden behind left fog');
+ }
+ const events=[],pen={globalAlpha:1};
+ const painter=new Proxy(pen,{get:(o,k)=>k==='drawImage'?()=>events.push('hand'):k==='fillRect'?((x,y,w,h)=>{if(x===0&&y===54&&w===p.left)events.push('fog');if(o.fillStyle==='#efffff'&&w===20&&h===20)events.push('square');}):(o[k]??(()=>{})),set:(o,k,v)=>{o[k]=v;return true;}});
+ for(const h of p.hands)h.flash=1;
+ g.errorPhase3.render(p,painter,g.assets.images,b);
+ assert.ok(events.indexOf('hand')>=0&&events.indexOf('hand')<events.indexOf('fog'));assert.ok(!events.includes('square'));
+});
+test('Wall shoulder coils during emergence, sweeps through a full broad arc with elbow extension, and continues follow-through during withdrawal',()=>{
+ const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;p.miniTimer=100;for(const h of p.hands)h.timer=100;
+ const m=g.errorPhase3.createEdgeArm(p,true);p.minis=[m];let first=null,last=null,atEnd=null,withdrawing=null,minFlex=0,maxFlex=-10;
+ for(let i=0;i<240;i++) {
+  g.updateErrorPhase3(b,1/60);const q=m.pose,a=Math.atan2(q.arm1.end.y-q.arm1.start.y,q.arm1.end.x-q.arm1.start.x);
+  const a2=Math.atan2(q.arm2.end.y-q.arm2.start.y,q.arm2.end.x-q.arm2.start.x);
+  const flex=Math.atan2(Math.sin(a2-a),Math.cos(a2-a));
+  if(m.age>=1.65&&m.age<=3.15){minFlex=Math.min(minFlex,flex);maxFlex=Math.max(maxFlex,flex);}
+  if(m.age>=1.65&&first===null)first=a;if(m.age<=3.15)last=a;
+  if(m.age>=3.15&&atEnd===null)atEnd=a;if(m.age>=3.8)withdrawing=a;
+ }
+ assert.ok(first-last>2.2);assert.ok(withdrawing<atEnd-.15);assert.ok(maxFlex-minFlex>.25,'wall arm elbow must extend through the sweep');
+});
+
+test('Full fight schedules both coordinated specials and resumes ordinary parallel attacks afterward',()=>{
+ const b=phase3Test(),p=b.errorP3;s.debugInvincible=true;p.miniTimer=1000;const seen=new Set();let independentAfterPair=false;
+ for(let i=0;i<95*60;i++) {
+  g.updateErrorPhase3(b,1/60);if(p.pair)seen.add(p.pair.kind);
+  if(seen.size&&p.hands.every(h=>['SCRATCH','LASER','SCRATCH_WARN','LASER_WARN'].includes(h.stage)))independentAfterPair=true;
+ }
+ assert.ok(seen.has('gap'));assert.ok(seen.has('wrap'));assert.ok(independentAfterPair);
+});
+test('Closed fist preserves proximal knuckle arch and separated digits while moderately foreshortening distal tips',()=>{
+ const base=g.errorPhase3.swingPose({x:950,y:360},0,.5),open=g.errorPhase3.fingerPose(base,'reach',0),closed=g.errorPhase3.fingerPose(base,'crush',1);
+ const length=q=>Math.hypot(q.end.x-q.start.x,q.end.y-q.start.y);
+ assert.ok(closed.fingerForeshorten>.58&&closed.fingerForeshorten<.68);
+ assert.ok(closed.thumbForeshorten>.78&&closed.thumbForeshorten<.88);
+ assert.equal(length(open.arm1),length(closed.arm1));assert.equal(length(open.arm2),length(closed.arm2));
+ for(let i=0;i<3;i++) {
+  assert.ok(length(closed.fingers[i].base)>length(open.fingers[i].base)*.74,'proximal fingerBase must keep structural length to arch over ship');
+  assert.ok(length(closed.fingers[i].tip)>length(open.fingers[i].tip)*.58&&length(closed.fingers[i].tip)<length(open.fingers[i].tip)*.68);
+ }
+ assert.ok(Math.hypot(closed.fingers[2].base.end.x-closed.fingers[0].base.end.x,closed.fingers[2].base.end.y-closed.fingers[0].base.end.y)>20,'knuckles must stay separated rather than collapsing into a blob');
 });
 
 console.log(`\n${results.length} scenario checks passed.`);
