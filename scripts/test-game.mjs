@@ -39,7 +39,7 @@ function tick(seconds, fps = 60) { for (let i = 0; i < seconds * fps; i++) g.upd
 function finishErrorHandsForTest() {
  const b=s.boss;if(!b?.errorP3)g.enterErrorPhase3(b);
  b.errorP3.age=6;
- for(const h of b.errorP3.hands)g.errorPhase3.hit(b.errorP3,h,10000);
+ for(const h of b.errorP3.hands)g.errorPhase3.hit(b.errorP3,h,h.maxHp);
  g.updateErrorPhase3(b,0.01);g.updateErrorPhase3(b,1.9);
 }
 const results = [];
@@ -1696,13 +1696,13 @@ test('A lethal error-body hit starts phase three instead of healing, rewarding o
  s.player.hp=2;g.spawnEnemyBullet(900,300,-100,0);g.createErrorNodes(b);
  g.spawnPlayerBullet({x:b.x,y:b.y,vx:0,vy:0,damage:100,radius:8});g.updatePlayerBullets(0);
  assert.equal(s.boss,b);assert.ok(b.errorP3);assert.equal(b.hp,1);assert.equal(s.mode,'PLAYING');assert.equal(s.phase,'BOSS');assert.equal(s.player.hp,2);
- assert.deepEqual(Array.from(b.errorP3.hands,h=>h.hp),[10000,10000]);
+ assert.deepEqual(Array.from(b.errorP3.hands,h=>h.hp),[15000,15000]);
  for(const list of ['enemyBullets','lasers','errorNodes','errorClones','errorWaves','meteors','enemies'])assert.equal(s[list].length,0);
  assert.equal(g.canDamageBossWithPlayerAttack(b),false);
 });
 test('Hand emergence grants no hand damage, pauses, and holds the spawn source inside the aircraft',()=>{
  const b=phase3Test(false),p3=b.errorP3;
- assert.equal(g.errorPhase3.hit(p3,p3.hands[0],10000),false);
+ assert.equal(g.errorPhase3.hit(p3,p3.hands[0],p3.hands[0].maxHp),false);
  for(const mode of ['PAUSED','REWARD','SUPPLY']) {s.mode=mode;g.updateGame(1);assert.equal(p3.age,0);}
  s.mode='PLAYING';g.updateGame(0.5);assert.ok(p3.age>0);
  for(const h of p3.hands)if(h.pose)assert.ok(Math.abs(h.pose.root.x-b.x)<10);
@@ -1711,9 +1711,9 @@ test('Hand emergence grants no hand damage, pauses, and holds the spawn source i
 test('Ordinary and piercing shots damage each hand independently, once per piercing target, while keeping body HP separate',()=>{
  const b=phase3Test(),p3=b.errorP3,h=p3.hands[0],other=p3.hands[1],at=g.errorPhase3.palm(h.pose);
  g.spawnPlayerBullet({x:at.x,y:at.y,vx:0,vy:0,damage:123,radius:5});g.updatePlayerBullets(0);
- assert.equal(h.hp,9877);assert.equal(other.hp,10000);assert.equal(b.hp,1);assert.equal(s.playerBullets.length,0);
+ assert.equal(h.hp,h.maxHp-123);assert.equal(other.hp,other.maxHp);assert.equal(b.hp,1);assert.equal(s.playerBullets.length,0);
  g.spawnPlayerBullet({x:at.x,y:at.y,vx:0,vy:0,damage:200,radius:5,piercing:true});g.updatePlayerBullets(0);g.updatePlayerBullets(0);
- assert.equal(h.hp,9677);
+ assert.equal(h.hp,h.maxHp-323);
  s.playerBullets=[];g.spawnPlayerBullet({x:b.x,y:b.y,vx:0,vy:0,damage:100000,radius:5});g.updatePlayerBullets(0);assert.equal(b.hp,1);
 });
 test('Skill laser keeps guaranteed ticks on hand targets and cannot damage the phase-three body',()=>{
@@ -1722,7 +1722,7 @@ test('Skill laser keeps guaranteed ticks on hand targets and cannot damage the p
  h.pose=g.errorPhase3.poseAt({x:900,y:m.y+10},{x:700,y:m.y},3.6);
  p3.hands[1].pose=g.errorPhase3.poseAt({x:900,y:50},{x:700,y:50},3.6);
  s.player.skills.laser.damagePerTick=200;g.applyPlayerSkillLaserTick();
- assert.equal(h.hp,9800);assert.equal(p3.hands[1].hp,10000);assert.equal(b.hp,1);
+ assert.equal(h.hp,h.maxHp-200);assert.equal(p3.hands[1].hp,p3.hands[1].maxHp);assert.equal(b.hp,1);
 });
 test('Glitch ground applies eight-second corruption with zero HP loss even through shield and invulnerability',()=>{
  const b=phase3Test(),p3=b.errorP3;
@@ -1744,8 +1744,8 @@ test('Hand lasers warn first, have a short fixed range, leave status-only ground
  g.updateErrorPhase3(b,0.1);assert.equal(h.laser,null);assert.equal(p3.pools.length,0);
  g.updateErrorPhase3(b,0.41);assert.equal(h.stage,'LASER');assert.ok(h.laser);
  assert.ok(Math.abs(Math.hypot(h.laser.b.x-h.laser.a.x,h.laser.b.y-h.laser.a.y)-500)<1e-6);assert.ok(p3.pools.length>0);
- assert.equal(g.errorPhase3.hit(p3,h,10000),true);assert.equal(h.laser,null);
- g.updateErrorPhase3(b,0.1);assert.equal(h.stage,'DOWN');assert.equal(p3.hands[1].hp,10000);
+ assert.equal(g.errorPhase3.hit(p3,h,h.maxHp),true);assert.equal(h.laser,null);
+ g.updateErrorPhase3(b,0.1);assert.equal(h.stage,'DOWN');assert.equal(p3.hands[1].hp,p3.hands[1].maxHp);
 });
 test('Small top/bottom arms warn, scratch once, leave a ground trail and retract',()=>{
  const b=phase3Test(),p3=b.errorP3;s.debugInvincible=true;p3.miniTimer=0;
@@ -1759,8 +1759,8 @@ test('Small top/bottom arms warn, scratch once, leave a ground trail and retract
 test('Both hand deaths remove every hazard before deletion, reward only once and restore normal combat on the next stage',()=>{
  const b=phase3Test(),p3=b.errorP3;s.player.hp=2;
  g.errorPhase3.addPool(p3,{x:400,y:362},{x:500,y:362});
- g.errorPhase3.hit(p3,p3.hands[0],10000);g.updateErrorPhase3(b,0.01);assert.equal(s.phase,'BOSS');assert.equal(s.player.hp,2);
- g.errorPhase3.hit(p3,p3.hands[1],10000);s.player.x=80;
+ g.errorPhase3.hit(p3,p3.hands[0],p3.hands[0].maxHp);g.updateErrorPhase3(b,0.01);assert.equal(s.phase,'BOSS');assert.equal(s.player.hp,2);
+ g.errorPhase3.hit(p3,p3.hands[1],p3.hands[1].maxHp);s.player.x=80;
  g.updateErrorPhase3(b,0.01);assert.ok(p3.ending>0);assert.equal(p3.pools.length,0);assert.equal(p3.minis.length,0);assert.equal(s.player.hp,2);
  g.updateErrorPhase3(b,1.9);assert.equal(s.boss,null);assert.equal(s.mode,'REWARD');assert.equal(s.player.hp,3);
  g.handleBossDefeated();assert.equal(s.player.hp,3);
@@ -2543,7 +2543,7 @@ test('Skill laser can damage the full forearm once per tick rather than once per
  const origin=g.getPlayerSkillLaserOrigin();
  h.pose=g.errorPhase3.poseAt({x:950,y:origin.y+100},{x:700,y:origin.y-100},3.6);
  const forearm=h.pose.arm2;s.player.y+=(forearm.start.y+forearm.end.y)/2-g.getPlayerSkillLaserOrigin().y;
- s.player.skills.laser.damagePerTick=41;g.applyPlayerSkillLaserTick();assert.equal(h.hp,9959);
+ s.player.skills.laser.damagePerTick=41;g.applyPlayerSkillLaserTick();assert.equal(h.hp,h.maxHp-41);
 });
 
 test('Rebuilt broad sweep starts extended, stays long through impact and opens trailing finger joints',()=>{

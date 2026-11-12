@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const HAND_MAX_HP = 15000;
   const BALANCE={laserLength:500,laserCharge:1.35,laserDuration:3.8,laserSweep:0.5,laserTurnRate:0.14,swingCharge:1.0,swingDuration:0.78,recoverDuration:1.35};
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const ease=v=>{v=clamp(v,0,1);return v*v*(3-2*v);};
@@ -21,8 +22,8 @@
   const claw=pose=>world(pose,pose.fingers[1].tip.end);
   function create(width,height) {
     return {age:0,width,height,left:width*0.1,right:width*0.9,playerMaxRight:width*0.65-45,bossBounds:{left:width*0.69,right:width*0.86,top:height*0.26,bottom:height*0.74},intro:5.9,ending:0,
-      pools:[],minis:[],miniTimer:7.5,serial:0,pairTimer:18,pairCount:0,pair:null,
-      hands:[0,1].map(i=>({id:'error-hand-'+i,index:i,hp:10000,maxHp:10000,flash:0,stage:'IDLE',timer:1.0+i*2.1,cycles:0,meleeCount:i*2,attackKind:'SWING',sweepDirection:i?-1:1,laserGroundTimer:0,pose:null,laser:null,downAge:0}))};
+      pools:[],minis:[],miniTimer:6,serial:0,pairTimer:18,pairCount:0,pair:null,
+      hands:[0,1].map(i=>({id:'error-hand-'+i,index:i,hp:HAND_MAX_HP,maxHp:HAND_MAX_HP,flash:0,stage:'IDLE',timer:1.0+i*2.1,cycles:0,meleeCount:i*2,attackKind:'SWING',sweepDirection:i?-1:1,laserGroundTimer:0,pose:null,laser:null,downAge:0}))};
   }
   function addPool(p,a,b,width=18) {
     const center={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
@@ -457,7 +458,7 @@
       if(!p.pair)p.miniTimer-=dt;
       if(p.miniTimer<=0 && p.minis.length<2) {
         p.minis.push(createEdgeArm(p));
-        p.miniTimer=4.8+Math.random()*2;
+        p.miniTimer = 2 + Math.random();
       }
     }
     for(const m of p.minis) {

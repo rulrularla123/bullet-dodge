@@ -7665,7 +7665,7 @@
       }
       if(handBars) {
         ctx.save();ctx.textAlign='center';ctx.fillStyle=health.hp>0?'#b8faff':'#915576';ctx.font='bold 12px monospace';
-        ctx.fillText(`${barIndex===0?'UPPER':'LOWER'} HAND · ${Math.ceil(health.hp)} / 10000`,barX+barW/2,barY+barH-8);ctx.restore();
+        ctx.fillText(`${barIndex===0?'UPPER':'LOWER'} HAND · ${Math.ceil(health.hp)} / ${health.maxHp}`,barX+barW/2,barY+barH-8);ctx.restore();
       }
       }
     }
@@ -8063,7 +8063,7 @@
       }
     } else if (action === 'kill-boss') {
       if (state.boss) {
-        if(state.boss.errorP3) {state.boss.errorP3.age=Math.max(6,state.boss.errorP3.age);for(const h of state.boss.errorP3.hands)window.ErrorPhase3.hit(state.boss.errorP3,h,10000);}
+        if(state.boss.errorP3) {state.boss.errorP3.age=Math.max(6,state.boss.errorP3.age);for(const h of state.boss.errorP3.hands)window.ErrorPhase3.hit(state.boss.errorP3,h,h.maxHp);}
         else {state.boss.hp = 0;handleBossDefeated();}
       }
     } else if (action === 'toggle-invincible') {
