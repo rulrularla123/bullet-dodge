@@ -81,6 +81,9 @@
     TIER8_P2_LANE_COUNT: 7,
     TIER8_P2_TOP_Y: 60,
     TIER8_P2_LANE_HEIGHT: 640 / 7,
+    TIER8_P3_DURATION: 60.0,
+    TIER8_P3_WHEEL_TIME: 10.0,
+    TIER8_P3_MAX_DASHERS: 12,
 
     // Laser stage timings (in seconds)
     LASER_STAGE1_TIME: 0.65,
@@ -799,6 +802,7 @@
     state.errorNodes=[];state.errorClones=[];state.errorWaves=[];state.errorEchoes=[];
     stopErrorHandPreview();
     if(state.boss?.errorP3)state.boss.errorP3=null;
+    if(state.boss?.tier8P3)state.boss.tier8P3=null;
     if(state.player)state.player.corruptionRemaining=0;
     for(const bullet of state.playerBullets) {bullet.corrupted=false;bullet.errorMiss=false;}
     state.enemyBullets = [];
@@ -4131,6 +4135,764 @@
   }
 
   // ============================================================================
+  // 10C. TIER 08 (DISPLAYED STAGE 11) PHASE 3 — 60s AWAKENED FLEET SURVIVAL
+  // ============================================================================
+  const tier8AwakenedCache = new Map();
+
+  function recolorTier8BlueToRedPixels(data) {
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 10) continue;
+      const r = data[i], b = data[i + 2];
+      // Strictly convert ONLY blue/cyan accents; keep all black/grey/white pixels intact.
+      if (b > r + 25 && b > 100) {
+        data[i] = Math.min(255, 220 + Math.round(r * 0.7));
+        data[i + 1] = Math.min(255, 18 + Math.round(r * 0.52));
+        data[i + 2] = Math.min(255, 32 + Math.round(r * 0.54));
+      }
+    }
+    return data;
+  }
+
+  function applyTier8CrippledDamagePixels(data, w, h) {
+    const idx = (x, y) => (y * w + x) * 4;
+    const isHole = (x, y) => {
+      // Torn upper-right prong (top side of boss in world -PI/2 rotation)
+      if (x >= 21 && y >= 1 && y <= 11 && (x + y <= 39)) return true;
+      if (x >= 25 && y >= 12 && y <= 18 && (x - y >= 11)) return true;
+      // Damaged lower-right engine thruster notch
+      if (x >= 23 && x <= 29 && y >= 31 && y <= 37 && (x + y >= 57)) return true;
+      // Chipped lower-left wing tip & armor crack
+      if (x >= 5 && x <= 10 && y >= 2 && y <= 6) return true;
+      if (x >= 1 && x <= 4 && y >= 19 && y <= 24) return true;
+      if (x >= 9 && x <= 12 && y >= 24 && y <= 26 && (x - y <= -13)) return true;
+      return false;
+    };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (isHole(x, y)) data[idx(x, y) + 3] = 0;
+      }
+    }
+    const fractureChar = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const j = idx(x, y);
+        if (data[j + 3] < 10) continue;
+        let touchesHole = false;
+        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < w && ny >= 0 && ny < h && isHole(nx, ny)) {
+            touchesHole = true; break;
+          }
+        }
+        if (touchesHole) fractureChar.push([x, y]);
+      }
+    }
+    for (const [x, y] of fractureChar) {
+      const j = idx(x, y);
+      const ember = (x + y) % 5 === 0 || (x >= 20 && y === 12);
+      if (ember) {
+        data[j] = 255; data[j + 1] = (x + y) % 2 ? 42 : 124; data[j + 2] = 36;
+      } else {
+        data[j] = 30; data[j + 1] = 20; data[j + 2] = 24;
+      }
+    }
+    return data;
+  }
+
+  function getTier8AwakenedSprite(relPath) {
+    if (tier8AwakenedCache.has(relPath)) return tier8AwakenedCache.get(relPath);
+    const src = assets.images.get(relPath);
+    if (!src) return null;
+    const spec = SPRITE_SPECS[relPath];
+    const [w, h] = spec ? spec.size : [src.width || 32, src.height || 40];
+    const cvs = document.createElement('canvas');
+    cvs.width = w; cvs.height = h;
+    const g = cvs.getContext('2d');
+    if (!g || typeof g.getImageData !== 'function') {
+      tier8AwakenedCache.set(relPath, src);
+      return src;
+    }
+    g.imageSmoothingEnabled = false;
+    g.drawImage(src, 0, 0, w, h);
+    const imgData = g.getImageData(0, 0, w, h);
+    if (!imgData || !imgData.data) {
+      tier8AwakenedCache.set(relPath, src);
+      return src;
+    }
+    recolorTier8BlueToRedPixels(imgData.data);
+    g.putImageData(imgData, 0, 0);
+    tier8AwakenedCache.set(relPath, cvs);
+    return cvs;
+  }
+
+  function getTier8CrippledBossSprite() {
+    const cacheKey = 'bosses/Tier_08/Boss.png#crippled';
+    if (tier8AwakenedCache.has(cacheKey)) return tier8AwakenedCache.get(cacheKey);
+    const redBase = getTier8AwakenedSprite('bosses/Tier_08/Boss.png');
+    if (!redBase) return null;
+    const [w, h] = SPRITE_SPECS['bosses/Tier_08/Boss.png'].size;
+    const cvs = document.createElement('canvas');
+    cvs.width = w; cvs.height = h;
+    const g = cvs.getContext('2d');
+    if (!g || typeof g.getImageData !== 'function') {
+      tier8AwakenedCache.set(cacheKey, redBase);
+      return redBase;
+    }
+    g.imageSmoothingEnabled = false;
+    g.drawImage(redBase, 0, 0, w, h);
+    const imgData = g.getImageData(0, 0, w, h);
+    if (!imgData || !imgData.data) {
+      tier8AwakenedCache.set(cacheKey, redBase);
+      return redBase;
+    }
+    applyTier8CrippledDamagePixels(imgData.data, w, h);
+    g.putImageData(imgData, 0, 0);
+    tier8AwakenedCache.set(cacheKey, cvs);
+    return cvs;
+  }
+
+  function clipRayToRect(px, py, angle, minX, maxX, minY, maxY) {
+    const dx = Math.cos(angle), dy = Math.sin(angle);
+    let tMin = -Infinity, tMax = Infinity;
+    for (const [p0, d, lo, hi] of [[px, dx, minX, maxX], [py, dy, minY, maxY]]) {
+      if (Math.abs(d) < 1e-8) {
+        if (p0 < lo || p0 > hi) return null;
+      } else {
+        const t1 = (lo - p0) / d, t2 = (hi - p0) / d;
+        tMin = Math.max(tMin, Math.min(t1, t2));
+        tMax = Math.min(tMax, Math.max(t1, t2));
+        if (tMin > tMax) return null;
+      }
+    }
+    return {
+      entryX: px + dx * tMin, entryY: py + dy * tMin,
+      exitX: px + dx * tMax, exitY: py + dy * tMax,
+      length: tMax - tMin
+    };
+  }
+
+  function spawnAwakenedDasher({
+    anchorX, anchorY, angle, speed = 1560, path = 'enemies/Tier_08/Enemy_04.png',
+    windupDuration = 0.56, pullBackDist = 34, surgeDist = 34,
+    delay = 0, radius = 20, formation = false, wheelShot = false
+  }) {
+    const spec = SPRITE_SPECS[path] || SPRITE_SPECS['enemies/Tier_08/Enemy_04.png'];
+    const dasher = {
+      id: `t8-p3-${Math.random().toString(36).slice(2, 8)}`,
+      awakened: true,
+      formation,
+      wheelShot,
+      phase: 'WINDUP',
+      dirKey: 'AWAKENED',
+      path,
+      spec,
+      scale: CONFIG.SHIP_SCALE,
+      anchorX,
+      anchorY,
+      x: anchorX,
+      y: anchorY,
+      prevX: anchorX,
+      prevY: anchorY,
+      vx: 0,
+      vy: 0,
+      speed,
+      angle,
+      delayTimer: delay,
+      windupDuration: Math.max(0.2, windupDuration),
+      windupTimer: Math.max(0.2, windupDuration),
+      windupElapsed: 0,
+      pullBackDist,
+      surgeDist,
+      lungeAge: 0,
+      age: 0,
+      radius,
+      exemptFromRightThird: true,
+      enteredScreen: false,
+      trail: []
+    };
+    state.dashers.push(dasher);
+    state.telemetry.tier8DashersSpawned += 1;
+    state.telemetry.tier8DasherSpeeds.push(speed);
+    return dasher;
+  }
+
+  function pickAwakenedShipPath(weighted = true) {
+    const pool = weighted
+      ? ['enemies/Tier_08/Enemy_04.png', 'enemies/Tier_08/Enemy_04.png', 'enemies/Tier_08/Enemy_03.png', 'enemies/Tier_08/Enemy_02.png']
+      : ['enemies/Tier_08/Enemy_02.png', 'enemies/Tier_08/Enemy_03.png', 'enemies/Tier_08/Enemy_04.png'];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function scheduleTier8P3RandomDasher(boss, p3) {
+    const activeCount = state.dashers.filter(d => d.awakened).length;
+    if (activeCount >= CONFIG.TIER8_P3_MAX_DASHERS) return;
+    const W = CONFIG.CANVAS_WIDTH, H = CONFIG.CANVAS_HEIGHT;
+    const dirKey = TIER8_DASH_DIRECTIONS[Math.floor(Math.random() * TIER8_DASH_DIRECTIONS.length)];
+    state.telemetry.dashDirectionsUsed.add(dirKey);
+
+    const px = state.player ? state.player.x : 260;
+    const py = state.player ? state.player.y : H / 2;
+    const tx = 90 + Math.random() * (W - 180);
+    const ty = 100 + Math.random() * (H - 190);
+    const jitter = (Math.random() - 0.5) * 0.14;
+    let anchorX = W - 26, anchorY = ty, angle = Math.PI;
+
+    switch (dirKey) {
+      case 'R_TO_L':
+        anchorX = W - 22; anchorY = ty; angle = Math.PI + jitter; break;
+      case 'L_TO_R':
+        anchorX = 22;
+        anchorY = Math.abs(ty - py) < 60 ? (py < H / 2 ? py + 95 : py - 95) : ty;
+        angle = 0 + jitter; break;
+      case 'T_TO_B':
+        anchorX = Math.abs(tx - px) < 60 ? tx + 95 : tx;
+        anchorY = 74; angle = Math.PI / 2 + jitter; break;
+      case 'B_TO_T':
+        anchorX = Math.abs(tx - px) < 60 ? tx + 95 : tx;
+        anchorY = H - 24; angle = -Math.PI / 2 + jitter; break;
+      case 'TR_TO_BL':
+        anchorX = W - 26; anchorY = 80 + Math.random() * 140;
+        angle = Math.atan2((H * 0.72) - anchorY, (W * 0.20) - anchorX) + jitter; break;
+      case 'BR_TO_TL':
+        anchorX = W - 26; anchorY = H - 30 - Math.random() * 140;
+        angle = Math.atan2((H * 0.25) - anchorY, (W * 0.20) - anchorX) + jitter; break;
+      case 'TL_TO_BR':
+        anchorX = 28 + Math.random() * 160; anchorY = 76;
+        angle = Math.atan2((H * 0.75) - anchorY, (W * 0.65) - anchorX) + jitter; break;
+      case 'BL_TO_TR':
+      default:
+        anchorX = 28 + Math.random() * 160; anchorY = H - 26;
+        angle = Math.atan2((H * 0.24) - anchorY, (W * 0.65) - anchorX) + jitter; break;
+    }
+
+    spawnAwakenedDasher({
+      anchorX,
+      anchorY,
+      angle,
+      speed: Math.round(1460 + Math.random() * 240),
+      path: pickAwakenedShipPath(true),
+      windupDuration: 0.48 + Math.random() * 0.16,
+      pullBackDist: 32,
+      surgeDist: 30,
+      delay: Math.random() * 0.16
+    });
+  }
+
+  function pushTier8P3Banner(text, x, y, color, timer) {
+    state.floatingTexts = state.floatingTexts.filter(ft => !ft.t8Banner);
+    state.floatingTexts.push({ text, x, y, color, timer, t8Banner: true, stationary: true });
+  }
+
+  function nextTier8P3SpecialEntry(p3) {
+    if (!p3.specialQueue || p3.specialQueue.length === 0) {
+      const bag = [
+        { kind: 'VERTICAL_HALF', side: 'LEFT', dir: 'UP' },
+        { kind: 'VERTICAL_HALF', side: 'RIGHT', dir: 'UP' },
+        { kind: 'HORIZONTAL_HALF', side: 'TOP', dir: 'RIGHT' },
+        { kind: 'HORIZONTAL_HALF', side: 'BOTTOM', dir: 'RIGHT' },
+        { kind: 'DIAGONAL_HALF', flipY: false, half: 'UPPER' },
+        { kind: 'DIAGONAL_HALF', flipY: true, half: 'LOWER' }
+      ];
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+      p3.specialQueue = bag;
+    }
+    return p3.specialQueue.shift();
+  }
+
+  function triggerTier8P3Formation(boss, forcedKind = null, forcedVariant = null) {
+    const p3 = boss?.tier8P3;
+    if (!p3) return null;
+    const W = CONFIG.CANVAS_WIDTH, H = CONFIG.CANVAS_HEIGHT;
+    const playLeft = 24, playRight = W - 24, playTop = 58, playBottom = H - 14;
+    const splitX = Math.round(W / 2), splitY = 384;
+
+    let cfg;
+    if (forcedKind) {
+      if (forcedKind === 'VERTICAL_HALF') {
+        cfg = { kind: 'VERTICAL_HALF', side: forcedVariant || (Math.random() < 0.5 ? 'LEFT' : 'RIGHT'), dir: 'UP' };
+      } else if (forcedKind === 'HORIZONTAL_HALF') {
+        cfg = { kind: 'HORIZONTAL_HALF', side: forcedVariant || (Math.random() < 0.5 ? 'TOP' : 'BOTTOM'), dir: 'RIGHT' };
+      } else {
+        const flipY = forcedVariant === 'FLIPPED';
+        cfg = { kind: 'DIAGONAL_HALF', flipY, half: flipY ? 'LOWER' : 'UPPER' };
+      }
+    } else {
+      cfg = nextTier8P3SpecialEntry(p3);
+    }
+
+    const totalTimer = 1.48;
+    const special = {
+      ...cfg,
+      timer: totalTimer,
+      maxTimer: totalTimer,
+      splitX,
+      splitY,
+      playLeft,
+      playRight,
+      playTop,
+      playBottom
+    };
+
+    if (cfg.kind === 'VERTICAL_HALF') {
+      const isLeft = cfg.side === 'LEFT';
+      const up = cfg.dir !== 'DOWN';
+      const angle = up ? -Math.PI / 2 : Math.PI / 2;
+      const lanes = isLeft
+        ? [64, 142, 220, 298, 376, 454, 532, 608]
+        : [676, 754, 832, 910, 988, 1066, 1144, 1220];
+      const anchorY = up ? H - 24 : 78;
+      special.anchorAngle = angle;
+      special.dangerRect = isLeft
+        ? { x: 0, y: playTop, w: splitX, h: playBottom - playTop }
+        : { x: splitX, y: playTop, w: W - splitX, h: playBottom - playTop };
+      lanes.forEach((lx, idx) => {
+        spawnAwakenedDasher({
+          anchorX: lx,
+          anchorY,
+          angle,
+          speed: 1580,
+          path: pickAwakenedShipPath(false),
+          windupDuration: 0.66 + (idx % 2) * 0.08 + Math.random() * 0.05,
+          pullBackDist: 36,
+          surgeDist: 36,
+          formation: true
+        });
+      });
+    } else if (cfg.kind === 'HORIZONTAL_HALF') {
+      const isTop = cfg.side === 'TOP';
+      const right = cfg.dir !== 'LEFT';
+      const angle = right ? 0 : Math.PI;
+      const lanes = isTop ? [90, 154, 218, 282, 344] : [424, 488, 552, 616, 678];
+      const anchorX = right ? 28 : W - 28;
+      special.anchorAngle = angle;
+      special.dangerRect = isTop
+        ? { x: 0, y: playTop, w: W, h: splitY - playTop }
+        : { x: 0, y: splitY, w: W, h: playBottom - splitY };
+      lanes.forEach((ly, idx) => {
+        spawnAwakenedDasher({
+          anchorX,
+          anchorY: ly,
+          angle,
+          speed: 1620,
+          path: pickAwakenedShipPath(false),
+          windupDuration: 0.66 + (idx % 2) * 0.08 + Math.random() * 0.05,
+          pullBackDist: 36,
+          surgeDist: 36,
+          formation: true
+        });
+      });
+    } else if (cfg.kind === 'DIAGONAL_HALF') {
+      const flipY = Boolean(cfg.flipY);
+      const p1 = flipY ? { x: playLeft, y: playTop } : { x: playLeft, y: playBottom };
+      const p2 = flipY ? { x: playRight, y: playBottom } : { x: playRight, y: playTop };
+      const diagAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+      // Normal pointing into the designated danger triangle so all lanes keep >48px clearance from diagonal line
+      const sideSign = flipY
+        ? (cfg.half === 'LOWER' ? 1 : -1)
+        : (cfg.half === 'UPPER' ? 1 : -1);
+      // For '/' (diagAngle < 0), (+sin(a), -cos(a)) points UP-LEFT (upper triangle).
+      // For '\' (diagAngle > 0), (-sin(a), +cos(a)) points DOWN-LEFT (lower-left triangle, exact Y-flip of Sketch 4).
+      const nx = flipY ? -Math.sin(diagAngle) * sideSign : Math.sin(diagAngle) * sideSign;
+      const ny = flipY ? Math.cos(diagAngle) * sideSign : -Math.cos(diagAngle) * sideSign;
+      const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+
+      special.p1 = p1; special.p2 = p2; special.angle = diagAngle;
+      special.flipY = flipY; special.half = cfg.half;
+      special.poly = flipY
+        ? (cfg.half === 'LOWER'
+          ? [{ x: 0, y: playTop }, p1, p2, { x: W, y: H }, { x: 0, y: H }]
+          : [p1, { x: W, y: playTop }, { x: W, y: playBottom }, p2])
+        : (cfg.half === 'UPPER'
+          ? [{ x: 0, y: playTop }, { x: playRight, y: playTop }, p2, p1, { x: 0, y: playBottom }]
+          : [p1, p2, { x: W, y: playTop }, { x: W, y: playBottom }, { x: playLeft, y: playBottom }]);
+
+      for (let k = 0; k < 7; k++) {
+        const offset = 52 + k * 74;
+        const qx = midX + nx * offset, qy = midY + ny * offset;
+        const span = clipRayToRect(qx, qy, diagAngle, 26, W - 24, playTop + 14, playBottom - 10);
+        if (!span || span.length < 130) continue;
+        spawnAwakenedDasher({
+          anchorX: span.entryX,
+          anchorY: span.entryY,
+          angle: diagAngle,
+          speed: 1600,
+          path: pickAwakenedShipPath(false),
+          windupDuration: 0.68 + (k % 2) * 0.07 + Math.random() * 0.05,
+          pullBackDist: 34,
+          surgeDist: 34,
+          formation: true
+        });
+      }
+    }
+
+    p3.activeSpecial = special;
+    p3.formationsLaunched = (p3.formationsLaunched || 0) + 1;
+    pushTier8P3Banner(
+      cfg.kind === 'VERTICAL_HALF'
+        ? (cfg.side === 'LEFT' ? 'ALERT · LEFT SECTOR FLEET SWEEP' : 'ALERT · RIGHT SECTOR FLEET SWEEP')
+        : cfg.kind === 'HORIZONTAL_HALF'
+          ? (cfg.side === 'TOP' ? 'ALERT · UPPER SECTOR FLEET SWEEP' : 'ALERT · LOWER SECTOR FLEET SWEEP')
+          : 'ALERT · DIAGONAL FLEET SWEEP',
+      splitX,
+      202,
+      '#ff485e',
+      1.35
+    );
+    return special;
+  }
+
+  function startTier8P3Wheel(boss) {
+    const p3 = boss?.tier8P3;
+    if (!p3 || p3.wheelStarted) return;
+    p3.wheelStarted = true;
+    p3.activeSpecial = null;
+    // Cancel queued/windup non-wheel dashers so the final 10s encirclement starts cleanly
+    state.dashers = state.dashers.filter(d => d.wheelShot || (d.phase === 'LUNGE' && d.delayTimer <= 0));
+    p3.remaining = Math.min(p3.remaining, CONFIG.TIER8_P3_WHEEL_TIME);
+    p3.wheelElapsed = 0;
+    p3.wheelAngle = -Math.PI / 2;
+    p3.wheelSpawnAccum = 0;
+    p3.wheelIndex = 0;
+    p3.wheelCenterX = Math.round(CONFIG.CANVAS_WIDTH / 2);
+    p3.wheelCenterY = 384;
+
+    // Surround all 4 outer borders of the full map symmetrically around (642, 384)
+    const cx = Math.round(CONFIG.CANVAS_WIDTH / 2), cy = 384;
+    p3.wheelCenterX = cx;
+    p3.wheelCenterY = cy;
+    const minX = 34, maxX = CONFIG.CANVAS_WIDTH - 34, minY = 72, maxY = CONFIG.CANVAS_HEIGHT - 26;
+    const ring = [];
+    const totalSlots = 36;
+    for (let i = 0; i < totalSlots; i++) {
+      const theta = -Math.PI / 2 + (i / totalSlots) * Math.PI * 2;
+      const cos = Math.cos(theta), sin = Math.sin(theta);
+      const tx = Math.abs(cos) > 1e-6 ? ((cos > 0 ? maxX : minX) - cx) / cos : 1e6;
+      const ty = Math.abs(sin) > 1e-6 ? ((sin > 0 ? maxY : minY) - cy) / sin : 1e6;
+      const tHit = Math.min(tx, ty);
+      const sx = cx + cos * tHit, sy = cy + sin * tHit;
+      ring.push({
+        slot: i,
+        theta,
+        baseX: sx,
+        baseY: sy,
+        x: sx + cos * 68,
+        y: sy + sin * 68,
+        angle: Math.atan2(cy - sy, cx - sx),
+        phase: (i / totalSlots) * Math.PI * 4,
+        reentryTimer: 0,
+        activeDashId: null,
+        path: i % 3 === 0 ? 'enemies/Tier_08/Enemy_02.png' : i % 3 === 1 ? 'enemies/Tier_08/Enemy_03.png' : 'enemies/Tier_08/Enemy_04.png'
+      });
+    }
+    p3.perimeterShips = ring;
+    triggerCameraShake(0.32, 6.0);
+    pushTier8P3Banner('FINAL 10s · FLEET ENCIRCLEMENT VORTEX!', cx, 202, '#ff2e44', 2.0);
+  }
+
+  function fireWheelPerimeterShip(boss, p3, ship) {
+    const cx = p3.wheelCenterX, cy = p3.wheelCenterY;
+    const dist = Math.hypot(cx - ship.baseX, cy - ship.baseY);
+    // Synchronize exact center-arrival time (lungeAge = 0.28s) across rectangular edges & corners
+    const speed = Math.round((dist - 8.6) / 0.25);
+    const d = spawnAwakenedDasher({
+      anchorX: ship.baseX,
+      anchorY: ship.baseY,
+      angle: Math.atan2(cy - ship.baseY, cx - ship.baseX),
+      speed,
+      path: ship.path,
+      windupDuration: 0.36,
+      pullBackDist: 32,
+      surgeDist: 28,
+      wheelShot: true
+    });
+    ship.activeDashId = d.id;
+    ship.reentryTimer = 0.62;
+  }
+
+  function updateTier8P3Wheel(boss, p3, dt) {
+    p3.wheelElapsed = (p3.wheelElapsed || 0) + dt;
+    const cx = p3.wheelCenterX, cy = p3.wheelCenterY;
+    const ring = p3.perimeterShips;
+    const shotInterval = 0.065;
+    const omega = ring.length ? (Math.PI * 2 / ring.length) / shotInterval : 2.685;
+    p3.wheelAngle += omega * dt;
+
+    for (const ship of ring) {
+      ship.phase += dt * 4.5;
+      if (ship.reentryTimer > 0) ship.reentryTimer = Math.max(0, ship.reentryTimer - dt);
+      const entry = Math.min(1, p3.wheelElapsed / 0.42);
+      const easeOut = 1 - Math.pow(1 - entry, 3);
+      const outDirX = Math.cos(ship.theta), outDirY = Math.sin(ship.theta);
+      const respawnPull = ship.reentryTimer > 0 ? (ship.reentryTimer / 0.62) * 58 : 0;
+      const hover = Math.sin(ship.phase) * 5.0;
+      ship.x = ship.baseX + outDirX * ((1 - easeOut) * 68 + respawnPull + hover);
+      ship.y = ship.baseY + outDirY * ((1 - easeOut) * 68 + respawnPull + hover);
+      ship.angle = Math.atan2(cy - ship.y, cx - ship.x);
+      if (ship.activeDashId && !state.dashers.some(d => d.id === ship.activeDashId)) {
+        ship.activeDashId = null;
+      }
+    }
+
+    if (p3.wheelElapsed < 0.45 || !ring.length) return;
+    p3.wheelSpawnAccum += dt;
+    while (p3.wheelSpawnAccum >= shotInterval) {
+      p3.wheelSpawnAccum -= shotInterval;
+      const ship = ring[p3.wheelIndex % ring.length];
+      p3.wheelIndex = (p3.wheelIndex + 1) % ring.length;
+      p3.wheelAngle = ship.theta;
+      fireWheelPerimeterShip(boss, p3, ship);
+    }
+  }
+
+  function enterTier8Phase3(boss) {
+    if (!boss || boss.tier !== 8 || boss.tier8P3 || boss.tier8P3Complete) return false;
+    clearAllCombatHazards();
+    state.enemies = [];
+    state.supplies = [];
+    boss.hp = 1;
+    boss.entering = false;
+    boss.phase2Triggered = true;
+    boss.phase2Active = false;
+    boss.laserMode = 'PHASE3_SURVIVAL';
+    boss.x = boss.homeX;
+    boss.y = boss.homeY;
+    boss.prevX = boss.x;
+    boss.prevY = boss.y;
+
+    boss.tier8P3 = {
+      duration: CONFIG.TIER8_P3_DURATION,
+      remaining: CONFIG.TIER8_P3_DURATION,
+      elapsed: 0.0,
+      irregularTimer: 0.40,
+      specialTimer: 4.8,
+      specialQueue: [],
+      activeSpecial: null,
+      formationsLaunched: 0,
+      wheelStarted: false,
+      wheelElapsed: 0,
+      wheelAngle: -Math.PI / 2,
+      wheelSpawnAccum: 0,
+      wheelCenterX: Math.round(CONFIG.CANVAS_WIDTH / 2),
+      wheelCenterY: 384,
+      perimeterShips: [],
+      smokeTimer: 0
+    };
+    boss.p2FlashTimer = 0.25;
+    triggerCameraShake(0.35, 6.5);
+    pushTier8P3Banner(
+      'FINAL PHASE · AWAKENED FLEET SURVIVAL (60s)!',
+      CONFIG.CANVAS_WIDTH / 2,
+      202,
+      '#ff2e44',
+      2.2
+    );
+    updateHudBadges();
+    return true;
+  }
+
+  function startTier8Phase3Ending(boss) {
+    const p3 = boss?.tier8P3;
+    if (!p3 || p3.ending) return;
+    p3.ending = true;
+    p3.endingElapsed = 0;
+    p3.endingDuration = 1.65;
+    p3.bossBlastIndex = 0;
+    p3.activeSpecial = null;
+    p3.downedShips = [];
+
+    const cx = p3.wheelCenterX || Math.round(CONFIG.CANVAS_WIDTH / 2);
+    const cy = p3.wheelCenterY || 384;
+    const perim = p3.perimeterShips || [];
+    const totalPerim = Math.max(1, perim.length);
+    for (let i = 0; i < perim.length; i++) {
+      const sh = perim[i];
+      if (sh.activeDashId && state.dashers.some(d => d.id === sh.activeDashId && d.phase === 'WINDUP')) continue;
+      const outX = Math.cos(sh.theta), outY = Math.sin(sh.theta);
+      p3.downedShips.push({
+        x: sh.x,
+        y: sh.y,
+        vx: outX * (45 + (i % 3) * 18) + (Math.random() - 0.5) * 40,
+        vy: outY * 30 - 35 + Math.random() * 40,
+        angle: sh.angle,
+        rotVel: (i % 2 ? 1 : -1) * (3.2 + (i % 4) * 1.1),
+        path: sh.path,
+        scale: CONFIG.SHIP_SCALE,
+        explodeAt: 0.16 + (i / totalPerim) * 0.94,
+        exploded: false,
+        smokeCd: (i % 5) * 0.03
+      });
+    }
+    const visibleDashers = state.dashers.filter(d => d.awakened && d.delayTimer <= 0);
+    for (let i = 0; i < visibleDashers.length; i++) {
+      const d = visibleDashers[i];
+      const ang = Math.atan2(d.y - cy, d.x - cx);
+      p3.downedShips.push({
+        x: d.x,
+        y: d.y,
+        vx: Math.cos(d.angle) * 180 + Math.cos(ang) * 40,
+        vy: Math.sin(d.angle) * 180 - 25,
+        angle: d.angle,
+        rotVel: (i % 2 ? -1 : 1) * (4.6 + Math.random() * 2.5),
+        path: d.path,
+        scale: d.scale || CONFIG.SHIP_SCALE,
+        explodeAt: 0.12 + Math.min(0.95, (i / Math.max(1, visibleDashers.length)) * 0.72),
+        exploded: false,
+        smokeCd: 0.02
+      });
+    }
+
+    p3.perimeterShips = [];
+    state.dashers = [];
+    state.dashWarnings = [];
+    triggerCameraShake(0.35, 5.0);
+    pushTier8P3Banner('FLEET SYSTEM DOWN · ALL UNITS CRITICAL!', cx, 202, '#ff6278', 1.6);
+  }
+
+  function updateTier8Phase3Ending(boss, p3, dt) {
+    p3.endingElapsed += dt;
+    boss.rotation = -Math.PI / 2 + 0.22 + Math.sin(p3.endingElapsed * 32) * 0.11;
+    boss.x = boss.homeX + 26 + Math.sin(p3.endingElapsed * 44) * 6;
+    boss.y = boss.homeY + Math.min(28, p3.endingElapsed * 18) + Math.cos(p3.endingElapsed * 37) * 5;
+    enforceRightThirdBound(boss);
+
+    for (const s of p3.downedShips) {
+      if (s.exploded) continue;
+      if (p3.endingElapsed >= s.explodeAt) {
+        s.exploded = true;
+        spawnExplosion(s.x, s.y, '#ff384c', 10);
+        continue;
+      }
+      const drag = Math.exp(-2.2 * dt);
+      s.vx *= drag;
+      s.vy = s.vy * drag + 240 * dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.angle += s.rotVel * dt;
+      s.smokeCd -= dt;
+      if (s.smokeCd <= 0) {
+        s.smokeCd = 0.085;
+        state.particles.push({
+          x: s.x,
+          y: s.y,
+          vx: -s.vx * 0.15 + (Math.random() - 0.5) * 28,
+          vy: -35 - Math.random() * 35,
+          size: 4,
+          color: Math.random() < 0.45 ? '#ff384c' : '#2c2228',
+          life: 0.34
+        });
+      }
+    }
+
+    const blastTimes = [1.20, 1.36, 1.50];
+    while (p3.bossBlastIndex < blastTimes.length && p3.endingElapsed >= blastTimes[p3.bossBlastIndex]) {
+      const idx = p3.bossBlastIndex++;
+      const ox = (idx - 1) * 18;
+      const oy = idx === 1 ? -16 : 14;
+      spawnExplosion(boss.x + ox, boss.y + oy, '#ff384c', 18);
+      triggerCameraShake(0.24, 6.2);
+    }
+
+    if (p3.endingElapsed >= p3.endingDuration) {
+      finishTier8Phase3(boss);
+    }
+  }
+
+  function finishTier8Phase3(boss) {
+    if (!boss || !boss.tier8P3) return;
+    for (const d of state.dashers) {
+      spawnExplosion(d.x, d.y, '#ff384c', 8);
+    }
+    for (const ship of boss.tier8P3.perimeterShips || []) {
+      spawnExplosion(ship.x, ship.y, '#ff384c', 6);
+    }
+    for (const s of boss.tier8P3.downedShips || []) {
+      if (!s.exploded) spawnExplosion(s.x, s.y, '#ff384c', 8);
+    }
+    spawnExplosion(boss.x, boss.y, '#ff2e44', 36);
+    triggerCameraShake(0.45, 7.5);
+    boss.tier8P3Complete = true;
+    boss.tier8P3 = null;
+    boss.hp = 0;
+    state.dashers = [];
+    state.dashWarnings = [];
+    handleBossDefeated();
+  }
+
+  function updateTier8Phase3(boss, dt) {
+    const p3 = boss.tier8P3;
+    if (!p3) return;
+
+    if (p3.ending) {
+      updateTier8Phase3Ending(boss, p3, dt);
+      return;
+    }
+
+    // Crippled boss hovers precariously with heavy structural damage & red cross glare
+    p3.elapsed += dt;
+    p3.remaining = Math.max(0, p3.remaining - dt);
+    boss.phaseX = (boss.phaseX || 0) + dt * 0.52;
+    boss.phaseY = (boss.phaseY || 0) + dt * 0.68;
+    boss.x = boss.homeX + 26 + Math.sin(boss.phaseX) * 14;
+    boss.y = boss.homeY + Math.sin(boss.phaseY) * 42;
+    boss.rotation = -Math.PI / 2 + 0.16 + Math.sin(p3.elapsed * 2.4) * 0.08 + Math.sin(p3.elapsed * 19) * 0.02;
+    enforceRightThirdBound(boss);
+
+    p3.smokeTimer -= dt;
+    if (p3.smokeTimer <= 0) {
+      p3.smokeTimer = 0.085;
+      state.particles.push({
+        x: boss.x + (Math.random() - 0.5) * 34,
+        y: boss.y - 26 + (Math.random() - 0.5) * 16,
+        vx: 25 + Math.random() * 45,
+        vy: -25 - Math.random() * 40,
+        size: Math.random() < 0.35 ? 6 : 4,
+        color: Math.random() < 0.35 ? '#ff384c' : '#2a2228',
+        life: 0.45 + Math.random() * 0.35
+      });
+    }
+
+    if (p3.remaining <= 0) {
+      startTier8Phase3Ending(boss);
+      return;
+    }
+
+    // Final 10 seconds: Pattern 3 — Sans-style perimeter fleet wheel
+    if (p3.remaining <= CONFIG.TIER8_P3_WHEEL_TIME) {
+      if (!p3.wheelStarted) startTier8P3Wheel(boss);
+      updateTier8P3Wheel(boss, p3, dt);
+      return;
+    }
+
+    // First 50 seconds: Periodic half-arena formations (Patterns 1, 2, 4) + 2x irregular dashers
+    if (p3.activeSpecial) {
+      p3.activeSpecial.timer -= dt;
+      if (p3.activeSpecial.timer <= 0) p3.activeSpecial = null;
+    } else if (p3.remaining > 12.2) {
+      p3.specialTimer -= dt;
+      if (p3.specialTimer <= 0) {
+        triggerTier8P3Formation(boss);
+        p3.specialTimer = 7.0 + Math.random() * 1.4;
+      }
+    }
+
+    // Irregular 2x awakened fleet rushers (burst sizes 1..4, uneven timing, all 8 directions)
+    if (p3.remaining > 11.6 && (!p3.activeSpecial || p3.activeSpecial.timer < 0.4)) {
+      p3.irregularTimer -= dt;
+      if (p3.irregularTimer <= 0) {
+        const roll = Math.random();
+        const burst = roll < 0.32 ? 1 : roll < 0.66 ? 2 : roll < 0.88 ? 3 : 4;
+        for (let k = 0; k < burst; k++) {
+          scheduleTier8P3RandomDasher(boss, p3);
+        }
+        p3.irregularTimer = 0.28 + Math.random() * 0.52;
+      }
+    }
+  }
+
+  // ============================================================================
   // 11. FINAL BOSS & ESCORT PATTERNS
   // ============================================================================
   function fireShadowBossPattern(boss) {
@@ -4448,9 +5210,9 @@
       }
     }
 
-    // 4. Time-based Meteor Spawning (paused during Tier 08 Ultimate & Phase 2 Corridor Barrage to prevent unfair overlap)
+    // 4. Time-based Meteor Spawning (paused during Tier 08 Ultimate, Phase 2, & Phase 3)
     const isTier8Ult = state.boss && state.boss.tier === 8 &&
-      (state.boss.laserMode === 'ULTIMATE' || state.boss.phase2Active);
+      (state.boss.laserMode === 'ULTIMATE' || state.boss.phase2Active || state.boss.tier8P3);
     if (!isTier8Ult && !state.boss?.errorP3) {
       state.meteorSpawnTimer -= dt;
       if (state.meteorSpawnTimer <= 0) {
@@ -4679,6 +5441,62 @@
 
     for (let i = state.dashers.length - 1; i >= 0; i--) {
       const d = state.dashers[i];
+      if (d.awakened) {
+        if (d.delayTimer > 0) {
+          d.delayTimer -= dt;
+          continue;
+        }
+        d.prevX = d.x;
+        d.prevY = d.y;
+        d.age = (d.age || 0) + dt;
+        const cos = Math.cos(d.angle), sin = Math.sin(d.angle);
+        if (d.phase === 'WINDUP') {
+          d.windupElapsed += dt;
+          d.windupTimer -= dt;
+          const u = Math.min(1, d.windupElapsed / d.windupDuration);
+          const surge = Math.min(1, u / 0.28);
+          const surgeEase = 1 - Math.pow(1 - surge, 2);
+          const pull = u <= 0.26 ? 0 : Math.min(1, (u - 0.26) / 0.64);
+          const pullEase = pull * pull * (3 - 2 * pull);
+          const offsetAlong = d.surgeDist * surgeEase - d.pullBackDist * pullEase;
+          const jitterLat = u > 0.26 ? Math.sin(d.age * 54) * 1.4 * pull : 0;
+          d.x = d.anchorX + cos * offsetAlong - sin * jitterLat;
+          d.y = d.anchorY + sin * offsetAlong + cos * jitterLat;
+          if (d.windupTimer <= 0) {
+            d.phase = 'LUNGE';
+            d.lungeAge = 0;
+            d.prevX = d.x;
+            d.prevY = d.y;
+          }
+          continue;
+        }
+        d.lungeAge += dt;
+        const ramp = Math.min(1, d.lungeAge / 0.09);
+        const curSpeed = 420 + (d.speed - 420) * (ramp * (2 - ramp));
+        d.vx = cos * curSpeed;
+        d.vy = sin * curSpeed;
+        d.trail.unshift({ x: d.x, y: d.y, alpha: 0.45 });
+        if (d.trail.length > 4) d.trail.length = 4;
+        for (const tr of d.trail) tr.alpha *= Math.max(0, 1 - dt * 8);
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        if (d.x >= 0 && d.x <= CONFIG.CANVAS_WIDTH && d.y >= 0 && d.y <= CONFIG.CANVAS_HEIGHT) {
+          d.enteredScreen = true;
+        }
+        if (p) {
+          const hitR = d.radius + p.hitboxRadius;
+          if (distSqPointToSegment(p.x, p.y, d.prevX, d.prevY, d.x, d.y) <= hitR * hitR) {
+            damagePlayer(CONFIG.DASH_DAMAGE, 'AWAKENED FLEET');
+          }
+        }
+        if ((d.enteredScreen || d.lungeAge > 1.8) && (
+          d.x < -160 || d.x > CONFIG.CANVAS_WIDTH + 160 ||
+          d.y < -160 || d.y > CONFIG.CANVAS_HEIGHT + 160
+        )) {
+          state.dashers.splice(i, 1);
+        }
+        continue;
+      }
       d.prevX = d.x;
       d.prevY = d.y;
       d.age = (d.age || 0) + dt;
@@ -4762,7 +5580,7 @@
 
     for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
       const ft = state.floatingTexts[i];
-      ft.y -= 22 * dt;
+      if (!ft.stationary) ft.y -= 22 * dt;
       ft.timer -= dt;
       if (ft.timer <= 0) state.floatingTexts.splice(i, 1);
     }
@@ -4878,6 +5696,11 @@
           boss.attackTimer=3.2;
         }
       }
+      return;
+    }
+
+    if (boss.kind === 'TIER_BOSS' && boss.tier === 8 && boss.tier8P3) {
+      updateTier8Phase3(boss, dt);
       return;
     }
 
@@ -5507,7 +6330,7 @@
     if(boss.kind==='CHAIN_BOSS' && !boss.combat)return false;
     if(boss.tier===12 && (boss.errorP3 || boss.errorBlink?.phase==='SHIFT'))return false;
     if (['OFFSCREEN','P2_WARN','P2_WAIT'].includes(boss.dashState)) return false;
-    if (boss.tier===8 && boss.phase2Active) return false;
+    if (boss.tier===8 && (boss.phase2Active || (boss.tier8P3 && !boss.tier8P3Complete))) return false;
     if (boss.tier===7 && boss.phase2Triggered && !state.lasers.some(l=>l.id===boss.p2ActiveBeamId && l.stage===3)) return false;
     return true;
   }
@@ -5779,14 +6602,19 @@
       if(!boss.errorP3)enterErrorPhase3(boss);
       return;
     }
+    if(boss.tier===8 && !boss.tier8P3Complete && (boss.tier8P3 || boss.hp<=0)) {
+      if(!boss.tier8P3)enterTier8Phase3(boss);
+      return;
+    }
     boss.defeatedHandled = true;
 
-    // Every boss heals current HP by one; this never changes maximum HP.
+    // Fleet Boss (tier 8) and Error Boss (tier 12) heal 2 HP; other bosses heal 1 HP without changing maximum HP.
     if (state.player && state.player.hp > 0) {
       const p = state.player;
-      const healed = Math.min(1, p.maxHp - p.hp);
+      const healAmount = (boss.tier === 8 || boss.tier === 12) ? 2 : 1;
+      const healed = Math.min(healAmount, p.maxHp - p.hp);
       p.hp += healed;
-      if (healed) state.floatingTexts.push({ text: '+1 HP', x: p.x, y: p.y - 36,
+      if (healed) state.floatingTexts.push({ text: `+${healed} HP`, x: p.x, y: p.y - 36,
         color: '#ff7899', timer: 1.5 });
     }
 
@@ -5950,7 +6778,7 @@
   const ctx = canvas.getContext('2d', { alpha: false });
 
   // T12: a bullet-driven signal-corruption encounter. Nodes own their echo one-to-one.
-  function isPlayerSectorRestricted() {return state.currentTier!==11 && state.boss?.kind!=='CHAIN_BOSS';}
+  function isPlayerSectorRestricted() {return state.currentTier!==11 && state.boss?.kind!=='CHAIN_BOSS' && !state.boss?.tier8P3;}
 
   function isErrorAttackContext() {
     return isErrorBossCombat() || (state.currentTier===12 && ['WAVE','TEST'].includes(state.phase));
@@ -6621,6 +7449,9 @@
     if (state.boss && state.boss.tier === 8 && state.boss.phase2Active) {
       renderTier8RaidOverlay(state.boss);
     }
+    if (state.boss && state.boss.tier === 8 && state.boss.tier8P3) {
+      renderTier8Phase3Overlay(state.boss);
+    }
 
     // 3b. Render Tier 06 Phase 2 Full-Map Random Explosion Warnings
     for (const wave of state.globalBlastWaves) {
@@ -6727,11 +7558,15 @@
       }
     }
 
-    // 9. Render Tier 08 Omnidirectional Enemy_04 Dashers (rotated along velocity vector)
+    // 9. Render Tier 08 Omnidirectional Dashers (Phase 1 cyan & Phase 3 awakened red kinematics)
     for (const d of state.dashers) {
-      // Native sprite faces UP (-PI/2), so rotating by d.angle + PI/2 points nose along velocity vector
-      drawRotatedSprite(d.path, d.x, d.y, d.spec.size, d.scale, d.angle + Math.PI / 2, false);
-      if (state.debugShowHitboxes) {
+      if (d.awakened) {
+        renderAwakenedDasher(d);
+      } else {
+        // Native sprite faces UP (-PI/2), so rotating by d.angle + PI/2 points nose along velocity vector
+        drawRotatedSprite(d.path, d.x, d.y, d.spec.size, d.scale, d.angle + Math.PI / 2, false);
+      }
+      if (state.debugShowHitboxes && !(d.awakened && d.delayTimer > 0)) {
         ctx.strokeStyle = '#ff526b';
         ctx.beginPath();
         ctx.arc(Math.round(d.x), Math.round(d.y), d.radius, 0, Math.PI * 2);
@@ -6767,8 +7602,10 @@
           b.spec.size,
           b.scale,
           b.rotation ?? -Math.PI / 2,
-          b.hitFlash > 0
+          b.hitFlash > 0,
+          b.tier === 8 && b.tier8P3 ? getTier8CrippledBossSprite() : null
         );
+        if (b.tier === 8 && b.tier8P3) renderTier8BossGlare(b);
         if(b.tier===12)renderErrorEnemyArtifacts(b,b.rotation ?? -Math.PI/2);
         ctx.restore();
       }
@@ -7355,6 +8192,170 @@
     ctx.restore();
   }
 
+  function renderTier8Phase3Overlay(boss) {
+    const p3 = boss.tier8P3;
+    if (!p3) return;
+    const sp = p3.activeSpecial;
+    if (sp && sp.timer > 0) {
+      const pulse = 0.04 * Math.sin(p3.elapsed * 20);
+      ctx.save();
+      if (sp.kind === 'VERTICAL_HALF' || sp.kind === 'HORIZONTAL_HALF') {
+        const r = sp.dangerRect;
+        if (r) {
+          ctx.fillStyle = `rgba(255, 38, 60, ${0.14 + pulse})`;
+          ctx.fillRect(r.x, r.y, r.w, r.h);
+        }
+        ctx.strokeStyle = '#ff384c';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        if (sp.kind === 'VERTICAL_HALF') {
+          ctx.moveTo(sp.splitX, sp.playTop);
+          ctx.lineTo(sp.splitX, sp.playBottom);
+        } else {
+          ctx.moveTo(sp.playLeft, sp.splitY);
+          ctx.lineTo(CONFIG.CANVAS_WIDTH, sp.splitY);
+        }
+        ctx.stroke();
+      } else if (sp.kind === 'DIAGONAL_HALF' && sp.poly) {
+        ctx.fillStyle = `rgba(255, 38, 60, ${0.14 + pulse})`;
+        ctx.beginPath();
+        ctx.moveTo(sp.poly[0].x, sp.poly[0].y);
+        for (let k = 1; k < sp.poly.length; k++) ctx.lineTo(sp.poly[k].x, sp.poly[k].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#ff384c';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(sp.p1.x, sp.p1.y);
+        ctx.lineTo(sp.p2.x, sp.p2.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    if (p3.wheelStarted && !p3.ending) {
+      const cx = p3.wheelCenterX, cy = p3.wheelCenterY;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 48, 72, 0.34)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 128, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const tipX = cx + Math.cos(p3.wheelAngle) * 128;
+      const tipY = cy + Math.sin(p3.wheelAngle) * 128;
+      ctx.strokeStyle = '#ff384c';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 128, p3.wheelAngle - 0.8, p3.wheelAngle);
+      ctx.stroke();
+      ctx.fillStyle = '#ff6b7c';
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      const shipSpec = SPRITE_SPECS['enemies/Tier_08/Enemy_04.png'];
+      for (const ship of p3.perimeterShips) {
+        // Hide stationary slot while its launched jet is still sitting on the edge pulling back
+        const active = ship.activeDashId && state.dashers.find(d => d.id === ship.activeDashId && d.phase === 'WINDUP');
+        if (active) continue;
+        const glow = 0.55 + 0.35 * Math.sin(ship.phase * 2.2);
+        const exhaustX = ship.x - Math.cos(ship.angle) * 26;
+        const exhaustY = ship.y - Math.sin(ship.angle) * 26;
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 46, 68, ${glow})`;
+        ctx.fillRect(Math.round(exhaustX - 4), Math.round(exhaustY - 4), 8, 8);
+        ctx.restore();
+        drawRotatedSprite(ship.path, ship.x, ship.y, (SPRITE_SPECS[ship.path] || shipSpec).size, CONFIG.SHIP_SCALE, ship.angle + Math.PI / 2, false, getTier8AwakenedSprite(ship.path));
+      }
+    }
+
+    if (p3.ending && p3.downedShips) {
+      const shipSpec = SPRITE_SPECS['enemies/Tier_08/Enemy_04.png'];
+      for (const s of p3.downedShips) {
+        if (s.exploded) continue;
+        const flicker = Math.sin(p3.endingElapsed * 42 + s.explodeAt * 18) > 0 ? 0.5 : 0.88;
+        ctx.save();
+        ctx.globalAlpha = flicker;
+        drawRotatedSprite(s.path, s.x, s.y, (SPRITE_SPECS[s.path] || shipSpec).size, s.scale || CONFIG.SHIP_SCALE, s.angle + Math.PI / 2, false, getTier8AwakenedSprite(s.path));
+        ctx.restore();
+      }
+    }
+  }
+
+  function renderAwakenedDasher(d) {
+    if (d.delayTimer > 0) return;
+    const cos = Math.cos(d.angle), sin = Math.sin(d.angle);
+    if (d.phase === 'WINDUP') {
+      const u = Math.min(1, d.windupElapsed / d.windupDuration);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 46, 68, ${0.32 + u * 0.42})`;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(Math.round(d.x), Math.round(d.y));
+      ctx.lineTo(Math.round(d.x + cos * 1650), Math.round(d.y + sin * 1650));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (u > 0.22) {
+        const flare = Math.min(1, (u - 0.22) / 0.5);
+        const ex = d.x - cos * 26, ey = d.y - sin * 26;
+        ctx.fillStyle = `rgba(255, 50, 72, ${0.5 + flare * 0.45})`;
+        ctx.beginPath();
+        ctx.arc(Math.round(ex), Math.round(ey), 4 + flare * 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffd27d';
+        ctx.fillRect(Math.round(ex - 2), Math.round(ey - 2), 4, 4);
+      }
+      ctx.restore();
+    } else if (d.trail && d.trail.length) {
+      const img = getTier8AwakenedSprite(d.path);
+      for (let t = 0; t < d.trail.length; t++) {
+        const pt = d.trail[t];
+        ctx.save();
+        ctx.globalAlpha = Math.max(0.08, pt.alpha * 0.45);
+        drawRotatedSprite(d.path, pt.x, pt.y, d.spec.size, d.scale, d.angle + Math.PI / 2, false, img);
+        ctx.restore();
+      }
+      ctx.save();
+      const ex = d.x - cos * 28, ey = d.y - sin * 28;
+      ctx.fillStyle = '#ff384c';
+      ctx.fillRect(Math.round(ex - 4), Math.round(ey - 4), 8, 8);
+      ctx.fillStyle = '#ffe388';
+      ctx.fillRect(Math.round(ex - 2), Math.round(ey - 2), 4, 4);
+      ctx.restore();
+    }
+    drawRotatedSprite(d.path, d.x, d.y, d.spec.size, d.scale, d.angle + Math.PI / 2, false, getTier8AwakenedSprite(d.path));
+  }
+
+  function renderTier8BossGlare(boss) {
+    const rot = boss.rotation ?? -Math.PI / 2;
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+    // Core reactor center in Tier_08/Boss.png (15.5, 16.5) -> local offset (-0.5, -3.5)
+    const lx = -0.5 * boss.scale, ly = -3.5 * boss.scale;
+    const gx = Math.round(boss.x + lx * cos - ly * sin);
+    const gy = Math.round(boss.y + lx * sin + ly * cos);
+    const t = boss.tier8P3?.elapsed ?? boss.age;
+    const pulse = 0.82 + 0.18 * Math.sin(t * 11);
+    const armH = Math.round(28 * pulse), armV = Math.round(22 * pulse);
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 32, 56, 0.28)';
+    ctx.fillRect(gx - armH - 3, gy - 4, (armH + 3) * 2, 8);
+    ctx.fillRect(gx - 4, gy - armV - 3, 8, (armV + 3) * 2);
+    ctx.fillStyle = '#ff2640';
+    ctx.fillRect(gx - armH, gy - 2, armH * 2, 4);
+    ctx.fillRect(gx - 2, gy - armV, 4, armV * 2);
+    ctx.fillStyle = '#fff0f3';
+    ctx.fillRect(gx - Math.round(armH * 0.5), gy - 1, armH, 2);
+    ctx.fillRect(gx - 1, gy - Math.round(armV * 0.5), 2, armV);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(gx - 3, gy - 3, 6, 6);
+    ctx.restore();
+  }
+
   function renderFinalBossRushWarning(boss) {
     const laneY = Math.round(boss.rushY);
     ctx.save();
@@ -7477,8 +8478,8 @@
     ctx.restore();
   }
 
-  function drawRotatedSprite(relPath, cx, cy, size, scale, angleRad, flashWhite) {
-    const img = assets.images.get(relPath);
+  function drawRotatedSprite(relPath, cx, cy, size, scale, angleRad, flashWhite, customImage = null) {
+    const img = customImage || assets.images.get(relPath);
     const [w, h] = size;
     const dw = Math.round(w * scale);
     const dh = Math.round(h * scale);
@@ -7645,23 +8646,44 @@
         ctx.drawImage(emptyImg, barX, barY, barW, barH);
       }
 
-      const ratio = Math.max(0, Math.min(1, health.hp / health.maxHp));
+      const ratio = state.boss.tier === 8 && state.boss.tier8P3
+        ? Math.max(0, Math.min(1, state.boss.tier8P3.remaining / state.boss.tier8P3.duration))
+        : Math.max(0, Math.min(1, health.hp / health.maxHp));
       const fillRect = CONFIG.BOSS_FILL_RECT;
-      const fillNativeW = health.hp > 0 ? Math.max(1, Math.round(fillRect.width * ratio)) : 0;
+      const isTier8P3 = state.boss.tier === 8 && state.boss.tier8P3;
+      const fillNativeW = (isTier8P3 ? state.boss.tier8P3.remaining > 0 : health.hp > 0) ? Math.max(1, Math.round(fillRect.width * ratio)) : 0;
 
       if (fillImg && fillNativeW > 0) {
-        ctx.drawImage(
-          fillImg,
-          fillRect.x, fillRect.y, fillNativeW, fillRect.height,
-          barX + fillRect.x * barScale,
-          barY + fillRect.y * barScale,
-          fillNativeW * barScale,
-          fillRect.height * barScale
-        );
+        if (isTier8P3) {
+          ctx.fillStyle = '#ff263d';
+          ctx.fillRect(
+            barX + fillRect.x * barScale,
+            barY + fillRect.y * barScale,
+            fillNativeW * barScale,
+            fillRect.height * barScale
+          );
+        } else {
+          ctx.drawImage(
+            fillImg,
+            fillRect.x, fillRect.y, fillNativeW, fillRect.height,
+            barX + fillRect.x * barScale,
+            barY + fillRect.y * barScale,
+            fillNativeW * barScale,
+            fillRect.height * barScale
+          );
+        }
       }
 
       if (frameImg) {
         ctx.drawImage(frameImg, barX, barY, barW, barH);
+      }
+      if (isTier8P3) {
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = state.boss.tier8P3.remaining <= 10 ? '#ff6278' : '#ffb8c2';
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText(`FINAL SURVIVAL · ${state.boss.tier8P3.remaining.toFixed(1)}s`, barX + barW / 2, barY + barH - 6);
+        ctx.restore();
       }
       if(handBars) {
         ctx.save();ctx.textAlign='center';ctx.fillStyle=health.hp>0?'#b8faff':'#915576';ctx.font='bold 12px monospace';
@@ -7687,7 +8709,7 @@
       } else if (state.phase === 'TEST') {
         stageEl.textContent = `TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} PATTERN TEST`;
       } else if (state.phase === 'BOSS') {
-        stageEl.textContent = state.boss?.kind==='CHAIN_BOSS' ? (state.boss.campaign?'TIER 09 · CHAIN BOSS':'CHAIN BOSS · PROTOTYPE') : `TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} BOSS`;
+        stageEl.textContent = state.boss?.kind==='CHAIN_BOSS' ? (state.boss.campaign?'TIER 09 · CHAIN BOSS':'CHAIN BOSS · PROTOTYPE') : (state.boss?.tier===8&&state.boss?.tier8P3?'TIER 11 FINAL SURVIVAL':`TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} BOSS`);
       } else if (state.phase === 'FINAL_SHADOW') {
         stageEl.textContent = 'FINAL BOSS (SHADOW)';
       } else if (state.phase === 'FINAL_REVEALED') {
@@ -7984,6 +9006,27 @@
       for (let b = 0; b < 3; b++) {
         scheduleTier8Dasher(state.boss, null, b, 3);
       }
+    } else if (action === 'trigger-b8-p3' || action === 'trigger-b8-p3-formation' || action === 'trigger-b8-p3-wheel') {
+      hideRewardModal();
+      hideOverlay();
+      state.mode = 'PLAYING';
+      state.currentTier = 8;
+      state.cumulativeWaveTime = getStageNumber(8) * CONFIG.WAVE_DURATION;
+      if (!state.boss || state.boss.tier !== 8) {
+        startTierBoss(8);
+      }
+      state.boss.entering = false;
+      state.boss.x = state.boss.homeX;
+      if (!state.boss.tier8P3) enterTier8Phase3(state.boss);
+      if (action === 'trigger-b8-p3-formation') {
+        state.boss.tier8P3.wheelStarted = false;
+        state.boss.tier8P3.remaining = Math.max(20, state.boss.tier8P3.remaining);
+        triggerTier8P3Formation(state.boss);
+      } else if (action === 'trigger-b8-p3-wheel') {
+        state.boss.tier8P3.remaining = CONFIG.TIER8_P3_WHEEL_TIME;
+        startTier8P3Wheel(state.boss);
+      }
+      updateHudBadges();
     } else if (action === 'trigger-final-rush') {
       if (!state.boss || state.boss.kind !== 'FINAL_REVEALED') {
         state.currentTier = 8;
@@ -8064,6 +9107,7 @@
     } else if (action === 'kill-boss') {
       if (state.boss) {
         if(state.boss.errorP3) {state.boss.errorP3.age=Math.max(6,state.boss.errorP3.age);for(const h of state.boss.errorP3.hands)window.ErrorPhase3.hit(state.boss.errorP3,h,h.maxHp);}
+        else if (state.boss.tier8P3) { state.boss.tier8P3.remaining = 0; finishTier8Phase3(state.boss); }
         else {state.boss.hp = 0;handleBossDefeated();}
       }
     } else if (action === 'toggle-invincible') {
@@ -8180,6 +9224,17 @@
     enterTier8Phase2,
     prepareTier8RaidWave,
     finishTier8Phase2,
+    recolorTier8BlueToRedPixels,
+    applyTier8CrippledDamagePixels,
+    getTier8AwakenedSprite,
+    getTier8CrippledBossSprite,
+    spawnAwakenedDasher,
+    enterTier8Phase3,
+    triggerTier8P3Formation,
+    startTier8P3Wheel,
+    updateTier8Phase3,
+    startTier8Phase3Ending,
+    finishTier8Phase3,
     spawnElectricVolley,
     updateElectricVolleys,
     renderElectricVolleys,
@@ -8326,6 +9381,21 @@
       }
       if (params.get('ult') === '1' && t === 8) {
         startTier8UltimateLasers(state.boss);
+      }
+      if (params.get('p3') === '1' && t === 8) {
+        enterTier8Phase3(state.boss);
+        const mode = params.get('p3Mode');
+        if (mode === 'formation') {
+          triggerTier8P3Formation(state.boss, params.get('p3Kind') || null, params.get('p3Var') || null);
+        } else if (mode === 'wheel') {
+          state.boss.tier8P3.remaining = CONFIG.TIER8_P3_WHEEL_TIME;
+          startTier8P3Wheel(state.boss);
+        } else if (mode === 'ending') {
+          state.boss.tier8P3.remaining = CONFIG.TIER8_P3_WHEEL_TIME;
+          startTier8P3Wheel(state.boss);
+          for (let i = 0; i < 30; i++) updateGame(0.04);
+          startTier8Phase3Ending(state.boss);
+        }
       }
       if (params.get('rush') === '1' && t === 5) {
         state.boss.dashState = 'WARN';

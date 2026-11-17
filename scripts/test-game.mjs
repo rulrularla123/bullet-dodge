@@ -155,13 +155,17 @@ test('Pause and rewards freeze special states; restart clears everything', () =>
  s.mode = 'REWARD'; tick(2); assert.equal(e.specialTimer, timer);
  g.resetGame(); assert.equal(s.enemies.length, 0); assert.equal(s.lasers.length, 0);
 });
-test('Each boss heals current HP by one without increasing its maximum', () => {
+test('Standard bosses heal +1 HP while Fleet (Tier 8/11) and Error (Tier 12) bosses heal +2 HP without increasing max', () => {
  for (let tier = 1; tier <= 8; tier++) {
   fresh(); s.player.hp = 2;
   g.startTierBoss(tier); const defeated=s.boss; g.handleBossDefeated();
-  assert.equal(s.player.hp, 3); assert.equal(s.player.maxHp, 5);
-  if(s.boss===defeated) g.handleBossDefeated(); assert.equal(s.player.hp, 3);
+  const expectedHp = tier === 8 ? 4 : 3;
+  assert.equal(s.player.hp, expectedHp); assert.equal(s.player.maxHp, 5);
+  if(s.boss===defeated) g.handleBossDefeated(); assert.equal(s.player.hp, expectedHp);
  }
+ fresh(); s.player.hp = 2;
+ g.startTierBoss(12); s.boss.errorP3Complete = true; g.handleBossDefeated();
+ assert.equal(s.player.hp, 4); assert.equal(s.player.maxHp, 5);
  for (const start of [g.startShadowBoss, g.startRevealedFinalBoss]) {
   fresh(); s.player.hp = 2; start(); g.handleBossDefeated();
   assert.equal(s.player.hp, 3); assert.equal(s.player.maxHp, 5);
@@ -1762,8 +1766,8 @@ test('Both hand deaths remove every hazard before deletion, reward only once and
  g.errorPhase3.hit(p3,p3.hands[0],p3.hands[0].maxHp);g.updateErrorPhase3(b,0.01);assert.equal(s.phase,'BOSS');assert.equal(s.player.hp,2);
  g.errorPhase3.hit(p3,p3.hands[1],p3.hands[1].maxHp);s.player.x=80;
  g.updateErrorPhase3(b,0.01);assert.ok(p3.ending>0);assert.equal(p3.pools.length,0);assert.equal(p3.minis.length,0);assert.equal(s.player.hp,2);
- g.updateErrorPhase3(b,1.9);assert.equal(s.boss,null);assert.equal(s.mode,'REWARD');assert.equal(s.player.hp,3);
- g.handleBossDefeated();assert.equal(s.player.hp,3);
+ g.updateErrorPhase3(b,1.9);assert.equal(s.boss,null);assert.equal(s.mode,'REWARD');assert.equal(s.player.hp,4);
+ g.handleBossDefeated();assert.equal(s.player.hp,4);
  g.applyRewardChoice('skills');assert.equal(s.phase,'FINAL_SHADOW');assert.equal(g.isErrorAttackContext(),false);
 });
 for(const fps of [30,60])test(`Phase-three patterns repeat with bounded trails, no old attacks and pure rendering (${fps}fps)`,()=>{
@@ -2724,6 +2728,133 @@ test('Closed fist preserves proximal knuckle arch and separated digits while mod
   assert.ok(length(closed.fingers[i].tip)>length(open.fingers[i].tip)*.58&&length(closed.fingers[i].tip)<length(open.fingers[i].tip)*.68);
  }
  assert.ok(Math.hypot(closed.fingers[2].base.end.x-closed.fingers[0].base.end.x,closed.fingers[2].base.end.y-closed.fingers[0].base.end.y)>20,'knuckles must stay separated rather than collapsing into a blob');
+});
+
+test('Tier 11 (internal Tier 8) blue-to-red awakening strictly recolors blue pixels and carves half-destroyed boss damage',()=>{
+ // Test pixel recoloring on actual palette: #000000, #b4b4b4, #ffffff (untouched) vs #00b7ef, #43d8fa (converted to red)
+ const buf=new Uint8ClampedArray([
+  0,0,0,255,       // black outline
+  180,180,180,255, // grey armor
+  255,255,255,255, // white highlight
+  0,183,239,255,   // #00b7ef deep cyan
+  67,216,250,255   // #43d8fa bright cyan
+ ]);
+ g.recolorTier8BlueToRedPixels(buf);
+ assert.deepEqual([...buf.subarray(0,12)],[0,0,0,255, 180,180,180,255, 255,255,255,255]);
+ assert.ok(buf[12]>200&&buf[12]>buf[14]*3,'#00b7ef must convert to vivid red');
+ assert.ok(buf[16]>230&&buf[16]>buf[18]*3,'#43d8fa must convert to bright crimson');
+ const bossSheet=new Uint8ClampedArray(32*40*4).fill(255);
+ g.applyTier8CrippledDamagePixels(bossSheet,32,40);
+ let holes=0;for(let i=3;i<bossSheet.length;i+=4)if(bossSheet[i]===0)holes++;
+ assert.ok(holes>30,'half-destroyed boss must carve physical damage chunks');
+});
+
+test('Defeating Tier 8 HP starts a 60s invulnerable survival Phase 3 with pulled-back awakened dashers at 2x cap',()=>{
+ fresh();g.startTierBoss(8);const b=s.boss;b.entering=false;b.x=b.homeX;
+ const bounds=g.getRotatedBounds(b.x,b.y,b.spec,false,b.scale);
+ s.playerBullets.push({x:(bounds.left+bounds.right)/2,y:(bounds.top+bounds.bottom)/2,vx:0,vy:0,radius:6,damage:b.hp});
+ g.updatePlayerBullets(0);
+ assert.ok(b.tier8P3,'HP depletion must open 60s Phase 3');
+ assert.equal(b.tier8P3.remaining,60);assert.equal(b.tier8P3.wheelStarted,false);
+ assert.equal(g.canDamageBossWithPlayerAttack(b),false,'crippled boss stays invulnerable during survival');
+ assert.equal(s.lasers.length,0);
+ const beforeHp=b.hp;g.applyPlayerSkillLaserTick();assert.equal(b.hp,beforeHp);
+ let peakDashers=0,sawPullBack=false,sawLunge=false;
+ s.debugInvincible=true;
+ const d=g.spawnAwakenedDasher({anchorX:80,anchorY:350,angle:0,windupDuration:0.6,surgeDist:34,pullBackDist:34});
+ let minAfterSurge=Infinity,maxAfterSurge=-Infinity;
+ for(let i=0;i<60;i++) {
+  g.updateGame(1/60);
+  if(d.phase==='WINDUP'&&d.windupElapsed>0.18){minAfterSurge=Math.min(minAfterSurge,d.x);maxAfterSurge=Math.max(maxAfterSurge,d.x);}
+  if(d.phase==='LUNGE')sawLunge=true;
+ }
+ assert.ok(maxAfterSurge-minAfterSurge>20&&sawLunge,'awakened aircraft must pull backward before rocketing forward');
+ // Harmless during windup, deals 2 damage once lunging
+ const harml=g.spawnAwakenedDasher({anchorX:220,anchorY:200,angle:0,windupDuration:0.5});
+ s.player.x=harml.x;s.player.y=harml.y;s.debugInvincible=false;s.player.invulnTimer=0;
+ g.updateGame(0.01);assert.equal(s.player.hp,5,'windup does not deal contact damage');
+ while(harml.phase==='WINDUP')g.updateGame(0.05);
+ s.player.x=harml.x+Math.cos(harml.angle)*15;s.player.y=harml.y;g.updateGame(0.05);
+ assert.equal(s.player.hp,3,'lunging awakened aircraft deals 2 damage');
+ // Simulate first 30 seconds to verify irregular 2x cap (<=12) and no meteors/lasers
+ s.debugInvincible=true;
+ for(let step=0;step<30*30;step++) {
+  g.updateGame(1/30);peakDashers=Math.max(peakDashers,s.dashers.length);
+  assert.ok(s.dashers.filter(x=>!x.formation).length<=12);assert.equal(s.lasers.length,0);assert.equal(s.meteors.length,0);
+ }
+ assert.ok(peakDashers>6,'awakened rush density exceeds original Phase 1 cap of 6');
+});
+
+test('Tier 8 Phase 3 formations (1: Left/Right, 2: Top/Bottom, 4: Diagonal & Vertical Flip) respect safe halves and pull back',()=>{
+ for(const [kind,variant,safePos,dangerPos] of [
+  ['VERTICAL_HALF','LEFT',{x:920,y:380},{x:220,y:380}],
+  ['VERTICAL_HALF','RIGHT',{x:280,y:380},{x:910,y:380}],
+  ['HORIZONTAL_HALF','TOP',{x:640,y:560},{x:640,y:218}],
+  ['HORIZONTAL_HALF','BOTTOM',{x:640,y:200},{x:640,y:552}],
+  ['DIAGONAL_HALF','NORMAL',{x:920,y:560},{x:293,y:258}],
+  ['DIAGONAL_HALF','FLIPPED',{x:920,y:160},{x:293,y:510}]
+ ]) {
+  fresh();g.startTierBoss(8);s.boss.entering=false;s.boss.x=s.boss.homeX;g.enterTier8Phase3(s.boss);
+  s.boss.tier8P3.irregularTimer=999;s.boss.tier8P3.specialTimer=999;
+  const sp=g.triggerTier8P3Formation(s.boss,kind,variant);
+  assert.equal(sp.kind,kind);assert.ok(s.dashers.filter(d=>d.formation).length>=4);
+  if(kind==='VERTICAL_HALF'&&variant==='RIGHT')assert.ok(s.dashers.some(d=>d.x>1180),'right-half formation spans full map width');
+  s.player.x=safePos.x;s.player.y=safePos.y;s.player.invulnTimer=0;
+  for(let i=0;i<90;i++)g.updateGame(1/60);
+  assert.equal(s.player.hp,5,`${kind}/${variant} safe half took damage`);
+  fresh();g.startTierBoss(8);s.boss.entering=false;g.enterTier8Phase3(s.boss);
+  s.boss.tier8P3.irregularTimer=999;s.boss.tier8P3.specialTimer=999;
+  g.triggerTier8P3Formation(s.boss,kind,variant);
+  s.player.x=dangerPos.x;s.player.y=dangerPos.y;s.player.invulnTimer=0;
+  for(let i=0;i<95;i++)g.updateGame(1/60);
+  assert.ok(s.player.hp<5,`${kind}/${variant} danger half never hit player`);
+ }
+});
+
+test('Final 10 seconds triggers perimeter fleet wheel (Pattern 3) and surviving 60s detonates all ships and unlocks reward',()=>{
+ fresh();g.startTierBoss(8);const b=s.boss;b.entering=false;b.x=b.homeX;g.enterTier8Phase3(b);
+ // Fast-forward 49.5s safely with debug invincibility
+ s.debugInvincible=true;
+ for(let i=0;i<49.5*30;i++)g.updateGame(1/30);
+ assert.equal(b.tier8P3.wheelStarted,false);
+ for(let i=0;i<1*30;i++)g.updateGame(1/30);
+ assert.equal(b.tier8P3.wheelStarted,true,'wheel activates at <=10s remaining');
+ assert.equal(b.tier8P3.wheelCenterX,642,'wheel centers on the full map');
+ assert.ok(b.tier8P3.perimeterShips.length>=36,'perimeter edge ships surround the full map');
+ assert.ok(b.tier8P3.perimeterShips.some(sh=>sh.baseX>1200),'perimeter ships cover full-map right border');
+ // Circle smoothly around full-map center (642, 384) along the open pocket for 4 seconds
+ s.debugInvincible=false;s.player.invulnTimer=0;s.player.hp=5;
+ const cx=b.tier8P3.wheelCenterX,cy=b.tier8P3.wheelCenterY;
+ let prevIdx=b.tier8P3.wheelIndex,stepChanges=0;
+ for(let i=0;i<240;i++) {
+  const th=b.tier8P3.wheelAngle;
+  s.player.x=cx+Math.cos(th)*128;s.player.y=cy+Math.sin(th)*128;
+  g.updateGame(1/60);
+  if(b.tier8P3.wheelIndex!==prevIdx) {
+   assert.equal(b.tier8P3.wheelIndex,(prevIdx+1)%b.tier8P3.perimeterShips.length,'wheel advances strictly sequentially');
+   prevIdx=b.tier8P3.wheelIndex;stepChanges++;
+  }
+ }
+ assert.ok(stepChanges>=50,'wheel fires steadily throughout orbit');
+ g.renderGame();
+ assert.equal(s.player.hp,5,'circling in the wheel pocket dodges the perimeter spokes');
+ // Standing still in center during the wheel gets hit
+ s.player.x=cx;s.player.y=cy;s.player.invulnTimer=0;
+ for(let i=0;i<90&&s.player.hp===5;i++)g.updateGame(1/60);
+ const hpAfterHit=s.player.hp;
+ assert.ok(hpAfterHit<5,'standing in center during Sans wheel must be hit');
+ // Reach 60s survival completion: first enter fleet power-down sequence while boss still shakes
+ s.debugInvincible=true;
+ for(let i=0;i<420&&!b.tier8P3.ending;i++)g.updateGame(1/60);
+ assert.equal(b.tier8P3.ending,true,'survival end triggers fleet power-down motion first');
+ assert.ok(b.tier8P3.downedShips.length>=36,'all perimeter & flying fleet ships enter power-down sequence');
+ assert.ok(s.boss!==null,'boss stays alive while the entire fleet crashes and explodes');
+ g.renderGame();
+ // Advance through the 1.65s fleet-down + boss explosion sequence
+ for(let i=0;i<150&&s.boss;i++)g.updateGame(1/60);
+ assert.equal(s.boss,null);assert.equal(s.dashers.length,0);
+ assert.equal(s.phase,'WAVE');assert.equal(s.currentTier,12);
+ assert.equal(s.player.hp,Math.min(s.player.maxHp,hpAfterHit+2),'defeating Stage 11 boss restores +2 HP');
 });
 
 console.log(`\n${results.length} scenario checks passed.`);
