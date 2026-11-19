@@ -155,7 +155,7 @@ test('Pause and rewards freeze special states; restart clears everything', () =>
  s.mode = 'REWARD'; tick(2); assert.equal(e.specialTimer, timer);
  g.resetGame(); assert.equal(s.enemies.length, 0); assert.equal(s.lasers.length, 0);
 });
-test('Standard bosses heal +1 HP while Fleet (Tier 8/11) and Error (Tier 12) bosses heal +2 HP without increasing max', () => {
+test('Standard bosses heal +1 HP while Fleet (Tier 8/11), Error (Tier 12), and Singularity (Tier 13) bosses heal +2 HP without increasing max', () => {
  for (let tier = 1; tier <= 8; tier++) {
   fresh(); s.player.hp = 2;
   g.startTierBoss(tier); const defeated=s.boss; g.handleBossDefeated();
@@ -163,9 +163,11 @@ test('Standard bosses heal +1 HP while Fleet (Tier 8/11) and Error (Tier 12) bos
   assert.equal(s.player.hp, expectedHp); assert.equal(s.player.maxHp, 5);
   if(s.boss===defeated) g.handleBossDefeated(); assert.equal(s.player.hp, expectedHp);
  }
- fresh(); s.player.hp = 2;
- g.startTierBoss(12); s.boss.errorP3Complete = true; g.handleBossDefeated();
- assert.equal(s.player.hp, 4); assert.equal(s.player.maxHp, 5);
+ for (const [t, flag] of [[12, 'errorP3Complete'], [13, 'tier13P3Complete']]) {
+  fresh(); s.player.hp = 2;
+  g.startTierBoss(t); s.boss[flag] = true; g.handleBossDefeated();
+  assert.equal(s.player.hp, 4); assert.equal(s.player.maxHp, 5);
+ }
  for (const start of [g.startShadowBoss, g.startRevealedFinalBoss]) {
   fresh(); s.player.hp = 2; start(); g.handleBossDefeated();
   assert.equal(s.player.hp, 3); assert.equal(s.player.maxHp, 5);
@@ -848,12 +850,13 @@ test('Electric volleys freeze while paused, expire offscreen, and clear on resta
  g.startTierBoss(9);g.spawnElectricVolley(s.boss);g.handleBossDefeated();
  assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);assert.equal(s.electricVolleys.length,0);
 });
-test('Electricity and rush-fleet stages lead to error stage 12 before the final boss',()=>{
+test('Electricity and rush-fleet stages lead to error stage 12 and singularity stage 13 before the final boss',()=>{
  fresh();g.startTierBoss(9);g.handleBossDefeated();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,10);
  g.applyRewardChoice('skills');assert.equal(s.currentTier,8);assert.equal(g.getStageNumber(s.currentTier),11);assert.equal(s.phase,'WAVE');
  g.startTierBoss(8);g.handleBossDefeated();assert.equal(s.phase,'WAVE');assert.equal(s.currentTier,12);
  g.startTierBoss(12);g.handleBossDefeated();finishErrorHandsForTest();assert.equal(s.mode,'REWARD');assert.equal(s.rewardPendingTier,12);
- g.applyRewardChoice('skills');assert.equal(s.phase,'FINAL_SHADOW');
+ g.applyRewardChoice('skills');assert.equal(s.phase,'WAVE');assert.equal(s.currentTier,13);
+ g.startTierBoss(13);s.boss.tier13P3Complete=true;g.handleBossDefeated();assert.equal(s.phase,'FINAL_SHADOW');
  g.jumpToTierWave(g.getPatternTier(9));assert.equal(s.currentTier,11);assert.equal(s.boss.kind,'CHAIN_BOSS');
 });
 
@@ -1081,7 +1084,7 @@ for(const fps of [30,60]) test(`Electric network flies out, warns without damage
  let elapsed=0;
  while(f.stage==='DEPLOY'&&elapsed<4) {g.updateGame(1/fps);elapsed+=1/fps;}
  assert.equal(f.stage,'WARNING');assert.ok(f.nodes.every(n=>n.arrived));assert.equal(p.hp,5);
- const safeEdge=f.edges.find(([i,j])=>{const x=(f.nodes[i].x+f.nodes[j].x)/2,y=(f.nodes[i].y+f.nodes[j].y)/2;return x>100&&x<1100&&y>130&&y<600;});
+ const safeEdge=f.edges.find(([i,j])=>{const x=(f.nodes[i].x+f.nodes[j].x)/2,y=(f.nodes[i].y+f.nodes[j].y)/2;return x>100&&x<880&&y>130&&y<600;});
  const [a,c]=safeEdge.map(i=>f.nodes[i]);p.x=(a.x+c.x)/2;p.y=(a.y+c.y)/2;
  tick(1,fps);assert.equal(p.hp,5);
  while(f.stage!=='ACTIVE') g.updateGame(1/fps);
@@ -1768,7 +1771,7 @@ test('Both hand deaths remove every hazard before deletion, reward only once and
  g.updateErrorPhase3(b,0.01);assert.ok(p3.ending>0);assert.equal(p3.pools.length,0);assert.equal(p3.minis.length,0);assert.equal(s.player.hp,2);
  g.updateErrorPhase3(b,1.9);assert.equal(s.boss,null);assert.equal(s.mode,'REWARD');assert.equal(s.player.hp,4);
  g.handleBossDefeated();assert.equal(s.player.hp,4);
- g.applyRewardChoice('skills');assert.equal(s.phase,'FINAL_SHADOW');assert.equal(g.isErrorAttackContext(),false);
+ g.applyRewardChoice('skills');assert.equal(s.phase,'WAVE');assert.equal(s.currentTier,13);assert.equal(g.isErrorAttackContext(),false);
 });
 for(const fps of [30,60])test(`Phase-three patterns repeat with bounded trails, no old attacks and pure rendering (${fps}fps)`,()=>{
  const b=phase3Test();s.debugInvincible=true;let laser=false,mini=false,ground=false;
@@ -2028,10 +2031,10 @@ test('Top and bottom rakes preserve handedness and move consistently with their 
  }
 });
 
-test('Error stage flags stop at victory even when the internal current tier still equals twelve',()=>{
+test('Error stage flags stop at victory even when advancing to Stage 13 wave and Final Shadow',()=>{
  fresh();s.currentTier=12;g.startTierBoss(12);g.applyErrorCorruption();
  g.handleBossDefeated();finishErrorHandsForTest();assert.equal(s.mode,'REWARD');g.applyRewardChoice('skills');
- assert.equal(s.phase,'FINAL_SHADOW');assert.equal(s.currentTier,12);assert.equal(g.isErrorAttackContext(),false);
+ assert.equal(s.phase,'WAVE');assert.equal(s.currentTier,13);assert.equal(g.isErrorAttackContext(),false);
  g.spawnEnemyBullet(1000,300,-200,0);assert.equal(s.enemyBullets.at(-1).glitch,false);
  const laserEnemy=g.spawnWaveEnemy(7,{enemyIdx:4});g.fireSmallEnemyLaser(laserEnemy);assert.equal(s.lasers.at(-1).glitch,false);
  assert.equal(s.player.corruptionRemaining,0);
@@ -2855,6 +2858,270 @@ test('Final 10 seconds triggers perimeter fleet wheel (Pattern 3) and surviving 
  assert.equal(s.boss,null);assert.equal(s.dashers.length,0);
  assert.equal(s.phase,'WAVE');assert.equal(s.currentTier,12);
  assert.equal(s.player.hp,Math.min(s.player.maxHp,hpAfterHit+2),'defeating Stage 11 boss restores +2 HP');
+});
+
+test('Tier 13 wave stages: 1-2 shoot animated gravity purple orbs with reduced count, 3 launches Micro Black Holes (2 dmg), and 4 fires 1-dmg Mini Railgun',()=>{
+ fresh();s.phase='WAVE';s.currentTier=13;
+ assert.ok(g.computeEnemyFireInterval(13,1)>=2.4,'Tier 13 minion fire interval is calmed');
+ // Stages 1 & 2: animated Void_Singularity_Orb bullets (1 each, reduced density + mild gravity pull + cast FX)
+ const e1=g.spawnWaveEnemy(13,{enemyIdx:1});e1.entering=false;e1.x=950;e1.y=200;
+ const e2=g.spawnWaveEnemy(13,{enemyIdx:2});e2.entering=false;e2.x=950;e2.y=360;
+ g.fireTier13MinionPattern(e1);
+ assert.equal(s.microBlackHoles.length,0,'Stage 1 fires purple orb, not Micro Black Holes');
+ assert.equal(s.enemyBullets.length,1);
+ assert.equal(s.enemyBullets[0].sheetPath,'effects/Singularity_BlackHole/Void_Singularity_Orb_Sheet.png');
+ assert.ok(s.enemyBullets[0].gravityPullRadius>0&&s.enemyBullets[0].gravityPullStrength>0,'Stage 1 orb carries mild gravity pull');
+ assert.ok(e1.castAnimTimer>0,'Stage 1 minion triggers cast animation');
+ g.fireTier13MinionPattern(e2);
+ assert.equal(s.microBlackHoles.length,0,'Stage 2 fires purple orb, not Micro Black Holes');
+ assert.equal(s.enemyBullets.length,2,'Stage 2 reduced to 1 enhanced orb (2 total)');
+ assert.ok(s.enemyBullets[1].gravityPullStrength>s.enemyBullets[0].gravityPullStrength);
+ // Verify in-flight minion orb gently pulls nearby player without dealing contact damage at range
+ const pullOrb=s.enemyBullets[0];
+ pullOrb.x=420;pullOrb.y=360;pullOrb.vx=0;pullOrb.vy=0;
+ s.player.x=pullOrb.x-70;s.player.y=pullOrb.y;s.player.hp=5;
+ const orbPullStartX=s.player.x;
+ g.updateGame(0.1);
+ assert.ok(s.player.x>orbPullStartX&&s.player.x<pullOrb.x,'in-flight Tier 13 minion orb gently pulls nearby player');
+ assert.equal(s.player.hp,5,'pulling at range does not deal contact damage');
+
+ // Stage 3: Micro Black Hole (mild pull + 2 damage on contact, capped at 4)
+ s.enemyBullets=[];
+ const e3=g.spawnWaveEnemy(13,{enemyIdx:3});
+ assert.equal(e3.spec.size[0],32);assert.equal(e3.spec.size[1],48);
+ e3.entering=false;e3.x=950;e3.y=362;
+ g.fireTier13MinionPattern(e3);
+ assert.equal(s.microBlackHoles.length,1,'Stage 3 spawns Micro Black Hole');
+ assert.ok(e3.castAnimTimer>0,'Stage 3 triggers cast animation');
+ const mbh=s.microBlackHoles[0];
+ mbh.x=450;mbh.y=362;mbh.vx=0;mbh.vy=0;
+ s.player.x=mbh.x-100;s.player.y=mbh.y;
+ const startX=s.player.x;
+ g.updateGame(0.1);
+ assert.ok(s.player.x>startX&&s.player.x<mbh.x,'Micro Black Hole gently pulls player inward');
+ assert.equal(s.player.hp,5,'pulling at range does not deal contact damage');
+ s.player.x=mbh.x;s.player.y=mbh.y;s.player.invulnTimer=0;
+ g.updateGame(0.02);
+ assert.equal(s.player.hp,3,'contacting Micro Black Hole deals 2 damage');
+ assert.equal(s.microBlackHoles.length,0);
+ for(let k=0;k<6;k++)g.spawnMicroBlackHole(900,300,-100,0,3);
+ assert.equal(s.microBlackHoles.length,4,'Micro Black Hole active count is capped at 4');
+
+ // Stage 4: Mini Gravity Railgun (CHARGE -> LOCK_DANGER -> FIRE -> 1 damage)
+ g.clearAllCombatHazards();s.player.hp=5;s.player.invulnTimer=0;s.player.x=220;s.player.y=450;
+ const e4=g.spawnWaveEnemy(13,{enemyIdx:4});e4.entering=false;e4.x=980;e4.y=450;
+ g.fireTier13MinionPattern(e4);
+ assert.ok(e4.miniRailgun&&e4.miniRailgun.phase==='CHARGE','Stage 4 starts mini Gravity Railgun charge');
+ for(let i=0;i<35&&e4.miniRailgun?.phase==='CHARGE';i++)g.updateGame(0.02);
+ assert.equal(e4.miniRailgun.phase,'LOCK_DANGER');
+ assert.equal(s.player.hp,5,'mini railgun warning does not deal damage');
+ for(let i=0;i<30&&e4.miniRailgun?.phase==='LOCK_DANGER';i++)g.updateGame(0.02);
+ assert.equal(e4.miniRailgun?.phase,'FIRE');
+ for(let i=0;i<15;i++)g.updateGame(0.02);
+ assert.equal(s.player.hp,4,'Stage 4 mini Gravity Railgun deals 1 damage');
+});
+
+test('Vertical sprite sheets slice by height so all animation frames advance cleanly',()=>{
+ const key='__test_vertical_sheet__';
+ g.assets.images.set(key,{naturalWidth:60,naturalHeight:720,complete:true});
+ const info=g.getLoadedSheetInfo(key,60,60);
+ assert.equal(info.frameCount,12);
+ assert.equal(info.vertical,true);
+ g.assets.images.delete(key);
+});
+
+test('Tier 13 Boss P1 maintains 10 random 3x purple meteors curved by gravity and fires 3-damage Gravity Railgun with danger telegraph',()=>{
+ fresh();g.startTierBoss(13);const b=s.boss;b.entering=false;b.x=b.homeX;
+ assert.equal(b.spec.size[0],32);assert.equal(b.spec.size[1],48);
+ // Check boss middle core coordinates & initial 3x purple meteors
+ const core=g.getTier13BossCorePos(b);
+ assert.ok(Number.isFinite(core.x)&&Number.isFinite(core.y));
+ for(let i=0;i<60;i++)g.updateGame(0.05);
+ const purples=s.meteors.filter(m=>m.isPurpleGravity);
+ assert.ok(purples.length>=6&&purples.length<=10,'Phase 1 maintains up to 10 random purple meteors');
+ assert.ok(purples.every(m=>m.scale===g.CONFIG.SHIP_SCALE),'purple meteors match 3x ship pixel scale');
+ assert.ok(new Set(purples.map(m=>m.variant)).size>=2,'meteors sample random purple variants');
+ // Verify purple meteors deflect once toward player, then fly straight (no continuous homing)
+ s.meteors=[];s.player.x=220;s.player.y=520;s.debugInvincible=true;
+ const gm=g.spawnPurpleGravityMeteor({variant:5});
+ gm.x=920;gm.y=200;gm.vx=-250;gm.vy=0;gm.bendDelay=0.4;
+ for(let i=0;i<25&&!gm.hasBent;i++)g.updateGame(0.03);
+ assert.equal(gm.hasBent,true,'purple meteor triggers one-time gravity bend toward player');
+ for(let i=0;i<15&&gm.bendTurnRemaining>0;i++)g.updateGame(0.03);
+ const bentAng=Math.atan2(gm.vy,gm.vx);
+ assert.ok(gm.vy>20,'meteor angle bends toward player lower position');
+ s.player.y=110;
+ for(let i=0;i<15;i++)g.updateGame(0.03);
+ assert.ok(Math.abs(Math.atan2(gm.vy,gm.vx)-bentAng)<1e-4,'meteor does not keep homing after its single course bend');
+ s.debugInvincible=false;
+ // Gravity railgun test: CHARGE -> LOCK_DANGER -> FIRE -> 3 damage!
+ g.clearAllCombatHazards();s.meteors=[];
+ s.player.hp=5;s.player.invulnTimer=0;s.player.x=220;s.player.y=362;b.x=1100;b.y=362;
+ const rg=g.fireTier13GravityRailgun(b);
+ assert.equal(rg.phase,'CHARGE');
+ for(let i=0;i<40&&rg.phase==='CHARGE';i++)g.updateGame(0.02);
+ assert.equal(rg.phase,'LOCK_DANGER','danger warning precedes railgun shot');
+ assert.equal(s.player.hp,5,'danger warning does not deal damage');
+ for(let i=0;i<40&&rg.phase==='LOCK_DANGER';i++)g.updateGame(0.02);
+ assert.equal(rg.phase,'FIRE');
+ // Advance beam across player stationary inside locked lane
+ for(let i=0;i<15;i++)g.updateGame(0.02);
+ assert.equal(s.player.hp,2,'Gravity Railgun deals 3 damage on hit');
+});
+
+test('Tier 13 Boss P2 emerges at center (3x player size), pulls as Black Hole, morphs to White Hole push, and kills on core touch',()=>{
+ fresh();g.startTierBoss(13);const b=s.boss;b.entering=false;b.x=b.homeX;
+ b.hp=Math.floor(b.maxHp*0.5);
+ g.updateGame(0.02);
+ assert.ok(b.singularityCore,'Phase 2 spawns center singularity');
+ const c=b.singularityCore;
+ assert.equal(c.phase,'SPAWNING');
+ assert.equal(b.coreSpinSpeed,18,'Boss core spins rapidly during Phase 2 birth');
+ // Advance past SPAWNING into BLACK_HOLE pull
+ for(let i=0;i<90&&c.phase==='SPAWNING';i++)g.updateGame(0.02);
+ assert.equal(c.phase,'BLACK_HOLE');
+ s.player.x=c.x-240;s.player.y=c.y;const pullStartX=s.player.x;
+ g.updateGame(0.1);
+ assert.ok(s.player.x>pullStartX,'Black Hole continuously pulls player inward');
+ // Touching Black Hole core triggers suck-in death animation before GAMEOVER!
+ s.player.x=c.x+20;s.player.y=c.y;
+ g.updateGame(0.02);
+ assert.equal(s.player.hp,0,'Black Hole core deals lethal damage immediately');
+ assert.equal(s.singularityDeath?.kind,'BLACK_HOLE','Black Hole starts suck-in death animation');
+ assert.equal(s.mode,'PLAYING','game waits through suck-in animation before GAMEOVER');
+ const suckStartDist=Math.hypot(s.singularityDeath.curX-c.x,s.singularityDeath.curY-c.y);
+ for(let i=0;i<15;i++)g.updateGame(0.03);
+ assert.ok(s.singularityDeath,'suck-in animation plays at 0.45s');
+ assert.ok(s.singularityDeath.afterimages.length>0,'suck-in leaves spiral afterimages');
+ assert.ok(Math.hypot(s.singularityDeath.curX-c.x,s.singularityDeath.curY-c.y)<suckStartDist,'ship spirals closer into event horizon');
+ g.renderGame();
+ for(let i=0;i<35&&s.mode!=='GAMEOVER';i++)g.updateGame(0.03);
+ assert.equal(s.singularityDeath,null);
+ assert.equal(s.mode,'GAMEOVER','suck-in completes into GAMEOVER');
+
+ // Fresh P2 test for MORPH_TO_WHITE -> WHITE_HOLE light sky-blue recolor & push -> lethal touch!
+ const skyTestBuf=new Uint8ClampedArray([
+  0,0,0,255,       // black outline
+  255,255,255,255, // white armor
+  255,87,34,255,   // orange thruster
+  48,63,159,255,   // dark indigo notch
+  213,0,249,255,   // #d500f9 bright purple
+  103,58,183,255   // #673ab7 deep purple
+ ]);
+ g.recolorTier13PurpleToLightSkyPixels(skyTestBuf);
+ assert.deepEqual([...skyTestBuf.subarray(0,16)],[0,0,0,255, 255,255,255,255, 255,87,34,255, 48,63,159,255]);
+ assert.ok(skyTestBuf[18]>220&&skyTestBuf[17]>180,'#d500f9 converts to light sky-blue');
+ assert.ok(skyTestBuf[22]>220&&skyTestBuf[21]>180,'#673ab7 converts to soft light sky-blue');
+
+ fresh();g.startTierBoss(13);const b2=s.boss;b2.entering=false;b2.x=b2.homeX;
+ b2.hp=Math.floor(b2.maxHp*0.5);g.updateGame(0.02);
+ assert.equal(g.isTier13WhiteHoleActive(b2),false);
+ s.debugInvincible=true;
+ for(let i=0;i<220&&b2.singularityCore.phase!=='MORPH_TO_WHITE';i++)g.updateGame(0.03);
+ assert.equal(b2.singularityCore.phase,'MORPH_TO_WHITE','morphs smoothly from Black Hole to White Hole');
+ for(let i=0;i<60&&b2.singularityCore.phase==='MORPH_TO_WHITE';i++)g.updateGame(0.03);
+ assert.equal(b2.singularityCore.phase,'WHITE_HOLE');
+ assert.equal(g.isTier13WhiteHoleActive(b2),true,'White Hole activates light sky-blue boss recolor');
+ s.debugInvincible=false;s.player.hp=5;s.player.x=b2.singularityCore.x-220;s.player.y=b2.singularityCore.y;
+ const pushStartX=s.player.x;
+ g.updateGame(0.1);
+ assert.ok(s.player.x<pushStartX,'White Hole continuously pushes player outward');
+ s.player.x=b2.singularityCore.x+15;s.player.y=b2.singularityCore.y;
+ g.updateGame(0.02);
+ assert.equal(s.player.hp,0,'White Hole core kills immediately');
+ assert.equal(s.singularityDeath?.kind,'WHITE_HOLE');
+ for(let i=0;i<40&&s.mode!=='GAMEOVER';i++)g.updateGame(0.03);
+ assert.equal(s.singularityDeath,null);
+ assert.equal(s.mode,'GAMEOVER');
+});
+
+test('Tier 13 Boss P3 enters sky-blue Berserk form alongside hyper-spinning Neutron Star with magnetic pull, no-slow waves, no ghost hitbox, supernova whiteout, and +2 HP clear into Final Boss',()=>{
+ fresh();g.startTierBoss(13);const b=s.boss;b.entering=false;b.x=b.homeX;
+ s.player.hp=2;
+ b.hp=0;g.handleBossDefeated();
+ assert.ok(b.tier13P3,'0 HP enters Phase 3 Neutron Star instead of dying');
+ assert.equal(b.tier13P3.berserk,true,'Phase 3 activates Berserk state');
+ assert.ok(b.x>950,'Berserk Boss remains hovering on the right flank');
+ assert.deepEqual([...g.SPRITE_SPECS['bosses/Tier_13/Boss_Berserk.png'].size],[44,56]);
+ assert.ok(fs.existsSync(fileURLToPath(new URL('../assets/bosses/Tier_13/Boss_Berserk.png',import.meta.url))));
+ assert.equal(g.isPlayerSectorRestricted(),false,'Phase 3 unlocks full-map movement around Neutron Star');
+ s.debugInvincible=true;
+ s.player.x=b.tier13P3.x-280;s.player.y=b.tier13P3.y;const startDist=Math.hypot(s.player.x-b.tier13P3.x,s.player.y-b.tier13P3.y);
+ let sawBeam=false;
+ for(let i=0;i<60;i++){
+  g.updateGame(0.03);
+  if(b.tier13P3.lightBeams.some(lb=>lb.stage===3))sawBeam=true;
+ }
+ const afterDist=Math.hypot(s.player.x-b.tier13P3.x,s.player.y-b.tier13P3.y);
+ assert.ok(afterDist<startDist,'Neutron Star magnetic field pulls player inward');
+ assert.ok(sawBeam,'Neutron Star fires railgun-style sky-blue magnetic waves');
+
+ // Magnetic Field Wave Railgun deals 2 damage WITHOUT slowing player movement speed
+ s.debugInvincible=false;s.player.hp=5;s.player.invulnTimer=0;s.player.magneticSlowRemaining=0;
+ s.player.x=250;s.player.y=362;b.tier13P3.lightBeams=[];b.tier13P3.laserTimer=99;
+ const mw=g.fireTier13MagneticWave(b);
+ assert.equal(mw.phase,'CHARGE');
+ for(let i=0;i<35&&mw.phase==='CHARGE';i++)g.updateGame(0.02);
+ assert.equal(mw.phase,'LOCK_DANGER');
+ assert.equal(s.player.magneticSlowRemaining,0);
+ for(let i=0;i<35&&mw.phase==='LOCK_DANGER';i++)g.updateGame(0.02);
+ assert.equal(mw.phase,'FIRE');
+ for(let i=0;i<15;i++)g.updateGame(0.02);
+ assert.equal(s.player.hp,3,'Magnetic Wave deals 2 damage on hit');
+ assert.equal(s.player.magneticSlowRemaining,0,'Magnetic Wave does not apply movement slow');
+ const upKey={code:'KeyW',preventDefault(){}};
+ const savedP3Elapsed=b.tier13P3.elapsed;
+ s.player.x=260;s.player.y=500;const hitY0=s.player.y;
+ windowListeners.get('keydown')(upKey);g.updateGame(0.1);windowListeners.get('keyup')(upKey);
+ const hitDy=hitY0-s.player.y;
+ b.tier13P3.elapsed=savedP3Elapsed;
+ s.player.magneticSlowRemaining=0;s.player.x=260;s.player.y=500;const normY0=s.player.y;
+ windowListeners.get('keydown')(upKey);g.updateGame(0.1);windowListeners.get('keyup')(upKey);
+ const normDy=normY0-s.player.y;
+ assert.ok(hitDy>=g.CONFIG.PLAYER_SPEED*0.08&&Math.abs(hitDy-normDy)<1e-6,'player movement speed remains full speed after Magnetic Wave hit');
+
+ // Ghost hitbox regression: entering a visually passed wave path must deal ZERO damage
+ s.player.hp=5;s.player.invulnTimer=0;s.player.x=250;s.player.y=362;
+ b.tier13P3.lightBeams=[];b.tier13P3.laserTimer=99;
+ const gw=g.fireTier13MagneticWave(b);
+ for(let i=0;i<35&&gw.phase==='CHARGE';i++)g.updateGame(0.02);
+ assert.equal(gw.phase,'LOCK_DANGER');
+ for(let i=0;i<35&&gw.phase==='LOCK_DANGER';i++){s.player.x=450;s.player.y=180;g.updateGame(0.02);}
+ assert.equal(gw.phase,'FIRE');
+ for(let i=0;i<25&&!(gw.tailDist>260);i++){s.player.x=450;s.player.y=180;g.updateGame(0.02);}
+ assert.ok(gw.tailDist>260,'moving pulse tail has cleanly cleared x=450');
+ s.player.x=450;s.player.y=362;
+ g.updateGame(0.02);g.updateGame(0.02);
+ assert.equal(s.player.hp,5,'walking into visually exited Magnetic Wave path deals zero ghost damage');
+ for(let i=0;i<30&&b.tier13P3.lightBeams.length>0;i++)g.updateGame(0.02);
+ assert.equal(b.tier13P3.lightBeams.length,0,'wave is removed immediately once pulse exits screen');
+
+ s.debugInvincible=true;
+ g.renderGame();
+ // Finish Phase 3 collapse -> Supernova obliterates Boss -> screen whiteout -> +2 HP clear into Final Boss
+ s.player.hp=2;
+ b.tier13P3.remaining=0.05;
+ let sawSupernovaDetonated=false;
+ let sawBossObliterated=false;
+ let sawBossShards=false;
+ for(let i=0;i<110&&s.phase!=='FINAL_SHADOW';i++){
+  g.updateGame(0.03);
+  if(b.tier13P3?.supernovaDetonated)sawSupernovaDetonated=true;
+  if(b.tier13P3?.bossObliterated){
+   sawBossObliterated=true;
+   if(b.tier13P3.bossShards?.length>=20)sawBossShards=true;
+   g.renderGame();
+  }
+ }
+ assert.equal(sawSupernovaDetonated,true,'Neutron Star finale triggers supernova detonation');
+ assert.equal(sawBossObliterated,true,'Supernova shockwave obliterates the Berserk Boss before transition');
+ assert.equal(sawBossShards,true,'Boss obliteration emits disintegrating vapor shards');
+ assert.equal(s.phase,'FINAL_SHADOW','clearing Stage 13 transitions to Final Shadow');
+ assert.equal(s.player.hp,4,'clearing Stage 13 Neutron Star heals +2 HP');
+ assert.ok(s.supernovaWhiteout,'supernova whiteout bridges seamlessly into the next stage');
+ g.renderGame();
+ for(let i=0;i<45;i++)g.updateGame(0.03);
+ assert.equal(s.supernovaWhiteout,null,'supernova whiteout fades smoothly after transition');
 });
 
 console.log(`\n${results.length} scenario checks passed.`);

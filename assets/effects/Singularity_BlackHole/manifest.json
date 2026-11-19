@@ -1,0 +1,488 @@
+{
+  "boss": "Singularity (블랙홀 / 중성자별 보스)",
+  "palette": [
+    "#05020d",
+    "#9d3bff",
+    "#d500f9",
+    "#e8f9ff"
+  ],
+  "assets": [
+    {
+      "id": "Void_Singularity_Orb",
+      "group": "Singularity_BlackHole",
+      "sheet": "Void_Singularity_Orb_Sheet.png",
+      "frames": [
+        "frames/Void_Singularity_Orb/Void_Singularity_Orb_01.png",
+        "frames/Void_Singularity_Orb/Void_Singularity_Orb_02.png",
+        "frames/Void_Singularity_Orb/Void_Singularity_Orb_03.png",
+        "frames/Void_Singularity_Orb/Void_Singularity_Orb_04.png",
+        "frames/Void_Singularity_Orb/Void_Singularity_Orb_05.png",
+        "frames/Void_Singularity_Orb/Void_Singularity_Orb_06.png",
+        "frames/Void_Singularity_Orb/Void_Singularity_Orb_07.png",
+        "frames/Void_Singularity_Orb/Void_Singularity_Orb_08.png"
+      ],
+      "frameWidth": 11,
+      "frameHeight": 11,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        11,
+        88
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        33,
+        33
+      ],
+      "defaultFps": 14,
+      "role": "bullet",
+      "description": "검은 특이점 핵 + 회전하는 2중 소용돌이 보라/자홍 궤도 탄환 (원본 11x11, 8프레임, 3x = 33x33px)"
+    },
+    {
+      "id": "Warped_Crescent_Shot",
+      "group": "Singularity_BlackHole",
+      "sheet": "Warped_Crescent_Shot_Sheet.png",
+      "frames": [
+        "frames/Warped_Crescent_Shot/Warped_Crescent_Shot_01.png",
+        "frames/Warped_Crescent_Shot/Warped_Crescent_Shot_02.png",
+        "frames/Warped_Crescent_Shot/Warped_Crescent_Shot_03.png",
+        "frames/Warped_Crescent_Shot/Warped_Crescent_Shot_04.png",
+        "frames/Warped_Crescent_Shot/Warped_Crescent_Shot_05.png",
+        "frames/Warped_Crescent_Shot/Warped_Crescent_Shot_06.png"
+      ],
+      "frameWidth": 11,
+      "frameHeight": 7,
+      "frameCount": 6,
+      "layout": "vertical",
+      "sheetSize": [
+        11,
+        42
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        33,
+        21
+      ],
+      "defaultFps": 14,
+      "role": "bullet",
+      "description": "중력에 휘어진 초승달 파동탄 (원본 11x7, 3x = 33x21px)"
+    },
+    {
+      "id": "WhiteHole_Repulse_Star",
+      "group": "Singularity_BlackHole",
+      "sheet": "WhiteHole_Repulse_Star_Sheet.png",
+      "frames": [
+        "frames/WhiteHole_Repulse_Star/WhiteHole_Repulse_Star_01.png",
+        "frames/WhiteHole_Repulse_Star/WhiteHole_Repulse_Star_02.png",
+        "frames/WhiteHole_Repulse_Star/WhiteHole_Repulse_Star_03.png",
+        "frames/WhiteHole_Repulse_Star/WhiteHole_Repulse_Star_04.png",
+        "frames/WhiteHole_Repulse_Star/WhiteHole_Repulse_Star_05.png",
+        "frames/WhiteHole_Repulse_Star/WhiteHole_Repulse_Star_06.png"
+      ],
+      "frameWidth": 9,
+      "frameHeight": 9,
+      "frameCount": 6,
+      "layout": "vertical",
+      "sheetSize": [
+        9,
+        54
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        27,
+        27
+      ],
+      "defaultFps": 14,
+      "role": "bullet",
+      "description": "화이트홀 척력 발사 시 방출되는 고휘도 펄사 별탄 (원본 9x9, 3x = 27x27px)"
+    },
+    {
+      "id": "BlackHole_Core_Vortex",
+      "group": "Singularity_BlackHole",
+      "sheet": "BlackHole_Core_Vortex_Sheet.png",
+      "frames": [
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_01.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_02.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_03.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_04.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_05.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_06.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_07.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_08.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_09.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_10.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_11.png",
+        "frames/BlackHole_Core_Vortex/BlackHole_Core_Vortex_12.png"
+      ],
+      "frameWidth": 60,
+      "frameHeight": 60,
+      "frameCount": 12,
+      "layout": "vertical",
+      "sheetSize": [
+        60,
+        720
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        180,
+        180
+      ],
+      "defaultFps": 16,
+      "role": "boss-core",
+      "description": "회전하는 4중 소용돌이 나선 팔 & 사건의 지평선 블랙홀 애니메이션 (원본 60x60, 12프레임, 3x = 180x180px)"
+    },
+    {
+      "id": "WhiteHole_Core_Burst",
+      "group": "Singularity_BlackHole",
+      "sheet": "WhiteHole_Core_Burst_Sheet.png",
+      "frames": [
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_01.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_02.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_03.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_04.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_05.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_06.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_07.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_08.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_09.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_10.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_11.png",
+        "frames/WhiteHole_Core_Burst/WhiteHole_Core_Burst_12.png"
+      ],
+      "frameWidth": 60,
+      "frameHeight": 60,
+      "frameCount": 12,
+      "layout": "vertical",
+      "sheetSize": [
+        60,
+        720
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        180,
+        180
+      ],
+      "defaultFps": 16,
+      "role": "boss-core",
+      "description": "바깥으로 회전 분출하는 나선 팔 + 3중 팽창 충격파 화이트홀 코어 애니메이션 (원본 60x60, 12프레임, 3x = 180x180px)"
+    },
+    {
+      "id": "Gravity_Anchor_Node",
+      "group": "Singularity_BlackHole",
+      "sheet": "Gravity_Anchor_Node_Sheet.png",
+      "frames": [
+        "frames/Gravity_Anchor_Node/Gravity_Anchor_Node_01.png",
+        "frames/Gravity_Anchor_Node/Gravity_Anchor_Node_02.png",
+        "frames/Gravity_Anchor_Node/Gravity_Anchor_Node_03.png",
+        "frames/Gravity_Anchor_Node/Gravity_Anchor_Node_04.png",
+        "frames/Gravity_Anchor_Node/Gravity_Anchor_Node_05.png",
+        "frames/Gravity_Anchor_Node/Gravity_Anchor_Node_06.png",
+        "frames/Gravity_Anchor_Node/Gravity_Anchor_Node_07.png",
+        "frames/Gravity_Anchor_Node/Gravity_Anchor_Node_08.png"
+      ],
+      "frameWidth": 22,
+      "frameHeight": 22,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        22,
+        176
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        66,
+        66
+      ],
+      "defaultFps": 12,
+      "role": "destructible-core",
+      "description": "3페이즈 궤도 중력 안정기 위성 노드 (원본 22x22, 3x = 66x66px)"
+    },
+    {
+      "id": "Hawking_Spiral_Beam",
+      "group": "Singularity_BlackHole",
+      "sheet": "Hawking_Spiral_Beam_Sheet.png",
+      "frames": [
+        "frames/Hawking_Spiral_Beam/Hawking_Spiral_Beam_01.png",
+        "frames/Hawking_Spiral_Beam/Hawking_Spiral_Beam_02.png",
+        "frames/Hawking_Spiral_Beam/Hawking_Spiral_Beam_03.png",
+        "frames/Hawking_Spiral_Beam/Hawking_Spiral_Beam_04.png",
+        "frames/Hawking_Spiral_Beam/Hawking_Spiral_Beam_05.png",
+        "frames/Hawking_Spiral_Beam/Hawking_Spiral_Beam_06.png",
+        "frames/Hawking_Spiral_Beam/Hawking_Spiral_Beam_07.png",
+        "frames/Hawking_Spiral_Beam/Hawking_Spiral_Beam_08.png"
+      ],
+      "frameWidth": 32,
+      "frameHeight": 16,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        32,
+        128
+      ],
+      "recommendedGameScale": 2,
+      "renderedSizePx": [
+        64,
+        32
+      ],
+      "defaultFps": 14,
+      "role": "beam-strip",
+      "description": "가로 이음매 없는 호킹 복사/암흑 나선 빔 시트 (원본 32x16 타일, LASER_SCALE 2x = 세로 32px)"
+    },
+    {
+      "id": "Micro_BlackHole",
+      "group": "Singularity_BlackHole",
+      "sheet": "Micro_BlackHole_Sheet.png",
+      "frames": [
+        "frames/Micro_BlackHole/Micro_BlackHole_01.png",
+        "frames/Micro_BlackHole/Micro_BlackHole_02.png",
+        "frames/Micro_BlackHole/Micro_BlackHole_03.png",
+        "frames/Micro_BlackHole/Micro_BlackHole_04.png",
+        "frames/Micro_BlackHole/Micro_BlackHole_05.png",
+        "frames/Micro_BlackHole/Micro_BlackHole_06.png",
+        "frames/Micro_BlackHole/Micro_BlackHole_07.png",
+        "frames/Micro_BlackHole/Micro_BlackHole_08.png"
+      ],
+      "frameWidth": 20,
+      "frameHeight": 20,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        20,
+        160
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        60,
+        60
+      ],
+      "defaultFps": 16,
+      "role": "hazard",
+      "description": "T13 3단계 잡몹 전용 회전 나선 미니 블랙홀 (약한 끌어당김 + 접촉 시 2피해 폭발, 20x20 -> 3x = 60x60px)"
+    },
+    {
+      "id": "BlackHole_Spawn",
+      "group": "Singularity_BlackHole",
+      "sheet": "BlackHole_Spawn_Sheet.png",
+      "frames": [
+        "frames/BlackHole_Spawn/BlackHole_Spawn_01.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_02.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_03.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_04.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_05.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_06.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_07.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_08.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_09.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_10.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_11.png",
+        "frames/BlackHole_Spawn/BlackHole_Spawn_12.png"
+      ],
+      "frameWidth": 60,
+      "frameHeight": 60,
+      "frameCount": 12,
+      "layout": "vertical",
+      "sheetSize": [
+        60,
+        720
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        180,
+        180
+      ],
+      "defaultFps": 14,
+      "role": "boss-core",
+      "description": "2페이즈 공간 균열 → 암흑 수축 → 4중 소용돌이 블랙홀 생성 애니메이션 (원본 60x60, 12프레임, 3x = 180x180px)"
+    },
+    {
+      "id": "Black_To_White_Morph",
+      "group": "Singularity_BlackHole",
+      "sheet": "Black_To_White_Morph_Sheet.png",
+      "frames": [
+        "frames/Black_To_White_Morph/Black_To_White_Morph_01.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_02.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_03.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_04.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_05.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_06.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_07.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_08.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_09.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_10.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_11.png",
+        "frames/Black_To_White_Morph/Black_To_White_Morph_12.png"
+      ],
+      "frameWidth": 60,
+      "frameHeight": 60,
+      "frameCount": 12,
+      "layout": "vertical",
+      "sheetSize": [
+        60,
+        720
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        180,
+        180
+      ],
+      "defaultFps": 12,
+      "role": "boss-core",
+      "description": "2페이즈 블랙홀 → 화이트홀 모핑 애니메이션 (나선 내파→섬광 반전→백색 충격파 분출, 60x60, 12프레임, 3x = 180x180px)"
+    },
+    {
+      "id": "Neutron_Star_Core",
+      "group": "Singularity_BlackHole",
+      "sheet": "Neutron_Star_Core_Sheet.png",
+      "frames": [
+        "frames/Neutron_Star_Core/Neutron_Star_Core_01.png",
+        "frames/Neutron_Star_Core/Neutron_Star_Core_02.png",
+        "frames/Neutron_Star_Core/Neutron_Star_Core_03.png",
+        "frames/Neutron_Star_Core/Neutron_Star_Core_04.png",
+        "frames/Neutron_Star_Core/Neutron_Star_Core_05.png",
+        "frames/Neutron_Star_Core/Neutron_Star_Core_06.png",
+        "frames/Neutron_Star_Core/Neutron_Star_Core_07.png",
+        "frames/Neutron_Star_Core/Neutron_Star_Core_08.png"
+      ],
+      "frameWidth": 56,
+      "frameHeight": 56,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        56,
+        448
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        168,
+        168
+      ],
+      "defaultFps": 20,
+      "role": "boss-core",
+      "description": "3페이즈 제트·고리 없는 순수 초고속 회전 중성자별 구체 (구면 띠 고속 회전 + 빛 레이저 발사용 원형 코어, 56x56 -> 3x = 168x168px)"
+    },
+    {
+      "id": "Pulsar_Light_Beam",
+      "group": "Singularity_BlackHole",
+      "sheet": "Pulsar_Light_Beam_Sheet.png",
+      "frames": [
+        "frames/Pulsar_Light_Beam/Pulsar_Light_Beam_01.png",
+        "frames/Pulsar_Light_Beam/Pulsar_Light_Beam_02.png",
+        "frames/Pulsar_Light_Beam/Pulsar_Light_Beam_03.png",
+        "frames/Pulsar_Light_Beam/Pulsar_Light_Beam_04.png",
+        "frames/Pulsar_Light_Beam/Pulsar_Light_Beam_05.png",
+        "frames/Pulsar_Light_Beam/Pulsar_Light_Beam_06.png",
+        "frames/Pulsar_Light_Beam/Pulsar_Light_Beam_07.png",
+        "frames/Pulsar_Light_Beam/Pulsar_Light_Beam_08.png"
+      ],
+      "frameWidth": 48,
+      "frameHeight": 20,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        48,
+        160
+      ],
+      "recommendedGameScale": 2,
+      "renderedSizePx": [
+        96,
+        40
+      ],
+      "defaultFps": 16,
+      "role": "beam-strip",
+      "description": "3페이즈 빛처럼 번쩍이는 릴라티비스틱 펄사 광선 레이저 시트 (원본 48x20 타일, LASER_SCALE 2x = 세로 40px)"
+    },
+    {
+      "id": "Gravity_Railgun_Charge",
+      "group": "Singularity_BlackHole",
+      "sheet": "Gravity_Railgun_Charge_Sheet.png",
+      "frames": [
+        "frames/Gravity_Railgun_Charge/Gravity_Railgun_Charge_01.png",
+        "frames/Gravity_Railgun_Charge/Gravity_Railgun_Charge_02.png",
+        "frames/Gravity_Railgun_Charge/Gravity_Railgun_Charge_03.png",
+        "frames/Gravity_Railgun_Charge/Gravity_Railgun_Charge_04.png",
+        "frames/Gravity_Railgun_Charge/Gravity_Railgun_Charge_05.png",
+        "frames/Gravity_Railgun_Charge/Gravity_Railgun_Charge_06.png",
+        "frames/Gravity_Railgun_Charge/Gravity_Railgun_Charge_07.png",
+        "frames/Gravity_Railgun_Charge/Gravity_Railgun_Charge_08.png"
+      ],
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        32,
+        256
+      ],
+      "recommendedGameScale": 3,
+      "renderedSizePx": [
+        96,
+        96
+      ],
+      "defaultFps": 16,
+      "role": "boss-core",
+      "description": "1~2페이즈 중력 레일건 차징 압축 특이점 구체 (원본 32x32, 3x = 96x96px)"
+    },
+    {
+      "id": "Gravity_Railgun_Beam",
+      "group": "Singularity_BlackHole",
+      "sheet": "Gravity_Railgun_Beam_Sheet.png",
+      "frames": [
+        "frames/Gravity_Railgun_Beam/Gravity_Railgun_Beam_01.png",
+        "frames/Gravity_Railgun_Beam/Gravity_Railgun_Beam_02.png",
+        "frames/Gravity_Railgun_Beam/Gravity_Railgun_Beam_03.png",
+        "frames/Gravity_Railgun_Beam/Gravity_Railgun_Beam_04.png",
+        "frames/Gravity_Railgun_Beam/Gravity_Railgun_Beam_05.png",
+        "frames/Gravity_Railgun_Beam/Gravity_Railgun_Beam_06.png",
+        "frames/Gravity_Railgun_Beam/Gravity_Railgun_Beam_07.png",
+        "frames/Gravity_Railgun_Beam/Gravity_Railgun_Beam_08.png"
+      ],
+      "frameWidth": 48,
+      "frameHeight": 24,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        48,
+        192
+      ],
+      "recommendedGameScale": 2.5,
+      "renderedSizePx": [
+        120,
+        60
+      ],
+      "defaultFps": 18,
+      "role": "beam-strip",
+      "description": "초고속 중력 레일건 발사 빔 (보라 플라즈마 외피 + 중심부 암흑 특이점 코어 + 충격파 셰브론, 원본 48x24 -> 2.5x = 세로 60px)"
+    },
+    {
+      "id": "Magnetic_Wave_Beam",
+      "group": "Singularity_BlackHole",
+      "sheet": "Magnetic_Wave_Beam_Sheet.png",
+      "frames": [
+        "frames/Magnetic_Wave_Beam/Magnetic_Wave_Beam_01.png",
+        "frames/Magnetic_Wave_Beam/Magnetic_Wave_Beam_02.png",
+        "frames/Magnetic_Wave_Beam/Magnetic_Wave_Beam_03.png",
+        "frames/Magnetic_Wave_Beam/Magnetic_Wave_Beam_04.png",
+        "frames/Magnetic_Wave_Beam/Magnetic_Wave_Beam_05.png",
+        "frames/Magnetic_Wave_Beam/Magnetic_Wave_Beam_06.png",
+        "frames/Magnetic_Wave_Beam/Magnetic_Wave_Beam_07.png",
+        "frames/Magnetic_Wave_Beam/Magnetic_Wave_Beam_08.png"
+      ],
+      "frameWidth": 48,
+      "frameHeight": 32,
+      "frameCount": 8,
+      "layout": "vertical",
+      "sheetSize": [
+        48,
+        256
+      ],
+      "recommendedGameScale": 2,
+      "renderedSizePx": [
+        96,
+        64
+      ],
+      "defaultFps": 18,
+      "role": "beam-strip",
+      "description": "3페이즈 중성자별 직선 하늘색 자기장 파장 펄스 (레이저 바 없이 투명 배경 위 초승달 파동 + 감속, 원본 48x32 -> 2x = 세로 64px)"
+    }
+  ]
+}

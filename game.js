@@ -24,7 +24,7 @@
     BOSS_FILL_RECT: { x: 5, y: 16, width: 54, height: 2 },
 
     WAVE_DURATION: 60.0,      // Default 60s wave per tier
-    TOTAL_TIERS: 12,
+    TOTAL_TIERS: 13,
 
     PLAYER_MAX_HP: 5,
     PLAYER_SPEED: 350,
@@ -59,8 +59,13 @@
     ENEMY_SMALL_LASER_LIMIT: 2,
     FINAL_VOLLEY_ACTIVE_TIME: 6,
 
-    // Boss Phase 2 thresholds & tuning parameters (Tiers 5~8)
-    BOSS_PHASE2_THRESHOLDS: { 5: 0.30, 6: 0.40, 7: 0.10, 8: 0.20, 9: 0.50, 12: 0.50 },
+    // Boss Phase 2 thresholds & tuning parameters (Tiers 5~8, 12~13)
+    BOSS_PHASE2_THRESHOLDS: { 5: 0.30, 6: 0.40, 7: 0.10, 8: 0.20, 9: 0.50, 12: 0.50, 13: 0.50 },
+    TIER13_P3_DURATION: 45.0,
+    GRAVITY_RAILGUN_DAMAGE: 3,
+    MINI_RAILGUN_DAMAGE: 1,
+    MAGNETIC_WAVE_SLOW_DURATION: 4.0,
+    MAGNETIC_WAVE_SLOW_FACTOR: 0.45,
     TIER5_DASH_SIDE_INTERVAL: 0.085,
     TIER5_DASH_SIDE_SPEED: 220,
     TIER5_P2_DASH_COUNT: 5,
@@ -102,7 +107,7 @@
   // 2. BACKGROUND LAYOUT (from assets/backgrounds/Space_Unique/manifest.json)
   // ============================================================================
   // Keep established pattern/asset IDs stable while inserting electricity at stage 8.
-  const STAGE_ORDER=[1,2,3,4,5,10,6,7,11,9,8,12];
+  const STAGE_ORDER=[1,2,3,4,5,10,6,7,11,9,8,12,13];
   function getStageNumber(patternTier) { return STAGE_ORDER.indexOf(patternTier)+1 || patternTier; }
   function getPatternTier(stageNumber) { return STAGE_ORDER[stageNumber-1] || 1; }
 
@@ -145,6 +150,23 @@
     'enemies/Tier_12/Enemy_05.png': {"size": [32, 40], "visibleBounds": [0, 6, 32, 26], "muzzles": [{"x": 10, "y": 6}, {"x": 22, "y": 6}]},
     'enemies/Tier_12/Enemy_06.png': {"size": [32, 32], "visibleBounds": [2, 2, 28, 26], "muzzles": [{"x": 16, "y": 16}]},
     'bosses/Tier_12/Boss.png': {size:[32,32],visibleBounds:[1,1,30,30],muzzles:[{x:16,y:1}]},
+    // Tier 13 (Singularity / Black Hole / Neutron Star evolutionary forms + 10 random purple meteors)
+    'enemies/Tier_13/Enemy_01.png': { size: [32, 48], visibleBounds: [4, 19, 24, 24], muzzles: [{ x: 16.0, y: 19 }] },
+    'enemies/Tier_13/Enemy_02.png': { size: [32, 48], visibleBounds: [4, 15, 24, 30], muzzles: [{ x: 16.0, y: 15 }] },
+    'enemies/Tier_13/Enemy_03.png': { size: [32, 48], visibleBounds: [3, 15, 26, 30], muzzles: [{ x: 16.0, y: 15 }] },
+    'enemies/Tier_13/Enemy_04.png': { size: [32, 48], visibleBounds: [3, 8, 26, 37], muzzles: [{ x: 16.0, y: 14 }, { x: 11.0, y: 8 }, { x: 21.0, y: 8 }] },
+    'bosses/Tier_13/Boss.png':     { size: [32, 48], visibleBounds: [2, 0, 28, 46], coreOffset: { x: 15.5, y: 26.5 }, muzzles: [{ x: 16.0, y: 5, kind: 'railgun-muzzle' }, { x: 11.5, y: 0, kind: 'left-prong' }, { x: 20.5, y: 0, kind: 'right-prong' }] },
+    'bosses/Tier_13/Boss_Berserk.png': { size: [44, 56], visibleBounds: [1, 1, 42, 54], coreOffset: { x: 21.5, y: 30.5 }, muzzles: [{ x: 22.0, y: 4, kind: 'railgun-muzzle' }, { x: 14.0, y: 2, kind: 'left-prong' }, { x: 30.0, y: 2, kind: 'right-prong' }] },
+    'effects/Singularity_BlackHole/Meteor_Purple_01.png': { size: [32, 32], visibleBounds: [11, 11, 10, 10], rockRadius: 4.4, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_02.png': { size: [32, 32], visibleBounds: [11, 11, 10, 10], rockRadius: 5.0, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_03.png': { size: [32, 32], visibleBounds: [10, 10, 12, 12], rockRadius: 5.6, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_04.png': { size: [32, 32], visibleBounds: [9, 9, 14, 14], rockRadius: 6.3, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_05.png': { size: [32, 32], visibleBounds: [9, 9, 14, 14], rockRadius: 7.0, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_06.png': { size: [32, 32], visibleBounds: [8, 8, 16, 16], rockRadius: 7.8, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_07.png': { size: [32, 32], visibleBounds: [7, 7, 18, 18], rockRadius: 8.6, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_08.png': { size: [32, 32], visibleBounds: [6, 6, 20, 20], rockRadius: 9.4, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_09.png': { size: [32, 32], visibleBounds: [5, 5, 22, 22], rockRadius: 10.3, muzzles: [] },
+    'effects/Singularity_BlackHole/Meteor_Purple_10.png': { size: [32, 32], visibleBounds: [4, 4, 24, 24], rockRadius: 11.2, muzzles: [] },
     'player/주인공.png': {
       size: [32, 32],
       visibleBounds: [6, 6, 20, 18],
@@ -289,13 +311,14 @@
     6: { primary: 'Orange', secondary: 'Yellow', accent: 'Red'    },
     7: { primary: 'Lime',   secondary: 'Yellow', accent: 'Cyan'   },
     8: { primary: 'Blue',   secondary: 'Cyan',   accent: 'Blue'   },
-    9: { primary: 'Cyan', secondary: 'Blue', accent: 'Cyan' }
+    9: { primary: 'Cyan', secondary: 'Blue', accent: 'Cyan' },
+    13: { primary: 'Violet', secondary: 'Red', accent: 'Cyan' }
   };
 
   const BOSS_BAR_IDS = [
     'Tier_01', 'Tier_02', 'Tier_03', 'Tier_04',
     'Tier_05', 'Tier_06', 'Tier_07', 'Tier_08', 'Tier_09', 'Tier_10',
-    'Final_Shadow', 'Final_Revealed', 'Chain_Boss', 'Tier_12'
+    'Final_Shadow', 'Final_Revealed', 'Chain_Boss', 'Tier_12', 'Tier_13'
   ];
 
   // Weapon descriptions for Reward UI
@@ -407,6 +430,30 @@
     for(let i=1;i<=6;i++)paths.add(`enemies/Tier_12/Enemy_0${i}.png`);
     paths.add('bosses/Tier_12/Boss.png');
 
+    for(let i=1;i<=4;i++)paths.add(`enemies/Tier_13/Enemy_0${i}.png`);
+    paths.add('bosses/Tier_13/Boss.png');
+    paths.add('bosses/Tier_13/Boss_Berserk.png');
+    for(let i=1;i<=10;i++)paths.add(`effects/Singularity_BlackHole/Meteor_Purple_${String(i).padStart(2,'0')}.png`);
+    for(const sheet of [
+      'Micro_BlackHole_Sheet.png',
+      'BlackHole_Spawn_Sheet.png',
+      'BlackHole_Core_Vortex_Sheet.png',
+      'Black_To_White_Morph_Sheet.png',
+      'WhiteHole_Core_Burst_Sheet.png',
+      'Neutron_Star_Core_Sheet.png',
+      'Pulsar_Light_Beam_Sheet.png',
+      'Gravity_Railgun_Charge_Sheet.png',
+      'Gravity_Railgun_Beam_Sheet.png',
+      'Magnetic_Wave_Beam_Sheet.png',
+      'Void_Singularity_Orb_Sheet.png',
+      'Warped_Crescent_Shot_Sheet.png',
+      'WhiteHole_Repulse_Star_Sheet.png',
+      'Gravity_Anchor_Node_Sheet.png',
+      'Hawking_Spiral_Beam_Sheet.png'
+    ]) {
+      paths.add(`effects/Singularity_BlackHole/${sheet}`);
+    }
+
     paths.add('effects/Electric_Laser/Electric_Laser_Blue_Spritesheet.png');
     paths.add('effects/Electric_Laser/Electric_Laser_Red_Spritesheet.png');
     paths.add('effects/Electric_Laser/Electric_Laser_Spritesheet.png');
@@ -465,7 +512,8 @@
     8: 10000,
     9: 6500,   // Final_Shadow
     10: 20000, // Final_Revealed
-    12: 10000  // Error boss
+    12: 10000, // Error boss
+    13: 11000  // Singularity / Black Hole / Neutron Star boss
   };
 
   /** Regular enemy HP follows displayed campaign stages, never asset/pattern IDs.
@@ -517,6 +565,12 @@
    * Computes regular enemy fire interval (2.2s ~ 3.6s base + 15~25% jitter).
    */
   function computeEnemyFireInterval(tier, enemyIdx) {
+    if (tier === 13) {
+      const bases = [2.85, 3.15, 3.55, 3.80];
+      const base = bases[Math.max(0, Math.min(3, (enemyIdx || 1) - 1))];
+      const jitter = 0.86 + Math.random() * 0.28;
+      return Math.max(2.40, Math.min(4.40, base * jitter));
+    }
     const base = (3.30 - (tier - 1) * 0.11) + (enemyIdx - 1) * 0.14;
     const jitter = 0.82 + Math.random() * 0.36; // +/- 18% jitter
     return Math.max(2.05, Math.min(3.85, base * jitter));
@@ -709,6 +763,9 @@
     dashers: [],        // Active Tier_08 Enemy_04 high-speed dashers (all 8 directions)
     meteors: [],
     meteorWarnings: [],
+    microBlackHoles: [],
+    singularityDeath: null,
+    supernovaWhiteout: null,
     particles: [],
     floatingTexts: [],
 
@@ -782,6 +839,7 @@
       invulnTimer: 0.0,
       hitFlashTimer: 0.0,
       stunRemaining: 0.0,
+      magneticSlowRemaining: 0.0,
       corruptionRemaining: 0,
       electrocutionRemaining: 0.0,
       electrocutionColor: 'Blue',
@@ -803,7 +861,13 @@
     stopErrorHandPreview();
     if(state.boss?.errorP3)state.boss.errorP3=null;
     if(state.boss?.tier8P3)state.boss.tier8P3=null;
-    if(state.player)state.player.corruptionRemaining=0;
+    if(state.boss?.tier13P3)state.boss.tier13P3=null;
+    if(state.boss?.singularityCore)state.boss.singularityCore=null;
+    if(state.boss?.gravityRailgun)state.boss.gravityRailgun=null;
+    if(state.player) {
+      state.player.corruptionRemaining=0;
+      state.player.magneticSlowRemaining=0;
+    }
     for(const bullet of state.playerBullets) {bullet.corrupted=false;bullet.errorMiss=false;}
     state.enemyBullets = [];
     state.electricVolleys = [];
@@ -819,6 +883,8 @@
     state.dashers = [];
     state.meteors = [];
     state.meteorWarnings = [];
+    state.microBlackHoles = [];
+    state.singularityDeath = null;
     state.escorts = [];
     state.enemies = [];
   }
@@ -857,6 +923,7 @@
 
     state.player = createPlayer();
     clearAllCombatHazards();
+    state.supernovaWhiteout = null;
     state.boss = null;
     state.playerBullets = [];
     state.particles = [];
@@ -2043,7 +2110,10 @@
     if(tier===11)return startChainBoss({combat:true,campaign:true});
     state.phase = 'BOSS';
     state.errorNodes=[];state.errorClones=[];state.errorWaves=[];state.errorEchoes=[];
-    if(state.player)state.player.corruptionRemaining=0;
+    if(state.player) {
+      state.player.corruptionRemaining=0;
+      state.player.magneticSlowRemaining=0;
+    }
     state.errorFx.remaining=0;state.errorFx.cooldown=7;
     state.electricVolleys = [];
     state.electricSweeps = [];
@@ -2056,6 +2126,8 @@
     state.explosions = [];
     state.dashWarnings = [];
     state.dashers = [];
+    state.microBlackHoles = [];
+    state.singularityDeath = null;
     state.escorts = [];
     state.enemies = state.enemies.filter(e => !e.deathHandled && !e.isTier8Phase2Raider);
     for (const e of state.enemies) {
@@ -2161,6 +2233,7 @@
     enforceRightThirdBound(boss);
     state.boss = boss;
     if(tier===12)initErrorBoss(boss);
+    if(tier===13)initTier13Boss(boss);
 
     if (tier === 4) {
       state.escorts = [
@@ -2932,6 +3005,10 @@
 
   function fireEnemyPattern(enemy) {
     if(enemy.tier===10) {firePurpleCoreCurrent(enemy,false);return;}
+    if (enemy.tier === 13) {
+      fireTier13MinionPattern(enemy);
+      return;
+    }
     if (enemy.tier === 9) {
       // Stages 1/2 fire orbs, stage 3 a slow-tracking laser, stage 4 a linked pair.
       if (enemy.enemyIdx === 4) {
@@ -2994,7 +3071,7 @@
    * Standard Boss Bullet Pattern (Preserved for Tier 01~03, Tier 04 main body, Tier 05 NORMAL state, Tier 07 non-laser interval)
    */
   function fireTierBossPattern(boss) {
-    if (boss.tier === 6 || boss.tier === 8) return; // Strictly excluded for Tier 06 and Tier 08!
+    if (boss.tier === 6 || boss.tier === 8 || boss.tier === 13) return; // Strictly excluded for Tier 06, Tier 08, and Tier 13!
 
     const muzzles = getWorldMuzzles(boss.x, boss.y, boss.spec, false, boss.scale);
     const pal = TIER_PALETTES[boss.tier] || TIER_PALETTES[1];
@@ -3681,6 +3758,7 @@
     else if (boss.tier === 8) enterTier8Phase2(boss);
     else if (boss.tier === 9) startElectricBossField(boss);
     else if (boss.tier === 12) enterErrorPhase2(boss);
+    else if (boss.tier === 13) enterTier13Phase2(boss);
     return true;
   }
 
@@ -5001,6 +5079,2330 @@
   }
 
   // ============================================================================
+  // 10D. TIER 13 SINGULARITY / BLACK HOLE / NEUTRON STAR BOSS & GRAVITY RAILGUN
+  // ============================================================================
+  function getLoadedSheetInfo(relPath, frameW, frameH = frameW) {
+    const img = assets.images.get(relPath);
+    if (!img) return null;
+    if (typeof img.complete === 'boolean' && !img.complete) return null;
+    const totalW = img.naturalWidth || img.width || 0;
+    const totalH = img.naturalHeight || img.height || 0;
+    if (totalW <= 0 && totalH <= 0) return null;
+    const horizFrames = totalW > 0 ? Math.floor(totalW / frameW) : 0;
+    const vertFrames = totalH > 0 ? Math.floor(totalH / frameH) : 0;
+    if (vertFrames >= horizFrames && vertFrames > 1) {
+      return { img, frameCount: vertFrames, vertical: true };
+    }
+    return { img, frameCount: Math.max(1, horizFrames), vertical: false };
+  }
+
+  function drawSpriteSheetFrame(relPath, frameIdx, frameW, frameH, x, y, scale = CONFIG.SHIP_SCALE, rotation = 0, alpha = 1) {
+    const info = getLoadedSheetInfo(relPath, frameW, frameH);
+    if (!info) return false;
+    const idx = ((Math.floor(frameIdx) % info.frameCount) + info.frameCount) % info.frameCount;
+    const sx = info.vertical ? 0 : idx * frameW;
+    const sy = info.vertical ? idx * frameH : 0;
+    const dw = Math.round(frameW * scale);
+    const dh = Math.round(frameH * scale);
+    ctx.save();
+    if (alpha < 1) ctx.globalAlpha *= alpha;
+    ctx.translate(Math.round(x), Math.round(y));
+    if (rotation) ctx.rotate(rotation);
+    ctx.drawImage(info.img, sx, sy, frameW, frameH, -Math.round(dw / 2), -Math.round(dh / 2), dw, dh);
+    ctx.restore();
+    return true;
+  }
+
+  function drawTiledBeamSheet(relPath, frameIdx, tileW, tileH, ox, oy, angle, length, scale = CONFIG.LASER_SCALE, alpha = 1) {
+    const info = getLoadedSheetInfo(relPath, tileW, tileH);
+    if (!info || length <= 0) return false;
+    const idx = ((Math.floor(frameIdx) % info.frameCount) + info.frameCount) % info.frameCount;
+    const sxFrame = info.vertical ? 0 : idx * tileW;
+    const syFrame = info.vertical ? idx * tileH : 0;
+    const drawH = Math.round(tileH * scale);
+    const drawTileW = Math.round(tileW * scale);
+    ctx.save();
+    if (alpha < 1) ctx.globalAlpha *= alpha;
+    ctx.translate(Math.round(ox), Math.round(oy));
+    ctx.rotate(angle);
+    for (let dx = 0; dx < length; dx += drawTileW) {
+      const segW = Math.min(drawTileW, length - dx);
+      const srcSegW = Math.max(1, Math.round((segW / drawTileW) * tileW));
+      ctx.drawImage(info.img, sxFrame, syFrame, srcSegW, tileH, Math.round(dx), -Math.round(drawH / 2), Math.ceil(segW), drawH);
+    }
+    ctx.restore();
+    return true;
+  }
+
+  function clampPlayerToArena(p) {
+    if (!p) return;
+    const pBounds = getRotatedBounds(p.x, p.y, p.spec, true, p.scale);
+    const halfW = pBounds.width / 2;
+    const halfH = pBounds.height / 2;
+    const rightLimit = state.boss?.errorP3
+      ? Math.min(state.boss.errorP3.playerMaxRight, CONFIG.PLAYER_MAX_RIGHT_X) - (pBounds.right - p.x)
+      : isPlayerSectorRestricted()
+        ? CONFIG.PLAYER_MAX_RIGHT_X - (pBounds.right - p.x)
+        : CONFIG.CANVAS_WIDTH - 24 - halfW;
+    p.x = Math.max(24 + halfW, Math.min(rightLimit, p.x));
+    p.y = Math.max(54 + halfH, Math.min(CONFIG.CANVAS_HEIGHT - 16 - halfH, p.y));
+  }
+
+  function applyRadialForceToPlayer(cx, cy, radialSpeed, dt, tangentSpeed = 0) {
+    const p = state.player;
+    if (!p || p.hp <= 0) return Infinity;
+    const dx = cx - p.x;
+    const dy = cy - p.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1e-3 || radialSpeed < 0) {
+      const rx = dist > 1e-3 ? dx / dist : 1;
+      const ry = dist > 1e-3 ? dy / dist : 0;
+      const tx = -ry;
+      const ty = rx;
+      p.x += (rx * radialSpeed + tx * tangentSpeed) * dt;
+      p.y += (ry * radialSpeed + ty * tangentSpeed) * dt;
+      clampPlayerToArena(p);
+    }
+    return dist;
+  }
+
+  function getTier13LocalRotatedPoint(entity, nx, ny) {
+    const [W, H] = entity.spec.size;
+    const scale = entity.scale || CONFIG.SHIP_SCALE;
+    const lx = (nx - W / 2) * scale;
+    const ly = (ny - H / 2) * scale;
+    const rot = entity.rotation ?? -Math.PI / 2;
+    const cosR = Math.cos(rot);
+    const sinR = Math.sin(rot);
+    return {
+      x: entity.x + lx * cosR - ly * sinR,
+      y: entity.y + lx * sinR + ly * cosR
+    };
+  }
+
+  const tier13SpriteCache = new Map();
+
+  function recolorTier13PurpleToLightSkyPixels(data) {
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 10) continue;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      // Strictly target painted purple pixels (#d500f9 and #673ab7) only
+      if (r > g + 25 && b > g + 80) {
+        if (r > 150) {
+          data[i] = 146; data[i + 1] = 242; data[i + 2] = 255; // #92f2ff light sky-blue
+        } else {
+          data[i] = 75; data[i + 1] = 202; data[i + 2] = 245;  // #4bcaf5 soft light sky-blue
+        }
+      }
+    }
+    return data;
+  }
+
+  function getTier13WhiteHoleBossSprite() {
+    const cacheKey = 'bosses/Tier_13/Boss.png#whitehole';
+    if (tier13SpriteCache.has(cacheKey)) return tier13SpriteCache.get(cacheKey);
+    const src = assets.images.get('bosses/Tier_13/Boss.png');
+    if (!src) return null;
+    const spec = SPRITE_SPECS['bosses/Tier_13/Boss.png'];
+    const [w, h] = spec ? spec.size : [src.width || 32, src.height || 48];
+    const cvs = document.createElement('canvas');
+    cvs.width = w; cvs.height = h;
+    const g = cvs.getContext('2d');
+    if (!g || typeof g.getImageData !== 'function') {
+      tier13SpriteCache.set(cacheKey, src);
+      return src;
+    }
+    g.imageSmoothingEnabled = false;
+    g.drawImage(src, 0, 0, w, h);
+    const imgData = g.getImageData(0, 0, w, h);
+    if (!imgData || !imgData.data) {
+      tier13SpriteCache.set(cacheKey, src);
+      return src;
+    }
+    recolorTier13PurpleToLightSkyPixels(imgData.data);
+    g.putImageData(imgData, 0, 0);
+    tier13SpriteCache.set(cacheKey, cvs);
+    return cvs;
+  }
+
+  function isTier13WhiteHoleActive(boss) {
+    if (!boss || boss.tier !== 13 || boss.tier13P3 || !boss.singularityCore) return false;
+    const core = boss.singularityCore;
+    if (core.phase === 'WHITE_HOLE') return true;
+    if (core.phase === 'MORPH_TO_WHITE' && core.timer >= core.morphDuration * 0.48) return true;
+    return false;
+  }
+
+  function getTier13BossCorePos(boss) {
+    const isBerserk = !!(boss?.tier === 13 && boss?.tier13P3);
+    const spec = isBerserk
+      ? (SPRITE_SPECS['bosses/Tier_13/Boss_Berserk.png'] || boss.spec)
+      : boss.spec;
+    const off = spec?.coreOffset || { x: 15.5, y: 26.5 };
+    return getTier13LocalRotatedPoint({ ...boss, spec }, off.x, off.y);
+  }
+
+  function getTier13RailgunMuzzle(boss) {
+    return getTier13LocalRotatedPoint(boss, 16.0, 5.0);
+  }
+
+  function spawnTier13Bullet(x, y, vx, vy, variant = 'orb', extra = {}) {
+    const cfg = variant === 'crescent'
+      ? { sheet: 'effects/Singularity_BlackHole/Warped_Crescent_Shot_Sheet.png', w: 11, h: 7, fps: 14, radius: 4.0, fallbackColor: 'Violet', fallbackShape: 'Diamond' }
+      : variant === 'white_star'
+      ? { sheet: 'effects/Singularity_BlackHole/WhiteHole_Repulse_Star_Sheet.png', w: 9, h: 9, fps: 14, radius: 3.8, fallbackColor: 'Cyan', fallbackShape: 'Orb' }
+      : { sheet: 'effects/Singularity_BlackHole/Void_Singularity_Orb_Sheet.png', w: 11, h: 11, fps: 14, radius: 3.4, fallbackColor: 'Violet', fallbackShape: 'Orb' };
+    const bullet = {
+      glitch: false,
+      sheetPath: cfg.sheet,
+      sheetSize: [cfg.w, cfg.h],
+      sheetFps: cfg.fps,
+      age: 0,
+      path: `bullets/Colors/${cfg.fallbackColor}/${cfg.fallbackShape === 'Needle' ? 'Needle' : 'Orb'}.png`,
+      shape: variant === 'crescent' ? 'Needle' : 'Orb',
+      color: cfg.fallbackColor,
+      size: [cfg.w, cfg.h],
+      collision: { type: 'circle', radius: cfg.radius },
+      scale: extra.scale ?? CONFIG.BULLET_SCALE,
+      x: Math.round(x),
+      y: Math.round(y),
+      vx,
+      vy,
+      angle: Math.atan2(vy, vx),
+      ...extra
+    };
+    state.enemyBullets.push(bullet);
+    return bullet;
+  }
+
+  function initTier13Boss(boss) {
+    boss.coreSpinAngle = 0;
+    boss.coreSpinSpeed = 3.6;
+    boss.gravityWaveTimer = 1.65;
+    boss.meteorSpawnTimer = 0.35;
+    boss.railgunCooldown = 1.85;
+    boss.gravityRailgun = null;
+    boss.singularityCore = null;
+    boss.tier13P3 = null;
+    boss.tier13P3Complete = false;
+    state.meteors = state.meteors.filter(m => m.isPurpleGravity);
+    state.meteorWarnings = [];
+    for (let i = 0; i < 6; i++) {
+      spawnPurpleGravityMeteor({ initialSpreadIdx: i });
+    }
+  }
+
+  function spawnMicroBlackHole(x, y, vx, vy, ownerVariant = 1) {
+    if (state.microBlackHoles.length >= 4) state.microBlackHoles.shift();
+    const mbh = {
+      id: `mbh-${Math.random().toString(36).slice(2)}`,
+      x,
+      y,
+      prevX: x,
+      prevY: y,
+      vx,
+      vy,
+      age: 0,
+      life: 6.8,
+      radius: 19,
+      pullRadius: 165,
+      pullStrength: 76 + ownerVariant * 5,
+      damage: 2
+    };
+    state.microBlackHoles.push(mbh);
+    return mbh;
+  }
+
+  function fireTier13MinionPattern(enemy) {
+    const muzzles = getWorldMuzzles(enemy.x, enemy.y, enemy.spec, false, enemy.scale);
+    const m = muzzles[0] || { x: enemy.x - 24, y: enemy.y };
+    const px = state.player ? state.player.x : 180;
+    const py = state.player ? state.player.y : CONFIG.CANVAS_HEIGHT / 2;
+    const aim = Math.atan2(py - m.y, px - m.x);
+    enemy.castAnimTimer = 0.34;
+    enemy.castAnimMax = 0.34;
+    enemy.castAnimStage = enemy.enemyIdx;
+
+    if (enemy.enemyIdx === 1) {
+      // Stage 1: animated rotating singularity orb with mild gravity pull
+      if (state.enemyBullets.length < 18) {
+        spawnTier13Bullet(m.x, m.y, Math.cos(aim) * 255, Math.sin(aim) * 255, 'orb', {
+          gravityPullRadius: 96,
+          gravityPullStrength: 32,
+          scale: CONFIG.BULLET_SCALE
+        });
+      }
+      spawnExplosion(m.x, m.y, '#d500f9', 7);
+    } else if (enemy.enemyIdx === 2) {
+      // Stage 2: single evolved animated gravity orb (reduced count, slightly stronger mild pull)
+      if (state.enemyBullets.length < 18) {
+        spawnTier13Bullet(m.x, m.y, Math.cos(aim) * 280, Math.sin(aim) * 280, 'orb', {
+          gravityPullRadius: 118,
+          gravityPullStrength: 44,
+          scale: CONFIG.BULLET_SCALE * 1.15
+        });
+      }
+      spawnExplosion(m.x, m.y, '#ff80fc', 9);
+    } else if (enemy.enemyIdx === 3) {
+      // Stage 3: swirling Micro Black Hole (mild pull + 2 damage on contact)
+      const mbhAng = aim + (Math.random() - 0.5) * 0.22;
+      spawnMicroBlackHole(m.x, m.y, Math.cos(mbhAng) * 140, Math.sin(mbhAng) * 140, 3);
+      spawnExplosion(m.x, m.y, '#d500f9', 12);
+    } else {
+      // Stage 4: front-mounted mini Gravity Railgun (1 damage)
+      fireEnemyMiniRailgun(enemy);
+    }
+  }
+
+  function renderTier13MinionAttackFx(e) {
+    if (!e || e.tier !== 13 || e.retreating) return;
+    const m = e.enemyIdx === 4 && e.miniRailgun
+      ? getEnemy04MiniRailgunMuzzle(e)
+      : (getWorldMuzzles(e.x, e.y, e.spec, false, e.scale)[0] || { x: e.x - 24, y: e.y });
+
+    // 1. Pre-fire gravity vortex charge animation
+    if (!e.entering && !e.miniRailgun && e.fireCooldown < 0.60) {
+      const prog = Math.max(0, Math.min(1, 1 - e.fireCooldown / 0.60));
+      ctx.save();
+      ctx.strokeStyle = `rgba(213, 0, 249, ${(0.35 + prog * 0.55).toFixed(2)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(Math.round(m.x), Math.round(m.y), 22 - prog * 14, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const moteCount = e.enemyIdx === 3 ? 4 : 3;
+      const moteBaseR = (1 - prog) * 18 + 3;
+      for (let k = 0; k < moteCount; k++) {
+        const a = (e.age || 0) * 7 + (k * Math.PI * 2) / moteCount;
+        const mx = Math.round(m.x + Math.cos(a) * moteBaseR);
+        const my = Math.round(m.y + Math.sin(a) * moteBaseR);
+        ctx.fillStyle = k % 2 === 0 ? '#ff80fc' : '#ffffff';
+        ctx.fillRect(mx - 2, my - 2, 4, 4);
+      }
+
+      const coreR = 2 + prog * (e.enemyIdx === 3 ? 6 : 4);
+      if (e.enemyIdx === 3) {
+        ctx.fillStyle = '#d500f9';
+        ctx.beginPath();
+        ctx.arc(Math.round(m.x), Math.round(m.y), coreR + 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#090218';
+        ctx.beginPath();
+        ctx.arc(Math.round(m.x), Math.round(m.y), coreR * 0.72, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = e.enemyIdx === 2 ? '#ff80fc' : '#d500f9';
+        ctx.beginPath();
+        ctx.arc(Math.round(m.x), Math.round(m.y), coreR + 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(Math.round(m.x), Math.round(m.y), Math.max(1.5, coreR * 0.55), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 2. Post-shot launch shockwave + rotating 4-point muzzle flare animation
+    if (e.castAnimTimer > 0) {
+      const t = Math.max(0, Math.min(1, 1 - e.castAnimTimer / (e.castAnimMax || 0.34)));
+      const fade = 1 - t;
+      const maxR = (e.castAnimStage || e.enemyIdx) >= 3 ? 34 : 24;
+      ctx.save();
+      ctx.strokeStyle = `rgba(213, 0, 249, ${(fade * 0.85).toFixed(2)})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(Math.round(m.x), Math.round(m.y), 6 + t * maxR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.translate(Math.round(m.x), Math.round(m.y));
+      ctx.rotate((e.age || 0) * 14);
+      const flareArm = (1 - t * 0.65) * ((e.castAnimStage || e.enemyIdx) >= 3 ? 18 : 13);
+      ctx.fillStyle = `rgba(255, 128, 252, ${(fade * 0.92).toFixed(2)})`;
+      for (let k = 0; k < 4; k++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(-2, 0);
+        ctx.lineTo(0, -flareArm);
+        ctx.lineTo(2, 0);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = `rgba(255, 255, 255, ${fade.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(1.5, 4 * fade), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function updateMicroBlackHoles(dt) {
+    const p = state.player;
+    for (let i = state.microBlackHoles.length - 1; i >= 0; i--) {
+      const m = state.microBlackHoles[i];
+      m.prevX = m.x;
+      m.prevY = m.y;
+      m.age += dt;
+      m.life -= dt;
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+      if (m.y < 70 || m.y > CONFIG.CANVAS_HEIGHT - 44) m.vy *= -1;
+      m.y = Math.max(66, Math.min(CONFIG.CANVAS_HEIGHT - 40, m.y));
+
+      if (p && p.hp > 0) {
+        const dx = m.x - p.x;
+        const dy = m.y - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1 && dist < m.pullRadius) {
+          const factor = 1 - dist / m.pullRadius;
+          applyRadialForceToPlayer(m.x, m.y, factor * m.pullStrength, dt);
+        }
+        const hitR = m.radius + p.hitboxRadius;
+        if (distSqPointToSegment(p.x, p.y, m.prevX, m.prevY, m.x, m.y) <= hitR * hitR) {
+          spawnExplosion(m.x, m.y, '#d500f9', 22);
+          spawnExplosion(m.x, m.y, '#ffffff', 8);
+          triggerCameraShake(0.18, 4.5);
+          damagePlayer(m.damage || 2, 'MICRO BLACK HOLE');
+          state.microBlackHoles.splice(i, 1);
+          continue;
+        }
+      }
+
+      if (m.life <= 0 || m.x < -70 || m.x > CONFIG.CANVAS_WIDTH + 90) {
+        if (m.life <= 0) spawnExplosion(m.x, m.y, '#9d3bff', 8);
+        state.microBlackHoles.splice(i, 1);
+      }
+    }
+  }
+
+  function renderMicroBlackHoles() {
+    const p = state.player;
+    for (const m of state.microBlackHoles) {
+      ctx.save();
+      // Subtle gravitational obstruction perimeter when close to player or gently pulsing
+      const nearPlayer = p ? Math.hypot(p.x - m.x, p.y - m.y) < m.pullRadius : false;
+      ctx.strokeStyle = nearPlayer ? 'rgba(213, 0, 249, 0.34)' : 'rgba(157, 59, 255, 0.16)';
+      ctx.lineWidth = nearPlayer ? 1.6 : 1;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.arc(Math.round(m.x), Math.round(m.y), m.pullRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const drawn = drawSpriteSheetFrame('effects/Singularity_BlackHole/Micro_BlackHole_Sheet.png', m.age * 16, 20, 20, m.x, m.y, CONFIG.SHIP_SCALE, -m.age * 3.2, Math.min(1, m.life * 2));
+      if (!drawn) {
+        ctx.fillStyle = '#05020d';
+        ctx.strokeStyle = '#d500f9';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(Math.round(m.x), Math.round(m.y), m.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  function spawnPurpleGravityMeteor(options = {}) {
+    const variant = options.variant || (1 + Math.floor(Math.random() * 10));
+    const relPath = `effects/Singularity_BlackHole/Meteor_Purple_${String(variant).padStart(2, '0')}.png`;
+    const spec = SPRITE_SPECS[relPath] || { size: [32, 32], rockRadius: 7.0, visibleBounds: [8, 8, 16, 16], muzzles: [] };
+    const scale = CONFIG.SHIP_SCALE; // Match ship pixel scale (3x)!
+    const rockRadius = spec.rockRadius || 7.0;
+    const edge = options.fromEdge || (Math.random() < 0.65 ? 'right' : Math.random() < 0.5 ? 'top' : 'bottom');
+    let x, y, vx, vy;
+    if (options.initialSpreadIdx !== undefined) {
+      const idx = options.initialSpreadIdx;
+      x = 980 + (idx % 3) * 110;
+      y = 95 + Math.floor(idx / 3) * 265 + Math.random() * 120;
+      vx = -(210 + Math.random() * 90);
+      vy = (Math.random() - 0.5) * 110;
+    } else if (edge === 'right') {
+      x = CONFIG.CANVAS_WIDTH + 34;
+      y = 75 + Math.random() * (CONFIG.CANVAS_HEIGHT - 150);
+      vx = -(215 + Math.random() * 115);
+      vy = (Math.random() - 0.5) * 120;
+    } else if (edge === 'top') {
+      x = 560 + Math.random() * 640;
+      y = -32;
+      vx = -(155 + Math.random() * 95);
+      vy = 135 + Math.random() * 85;
+    } else {
+      x = 560 + Math.random() * 640;
+      y = CONFIG.CANVAS_HEIGHT + 32;
+      vx = -(155 + Math.random() * 95);
+      vy = -(135 + Math.random() * 85);
+    }
+    const meteor = {
+      isPurpleGravity: true,
+      variant,
+      path: relPath,
+      spec,
+      scale,
+      x,
+      y,
+      prevX: x,
+      prevY: y,
+      vx,
+      vy,
+      age: 0,
+      hasBent: false,
+      bendDelay: 0.45 + Math.random() * 0.40,
+      bendTurnRemaining: 0,
+      bendTargetAngle: null,
+      bendFlashTimer: 0,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() < 0.5 ? -1 : 1) * (1.8 + Math.random() * 2.4),
+      radius: rockRadius * scale
+    };
+    state.meteors.push(meteor);
+    return meteor;
+  }
+
+  function bendPurpleMeteorTowardPlayer(m) {
+    if (!m || m.hasBent) return false;
+    m.hasBent = true;
+    m.bendFlashTimer = 0.45;
+    if (!state.player) return true;
+    const desired = Math.atan2(state.player.y - m.y, state.player.x - m.x);
+    const cur = Math.atan2(m.vy, m.vx);
+    let diff = desired - cur;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const clampedDiff = Math.max(-0.78, Math.min(0.78, diff));
+    m.bendTargetAngle = cur + clampedDiff;
+    m.bendTurnRemaining = 0.22;
+    m.bendTurnTotal = 0.22;
+    // Slight slingshot impulse along the newly deflected course
+    const curSpeed = Math.hypot(m.vx, m.vy) || 240;
+    m.bendTargetSpeed = Math.max(255, Math.min(410, curSpeed * 1.12));
+    return true;
+  }
+
+  function triggerTier13GravityWave(boss) {
+    const core = getTier13BossCorePos(boss);
+    boss.gravityPulseTimer = 0.55;
+    spawnExplosion(core.x, core.y, '#d500f9', 14);
+    for (const m of state.meteors) {
+      if (!m.isPurpleGravity || m.hasBent) continue;
+      if (m.x < CONFIG.CANVAS_WIDTH - 40) {
+        bendPurpleMeteorTowardPlayer(m);
+      }
+    }
+  }
+
+  function updateLinearRailgun(beam, getMuzzleFn, aimOrigin, ownerRotateObj, dt, opts) {
+    beam.timer += dt;
+    beam.age += dt;
+    const p = state.player;
+    if (beam.phase === 'CHARGE') {
+      if (p) {
+        const targetAng = Math.atan2(p.y - aimOrigin.y, p.x - aimOrigin.x);
+        let diff = targetAng - beam.angle;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        const turnRate = opts.turnRate ?? 2.4;
+        beam.angle += Math.max(-turnRate * dt, Math.min(turnRate * dt, diff));
+      }
+      if (ownerRotateObj) ownerRotateObj.rotation = beam.angle + Math.PI / 2;
+      if (beam.timer >= beam.chargeDuration) {
+        const m = getMuzzleFn();
+        beam.phase = 'LOCK_DANGER';
+        beam.timer = 0;
+        beam.ox = m.x;
+        beam.oy = m.y;
+        beam.length = computeRayDistanceToScreenEdge(m.x, m.y, beam.angle) + 80;
+      }
+      return true;
+    }
+    if (beam.phase === 'LOCK_DANGER') {
+      if (ownerRotateObj) ownerRotateObj.rotation = beam.angle + Math.PI / 2;
+      const m = getMuzzleFn();
+      beam.ox = m.x;
+      beam.oy = m.y;
+      if (beam.timer >= beam.lockDuration) {
+        const mFire = getMuzzleFn();
+        beam.phase = 'FIRE';
+        beam.timer = 0;
+        beam.headDist = opts.initialHeadDist ?? 95;
+        beam.hitPlayer = false;
+        triggerCameraShake(opts.shakeDur ?? 0.24, opts.shakeMag ?? 6.0);
+        spawnExplosion(mFire.x, mFire.y, opts.burstColor || '#ff80fc', opts.burstCount ?? 16);
+        if (opts.onFireStart) opts.onFireStart(mFire);
+      }
+      return true;
+    }
+    if (beam.phase === 'FIRE') {
+      if (ownerRotateObj) ownerRotateObj.rotation = beam.angle + Math.PI / 2;
+      const m = getMuzzleFn();
+      beam.ox = m.x;
+      beam.oy = m.y;
+      if (opts.pulseLength > 0) {
+        beam.headDist += (opts.headSpeed ?? 3800) * dt;
+        const segStart = Math.max(0, beam.headDist - opts.pulseLength);
+        const segEnd = Math.min(beam.length, beam.headDist);
+        beam.tailDist = segStart;
+        beam.visEndDist = segEnd;
+        if (p && p.hp > 0 && !beam.hitPlayer && segEnd > segStart + 4) {
+          const cos = Math.cos(beam.angle);
+          const sin = Math.sin(beam.angle);
+          const ax = beam.ox + cos * segStart;
+          const ay = beam.oy + sin * segStart;
+          const bx = beam.ox + cos * segEnd;
+          const by = beam.oy + sin * segEnd;
+          const hitR = (opts.hitHalfThick ?? 24) + p.hitboxRadius;
+          if (distSqPointToSegment(p.x, p.y, ax, ay, bx, by) <= hitR * hitR) {
+            beam.hitPlayer = true;
+            if (opts.onHitPlayer) opts.onHitPlayer(p);
+          }
+        }
+        return segStart < beam.length && beam.timer < beam.fireDuration;
+      }
+      beam.headDist = Math.min(beam.length, beam.headDist + (opts.headSpeed ?? 4600) * dt);
+      const activeWindow = beam.timer <= beam.fireDuration * (opts.activeHitFraction ?? 0.68);
+      if (activeWindow && p && p.hp > 0 && !beam.hitPlayer) {
+        const hx = beam.ox + Math.cos(beam.angle) * beam.headDist;
+        const hy = beam.oy + Math.sin(beam.angle) * beam.headDist;
+        const hitR = (opts.hitHalfThick ?? 20) + p.hitboxRadius;
+        if (distSqPointToSegment(p.x, p.y, beam.ox, beam.oy, hx, hy) <= hitR * hitR) {
+          beam.hitPlayer = true;
+          if (opts.onHitPlayer) opts.onHitPlayer(p);
+        }
+      }
+      return beam.timer < beam.fireDuration;
+    }
+    return false;
+  }
+
+  function renderLinearRailgun(beam, fallbackMuzzle, opts) {
+    if (!beam) return;
+    const muzzle = beam.ox !== undefined ? { x: beam.ox, y: beam.oy } : fallbackMuzzle;
+    const len = beam.length || 1200;
+    const ex = muzzle.x + Math.cos(beam.angle) * len;
+    const ey = muzzle.y + Math.sin(beam.angle) * len;
+    const halfW = opts.corridorHalfW ?? 24;
+    const primaryCol = opts.primaryColor || '#d500f9';
+    const dangerCol = opts.dangerColor || '#ff2a6d';
+    const chargeScaleMult = opts.chargeScaleMult ?? 1.0;
+
+    ctx.save();
+    if (beam.phase === 'CHARGE') {
+      const prog = Math.min(1, beam.timer / beam.chargeDuration);
+      ctx.strokeStyle = opts.sightRgba
+        ? opts.sightRgba(0.25 + prog * 0.45)
+        : `rgba(213, 0, 249, ${(0.25 + prog * 0.45).toFixed(2)})`;
+      ctx.lineWidth = opts.sightWidth ?? 2;
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(muzzle.x, muzzle.y);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (opts.isMagneticWave) {
+        for (let r = 0; r < 2; r++) {
+          const cyc = ((beam.age * 2.4) + r * 0.5) % 1;
+          ctx.strokeStyle = r === 0 ? 'rgba(125, 249, 255, 0.72)' : 'rgba(213, 0, 249, 0.65)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(muzzle.x, muzzle.y, 14 + (1 - cyc) * 28, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else {
+        const drawn = drawSpriteSheetFrame('effects/Singularity_BlackHole/Gravity_Railgun_Charge_Sheet.png', beam.age * 16, 32, 32, muzzle.x, muzzle.y, (1.3 + prog * 1.4) * chargeScaleMult, beam.age * 3.5);
+        if (!drawn) {
+          ctx.fillStyle = primaryCol;
+          ctx.beginPath();
+          ctx.arc(muzzle.x, muzzle.y, (12 + prog * 18) * chargeScaleMult, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    } else if (beam.phase === 'LOCK_DANGER') {
+      const prog = Math.min(1, beam.timer / beam.lockDuration);
+      const blink = Math.floor(beam.age * 24) % 2 === 0;
+      ctx.translate(muzzle.x, muzzle.y);
+      ctx.rotate(beam.angle);
+      ctx.fillStyle = blink
+        ? (opts.corridorFillA || 'rgba(255, 36, 118, 0.24)')
+        : (opts.corridorFillB || 'rgba(213, 0, 249, 0.16)');
+      ctx.fillRect(0, -halfW, len, halfW * 2);
+      const railOff = halfW * (1 - prog * 0.72);
+      ctx.strokeStyle = blink ? '#ffffff' : dangerCol;
+      ctx.lineWidth = halfW < 18 ? 2 : 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -railOff);
+      ctx.lineTo(len, -railOff);
+      ctx.moveTo(0, railOff);
+      ctx.lineTo(len, railOff);
+      ctx.stroke();
+      ctx.strokeStyle = opts.chevronColor || '#ff80fc';
+      ctx.lineWidth = 2;
+      const step = halfW < 18 ? 56 : 72;
+      const chevOffset = (beam.age * 520) % step;
+      const chevSpan = halfW * 0.45;
+      for (let x = chevOffset; x < Math.min(len, 1150); x += step) {
+        ctx.beginPath();
+        if (opts.isMagneticWave) {
+          ctx.arc(x, 0, chevSpan * 1.25, -0.85, 0.85);
+        } else {
+          ctx.moveTo(x - chevSpan, -chevSpan);
+          ctx.lineTo(x + chevSpan * 0.6, 0);
+          ctx.lineTo(x - chevSpan, chevSpan);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      const badgeDist = opts.badgeDist ?? 260;
+      const bx = muzzle.x + Math.cos(beam.angle) * badgeDist;
+      const by = muzzle.y + Math.sin(beam.angle) * badgeDist;
+      ctx.save();
+      ctx.fillStyle = blink ? dangerCol : primaryCol;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bx, by - 20);
+      ctx.lineTo(bx + 16, by + 9);
+      ctx.lineTo(bx - 16, by + 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('!', bx, by + 3);
+      ctx.fillText(opts.badgeLabel || '! DANGER !', bx, by - 25);
+      ctx.restore();
+      if (!opts.isMagneticWave) {
+        drawSpriteSheetFrame('effects/Singularity_BlackHole/Gravity_Railgun_Charge_Sheet.png', beam.age * 20, 32, 32, muzzle.x, muzzle.y, 2.7 * chargeScaleMult, beam.age * 5);
+      }
+    } else if (beam.phase === 'FIRE') {
+      const fade = 1 - Math.min(1, beam.timer / beam.fireDuration);
+      const beamLen = beam.headDist || len;
+      const drawn = drawTiledBeamSheet(opts.beamSheet || 'effects/Singularity_BlackHole/Gravity_Railgun_Beam_Sheet.png', beam.age * 22, 48, 24, muzzle.x, muzzle.y, beam.angle, beamLen, opts.beamScale ?? 2.5, Math.min(1, fade * 1.4));
+      if (!drawn) {
+        ctx.strokeStyle = primaryCol;
+        ctx.lineWidth = (opts.beamScale ?? 2.5) * 15;
+        ctx.beginPath();
+        ctx.moveTo(muzzle.x, muzzle.y);
+        ctx.lineTo(muzzle.x + Math.cos(beam.angle) * beamLen, muzzle.y + Math.sin(beam.angle) * beamLen);
+        ctx.stroke();
+      }
+      if (opts.isMagneticWave) {
+        ctx.save();
+        ctx.translate(muzzle.x, muzzle.y);
+        ctx.rotate(beam.angle);
+        ctx.strokeStyle = `rgba(125, 249, 255, ${(fade * 0.9).toFixed(2)})`;
+        ctx.lineWidth = 2.5;
+        for (let wx = (beam.age * 1600) % 90; wx < beamLen; wx += 90) {
+          ctx.beginPath();
+          ctx.arc(wx, 0, 22, -0.95, 0.95);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      if (beam.timer < 0.16) {
+        const ringR = (14 + beam.timer * 300) * chargeScaleMult;
+        ctx.strokeStyle = opts.flareRgba || `rgba(255, 190, 255, ${(1 - beam.timer / 0.16).toFixed(2)})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(Math.round(muzzle.x), Math.round(muzzle.y), ringR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
+    ctx.restore();
+  }
+
+  function getEnemy04MiniRailgunMuzzle(enemy) {
+    return getTier13LocalRotatedPoint(enemy, 16.0, 8.0);
+  }
+
+  function fireEnemyMiniRailgun(enemy) {
+    if (!enemy || enemy.tier !== 13 || enemy.enemyIdx !== 4) return null;
+    const p = state.player;
+    const muzzle = getEnemy04MiniRailgunMuzzle(enemy);
+    const angle = p ? Math.atan2(p.y - enemy.y, p.x - enemy.x) : Math.PI;
+    enemy.miniRailgun = {
+      phase: 'CHARGE',
+      timer: 0,
+      chargeDuration: 0.52,
+      lockDuration: 0.42,
+      fireDuration: 0.28,
+      angle,
+      length: computeRayDistanceToScreenEdge(muzzle.x, muzzle.y, angle) + 60,
+      headDist: 0,
+      hitPlayer: false,
+      age: 0
+    };
+    return enemy.miniRailgun;
+  }
+
+  function updateEnemyMiniRailgun(enemy, dt) {
+    if (!enemy?.miniRailgun) return;
+    const alive = updateLinearRailgun(enemy.miniRailgun, () => getEnemy04MiniRailgunMuzzle(enemy), enemy, enemy, dt, {
+      turnRate: 2.2,
+      initialHeadDist: 75,
+      headSpeed: 4200,
+      hitHalfThick: 12,
+      shakeDur: 0.14,
+      shakeMag: 3.2,
+      burstColor: '#d500f9',
+      burstCount: 10,
+      onFireStart: () => {
+        enemy.castAnimTimer = 0.32;
+        enemy.castAnimMax = 0.32;
+        enemy.castAnimStage = 4;
+      },
+      onHitPlayer: () => {
+        damagePlayer(CONFIG.MINI_RAILGUN_DAMAGE, 'MINI GRAVITY RAILGUN');
+        if (state.player) spawnExplosion(state.player.x, state.player.y, '#ff80fc', 14);
+      }
+    });
+    if (!alive) {
+      enemy.miniRailgun = null;
+      enemy.fireCooldown = Math.max(enemy.fireCooldown, computeEnemyFireInterval(13, 4));
+    }
+  }
+
+  function renderEnemyMiniRailgun(enemy) {
+    if (!enemy?.miniRailgun) return;
+    renderLinearRailgun(enemy.miniRailgun, getEnemy04MiniRailgunMuzzle(enemy), {
+      corridorHalfW: 14,
+      chargeScaleMult: 0.54,
+      beamScale: 1.4,
+      badgeDist: 175,
+      badgeLabel: '! -1 HP !',
+      primaryColor: '#9d3bff',
+      dangerColor: '#ff3ca8'
+    });
+  }
+
+  function fireTier13GravityRailgun(boss) {
+    if (!boss || boss.tier !== 13 || boss.tier13P3) return null;
+    const p = state.player;
+    const muzzle = getTier13RailgunMuzzle(boss);
+    const angle = p ? Math.atan2(p.y - boss.y, p.x - boss.x) : Math.PI;
+    boss.gravityRailgun = {
+      phase: 'CHARGE', // 'CHARGE' -> 'LOCK_DANGER' -> 'FIRE'
+      timer: 0,
+      chargeDuration: 0.68,
+      lockDuration: 0.52,
+      fireDuration: 0.36,
+      angle,
+      length: computeRayDistanceToScreenEdge(muzzle.x, muzzle.y, angle) + 60,
+      headDist: 0,
+      hitPlayer: false,
+      age: 0
+    };
+    return boss.gravityRailgun;
+  }
+
+  function updateTier13GravityRailgun(boss, dt) {
+    const rg = boss?.gravityRailgun;
+    if (!rg) return;
+    const alive = updateLinearRailgun(rg, () => getTier13RailgunMuzzle(boss), boss, boss, dt, {
+      turnRate: 2.4,
+      initialHeadDist: 110,
+      headSpeed: 4800,
+      hitHalfThick: 20,
+      shakeDur: 0.32,
+      shakeMag: 8.5,
+      burstColor: '#ff80fc',
+      burstCount: 20,
+      onFireStart: (m) => {
+        boss.x = Math.min(CONFIG.CANVAS_WIDTH - 58, boss.x + 14);
+        enforceRightThirdBound(boss);
+        for (const met of state.meteors) {
+          if (!met.isPurpleGravity) continue;
+          const ex = m.x + Math.cos(rg.angle) * rg.length;
+          const ey = m.y + Math.sin(rg.angle) * rg.length;
+          if (distSqPointToSegment(met.x, met.y, m.x, m.y, ex, ey) <= 130 * 130) {
+            met.vx = Math.cos(rg.angle) * 460;
+            met.vy = Math.sin(rg.angle) * 460;
+          }
+        }
+      },
+      onHitPlayer: (p) => {
+        damagePlayer(CONFIG.GRAVITY_RAILGUN_DAMAGE, 'GRAVITY RAILGUN');
+        spawnExplosion(p.x, p.y, '#ff80fc', 24);
+      }
+    });
+    if (!alive) boss.gravityRailgun = null;
+  }
+
+  function renderTier13GravityRailgun(boss) {
+    if (!boss?.gravityRailgun) return;
+    renderLinearRailgun(boss.gravityRailgun, getTier13RailgunMuzzle(boss), {
+      corridorHalfW: 24,
+      chargeScaleMult: 1.0,
+      beamScale: 2.5,
+      badgeDist: 260,
+      badgeLabel: '! DANGER -3 HP !'
+    });
+  }
+
+  function renderTier13BossCoreGlare(boss) {
+    if (!boss || boss.tier !== 13) return;
+    const core = getTier13BossCorePos(boss);
+    const spin = boss.coreSpinAngle || 0;
+    const isBerserk = !!boss.tier13P3;
+    const isWhite = !isBerserk && isTier13WhiteHoleActive(boss);
+    const p2Burst = boss.singularityCore?.phase === 'SPAWNING';
+
+    let haloColor, outerColor, innerColor, diagColor, haloR, armLen, coreR;
+    if (isBerserk) {
+      haloColor = 'rgba(56, 246, 255, 0.44)';
+      outerColor = '#00b8ff';
+      innerColor = '#7df9ff';
+      diagColor = '#d6fcff';
+      haloR = 22;
+      armLen = 38 + Math.sin((boss.age || 0) * 18) * 6;
+      coreR = 6;
+    } else if (isWhite) {
+      haloColor = 'rgba(130, 242, 255, 0.34)';
+      outerColor = '#5ce4ff';
+      innerColor = '#b4f7ff';
+      diagColor = '#e6fdff';
+      haloR = 16;
+      armLen = 26;
+      coreR = 4.5;
+    } else {
+      haloColor = p2Burst ? 'rgba(213, 0, 249, 0.36)' : 'rgba(157, 59, 255, 0.24)';
+      outerColor = '#d500f9';
+      innerColor = '#ff80fc';
+      diagColor = '#e8c4ff';
+      haloR = p2Burst ? 22 : 14;
+      armLen = p2Burst ? 42 : 24;
+      coreR = p2Burst ? 6 : 4;
+    }
+
+    ctx.save();
+    ctx.translate(Math.round(core.x), Math.round(core.y));
+    // Soft glowing core halo
+    ctx.fillStyle = haloColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, haloR, 0, Math.PI * 2);
+    ctx.fill();
+    // Primary rotating 4-point cross glare
+    ctx.rotate(spin);
+    for (let k = 0; k < 4; k++) {
+      ctx.rotate(Math.PI / 2);
+      ctx.fillStyle = outerColor;
+      ctx.beginPath();
+      ctx.moveTo(-4, 0);
+      ctx.lineTo(0, -armLen);
+      ctx.lineTo(4, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = innerColor;
+      ctx.beginPath();
+      ctx.moveTo(-2, 0);
+      ctx.lineTo(0, -armLen * 0.72);
+      ctx.lineTo(2, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Secondary diagonal glint
+    ctx.rotate(Math.PI / 4);
+    const diagLen = armLen * 0.54;
+    for (let k = 0; k < 4; k++) {
+      ctx.rotate(Math.PI / 2);
+      ctx.fillStyle = diagColor;
+      ctx.beginPath();
+      ctx.moveTo(-1.5, 0);
+      ctx.lineTo(0, -diagLen);
+      ctx.lineTo(1.5, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, 0, coreR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function updateTier13Phase1(boss, dt) {
+    const railgunLocked = boss.gravityRailgun && boss.gravityRailgun.phase !== 'CHARGE';
+    if (!railgunLocked) {
+      const moveRate = boss.gravityRailgun ? 0.35 : 1.0;
+      boss.phaseX += dt * 0.85 * moveRate;
+      boss.phaseY += dt * 0.65 * moveRate;
+      boss.x = boss.homeX + Math.sin(boss.phaseX) * 42;
+      boss.y = boss.homeY + Math.sin(boss.phaseY) * 145;
+      enforceRightThirdBound(boss);
+    }
+
+    if (!boss.gravityRailgun) {
+      // Relax rotation smoothly back toward left-facing (-PI/2)
+      let diff = (-Math.PI / 2) - boss.rotation;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      boss.rotation += diff * Math.min(1, dt * 6);
+    }
+
+    // Keep up to 10 random-sized purple meteors active & curve them with gravity!
+    boss.meteorSpawnTimer -= dt;
+    const purpleCount = state.meteors.filter(m => m.isPurpleGravity).length;
+    if (purpleCount < 10 && boss.meteorSpawnTimer <= 0) {
+      spawnPurpleGravityMeteor();
+      boss.meteorSpawnTimer = 0.42;
+    }
+
+    boss.gravityWaveTimer -= dt;
+    if (boss.gravityWaveTimer <= 0) {
+      triggerTier13GravityWave(boss);
+      boss.gravityWaveTimer = 2.35;
+    }
+
+    if (!boss.gravityRailgun) {
+      boss.railgunCooldown -= dt;
+      if (boss.railgunCooldown <= 0) {
+        fireTier13GravityRailgun(boss);
+        boss.railgunCooldown = 4.6;
+      }
+    }
+  }
+
+  function enterTier13Phase2(boss) {
+    boss.phase2Active = true;
+    boss.gravityRailgun = null;
+    state.meteors = state.meteors.filter(m => m.isPurpleGravity);
+    state.meteorWarnings = [];
+    startTier13Phase2Cycle(boss);
+  }
+
+  function startTier13Phase2Cycle(boss) {
+    const cx = 600;
+    const cy = Math.round(CONFIG.CANVAS_HEIGHT / 2);
+    // Keep player just outside the center seed radius if standing dead center during spawn
+    if (state.player) {
+      const dx = state.player.x - cx;
+      const dy = state.player.y - cy;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 110) {
+        const pushAng = dist > 1 ? Math.atan2(dy, dx) : Math.PI;
+        state.player.x = cx + Math.cos(pushAng) * 115;
+        state.player.y = cy + Math.sin(pushAng) * 115;
+        clampPlayerToArena(state.player);
+      }
+    }
+    boss.singularityCore = {
+      x: cx,
+      y: cy,
+      phase: 'SPAWNING', // 'SPAWNING' -> 'BLACK_HOLE' -> 'MORPH_TO_WHITE' -> 'WHITE_HOLE'
+      timer: 0,
+      age: 0,
+      spawnDuration: 1.65,
+      blackDuration: 4.2,
+      morphDuration: 1.0,
+      whiteDuration: 3.6,
+      killRadius: 46, // LETHAL core contact inside 180x180px (3x player hull)
+      shotTimer: 0.45,
+      whiteBurstWave: 0,
+      capturedProjectiles: [],
+      railgunFiredThisCycle: false
+    };
+    boss.coreSpinSpeed = 18.0;
+    spawnExplosion(cx, cy, '#d500f9', 24);
+    triggerCameraShake(0.26, 5.5);
+  }
+
+  function killPlayerBySingularity(core) {
+    const p = state.player;
+    if (!p || p.hp <= 0 || state.debugInvincible || state.singularityDeath) return false;
+    p.hp = 0;
+    p.invulnTimer = 0;
+    p.hitFlashTimer = 0.35;
+    const isWhite = core.phase === 'WHITE_HOLE';
+    state.singularityDeath = {
+      kind: isWhite ? 'WHITE_HOLE' : 'BLACK_HOLE',
+      cx: core.x,
+      cy: core.y,
+      startX: p.x,
+      startY: p.y,
+      curX: p.x,
+      curY: p.y,
+      startAngle: Math.atan2(p.y - core.y, p.x - core.x),
+      startDist: Math.max(24, Math.hypot(p.x - core.x, p.y - core.y)),
+      elapsed: 0,
+      duration: isWhite ? 0.85 : 1.25,
+      shipSpin: Math.PI / 2,
+      stretchRadial: 1,
+      squashPerp: 1,
+      scaleMult: 1,
+      gulped: false,
+      sparkTimer: 0,
+      trailTimer: 0,
+      afterimages: []
+    };
+    spawnExplosion(p.x, p.y, isWhite ? '#7df9ff' : '#d500f9', 24);
+    triggerCameraShake(0.45, 7.5);
+    updateHudBadges();
+    return true;
+  }
+
+  function updateSingularityDeath(dt) {
+    const d = state.singularityDeath;
+    const p = state.player;
+    if (!d || !p) return;
+    d.elapsed += dt;
+    if (state.boss?.singularityCore) {
+      state.boss.singularityCore.age += dt * 2.2;
+    }
+    if (state.boss) {
+      state.boss.coreSpinAngle = (state.boss.coreSpinAngle || 0) + 18 * dt;
+    }
+    if (state.cameraShake.timer > 0) {
+      state.cameraShake.timer = Math.max(0, state.cameraShake.timer - dt);
+    }
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const pt = state.particles[i];
+      if (d.kind === 'BLACK_HOLE') {
+        const dx = d.cx - pt.x;
+        const dy = d.cy - pt.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 6) {
+          pt.vx += (dx / dist) * 520 * dt;
+          pt.vy += (dy / dist) * 520 * dt;
+        }
+      }
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+      pt.life -= dt;
+      if (pt.life <= 0) state.particles.splice(i, 1);
+    }
+
+    const u = Math.min(1, d.elapsed / d.duration);
+    if (d.kind === 'BLACK_HOLE') {
+      const pullU = Math.min(1, u / 0.82);
+      const dist = d.startDist * Math.pow(Math.max(0, 1 - pullU), 1.35);
+      const orbitAngle = d.startAngle - (pullU * pullU * 11.5 + pullU * 3.5);
+      d.curX = d.cx + Math.cos(orbitAngle) * dist;
+      d.curY = d.cy + Math.sin(orbitAngle) * dist;
+      d.shipSpin = Math.PI / 2 - pullU * 18;
+      d.stretchRadial = 1 + pullU * 2.3;
+      d.squashPerp = Math.max(0.16, 1 - pullU * 0.84);
+      d.scaleMult = Math.max(0.05, 1 - Math.pow(pullU, 1.75));
+
+      for (const af of d.afterimages) {
+        af.alpha = Math.max(0, af.alpha - dt * 2.2);
+      }
+      d.trailTimer -= dt;
+      if (pullU < 0.96 && d.trailTimer <= 0) {
+        d.trailTimer = 0.035;
+        d.afterimages.unshift({
+          x: d.curX,
+          y: d.curY,
+          toCenter: Math.atan2(d.cy - d.curY, d.cx - d.curX),
+          shipSpin: d.shipSpin,
+          stretchRadial: d.stretchRadial,
+          squashPerp: d.squashPerp,
+          scaleMult: d.scaleMult,
+          alpha: 0.65
+        });
+        if (d.afterimages.length > 10) d.afterimages.length = 10;
+      }
+
+      d.sparkTimer -= dt;
+      if (pullU < 0.95 && d.sparkTimer <= 0) {
+        d.sparkTimer = 0.04;
+        const toC = Math.atan2(d.cy - d.curY, d.cx - d.curX);
+        state.particles.push({
+          x: d.curX + (Math.random() - 0.5) * 18,
+          y: d.curY + (Math.random() - 0.5) * 18,
+          vx: Math.cos(toC) * 260,
+          vy: Math.sin(toC) * 260,
+          size: Math.random() < 0.45 ? 4 : 3,
+          color: Math.random() < 0.5 ? '#ff80fc' : '#d500f9',
+          life: 0.25 + Math.random() * 0.2
+        });
+      }
+
+      if (u >= 0.82 && !d.gulped) {
+        d.gulped = true;
+        spawnExplosion(d.cx, d.cy, '#d500f9', 30);
+        spawnExplosion(d.cx, d.cy, '#ffffff', 14);
+        triggerCameraShake(0.32, 9.5);
+      }
+    } else {
+      // WHITE_HOLE rapid outward expulsion & whiteout disintegration
+      const blast = Math.pow(u, 0.72) * 145;
+      d.curX = d.startX + Math.cos(d.startAngle) * blast;
+      d.curY = d.startY + Math.sin(d.startAngle) * blast;
+      d.shipSpin = Math.PI / 2 + u * 10;
+      d.stretchRadial = 1 + u * 1.4;
+      d.squashPerp = Math.max(0.25, 1 - u * 0.75);
+      d.scaleMult = Math.max(0, 1 - u * 1.4);
+      d.sparkTimer -= dt;
+      if (d.sparkTimer <= 0) {
+        d.sparkTimer = 0.045;
+        state.particles.push({
+          x: d.curX,
+          y: d.curY,
+          vx: Math.cos(d.startAngle + (Math.random() - 0.5) * 0.8) * 360,
+          vy: Math.sin(d.startAngle + (Math.random() - 0.5) * 0.8) * 360,
+          size: 4,
+          color: Math.random() < 0.5 ? '#7df9ff' : '#ffffff',
+          life: 0.25
+        });
+      }
+    }
+
+    if (d.elapsed >= d.duration) {
+      state.singularityDeath = null;
+      triggerGameOver();
+    }
+  }
+
+  function renderSingularityDeath() {
+    const d = state.singularityDeath;
+    const p = state.player;
+    if (!d || !p) return;
+    const u = Math.min(1, d.elapsed / d.duration);
+    const shipImg = assets.images.get(p.path);
+    const [pw, ph] = p.spec.size;
+    const dw = Math.round(pw * p.scale);
+    const dh = Math.round(ph * p.scale);
+
+    ctx.save();
+    if (d.kind === 'BLACK_HOLE') {
+      // Contracting purple/magenta distortion rings pulling into event horizon
+      for (let rIdx = 0; rIdx < 3; rIdx++) {
+        const cyc = ((d.elapsed * 2.2) + rIdx / 3) % 1;
+        const r = 135 - cyc * 112;
+        ctx.strokeStyle = rIdx === 0
+          ? `rgba(255, 128, 252, ${(cyc * 0.72).toFixed(2)})`
+          : `rgba(213, 0, 249, ${(cyc * 0.55).toFixed(2)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(d.cx, d.cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Violet stretched spiral afterimage trails
+      for (const af of d.afterimages) {
+        if (af.alpha <= 0.02) continue;
+        ctx.save();
+        ctx.globalAlpha = af.alpha * 0.55;
+        ctx.translate(Math.round(af.x), Math.round(af.y));
+        ctx.rotate(af.toCenter);
+        ctx.scale(af.stretchRadial * af.scaleMult, af.squashPerp * af.scaleMult);
+        ctx.rotate(af.shipSpin - af.toCenter);
+        if (shipImg) {
+          ctx.drawImage(shipImg, -Math.round(dw / 2), -Math.round(dh / 2), dw, dh);
+        } else {
+          ctx.fillStyle = '#d500f9';
+          ctx.fillRect(-10, -10, 20, 20);
+        }
+        ctx.restore();
+      }
+
+      if (u < 0.84) {
+        const toCenter = Math.atan2(d.cy - d.curY, d.cx - d.curX);
+        // Glowing tidal gravitational filament stretching from ship into black hole center
+        ctx.strokeStyle = 'rgba(255, 128, 252, 0.78)';
+        ctx.lineWidth = Math.max(1.5, 4 * (1 - u));
+        ctx.beginPath();
+        ctx.moveTo(d.curX, d.curY);
+        ctx.lineTo(d.cx, d.cy);
+        ctx.stroke();
+
+        // Spaghettified spiraling player hull
+        ctx.save();
+        ctx.translate(Math.round(d.curX), Math.round(d.curY));
+        ctx.rotate(toCenter);
+        ctx.scale((d.stretchRadial || 1) * (d.scaleMult || 1), (d.squashPerp || 1) * (d.scaleMult || 1));
+        ctx.rotate((d.shipSpin || 0) - toCenter);
+        if (shipImg) {
+          ctx.drawImage(shipImg, -Math.round(dw / 2), -Math.round(dh / 2), dw, dh);
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-12, -12, 24, 24);
+        }
+        ctx.restore();
+      }
+
+      if (d.gulped) {
+        const gulpU = Math.min(1, (u - 0.82) / 0.18);
+        const flareR = Math.max(4, (1 - gulpU) * 72);
+        ctx.fillStyle = `rgba(255, 255, 255, ${((1 - gulpU) * 0.92).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(d.cx, d.cy, flareR * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(213, 0, 249, ${(1 - gulpU * 0.6).toFixed(2)})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(d.cx, d.cy, flareR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else {
+      // WHITE_HOLE shattering cyan/white disintegration burst
+      ctx.strokeStyle = `rgba(125, 249, 255, ${(1 - u).toFixed(2)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(d.cx, d.cy);
+      ctx.lineTo(d.curX, d.curY);
+      ctx.stroke();
+
+      if (d.scaleMult > 0.02) {
+        const toCenter = Math.atan2(d.cy - d.curY, d.cx - d.curX);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - u * 1.15);
+        ctx.translate(Math.round(d.curX), Math.round(d.curY));
+        ctx.rotate(toCenter);
+        ctx.scale(d.stretchRadial * d.scaleMult, d.squashPerp * d.scaleMult);
+        ctx.rotate(d.shipSpin - toCenter);
+        if (shipImg) {
+          ctx.drawImage(shipImg, -Math.round(dw / 2), -Math.round(dh / 2), dw, dh);
+        }
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+
+  function updateTier13Phase2(boss, dt) {
+    const railgunLocked = boss.gravityRailgun && boss.gravityRailgun.phase !== 'CHARGE';
+    if (!railgunLocked) {
+      boss.phaseX += dt * 0.72;
+      boss.phaseY += dt * 0.55;
+      boss.x = boss.homeX + Math.sin(boss.phaseX) * 32;
+      boss.y = boss.homeY + Math.sin(boss.phaseY) * 135;
+      enforceRightThirdBound(boss);
+    }
+
+    if (!boss.singularityCore) {
+      startTier13Phase2Cycle(boss);
+    }
+    const core = boss.singularityCore;
+    core.timer += dt;
+    core.age += dt;
+    const p = state.player;
+
+    if (core.phase === 'SPAWNING') {
+      boss.coreSpinSpeed = 18.0;
+      if (!boss.gravityRailgun) {
+        const ang = Math.atan2(core.y - boss.y, core.x - boss.x);
+        boss.rotation = ang + Math.PI / 2;
+      }
+      const prog = Math.min(1, core.timer / core.spawnDuration);
+      if (prog >= 0.80 && p && p.hp > 0) {
+        if (Math.hypot(p.x - core.x, p.y - core.y) <= core.killRadius + p.hitboxRadius) {
+          if (killPlayerBySingularity(core)) return;
+        }
+      }
+      if (core.timer >= core.spawnDuration) {
+        core.phase = 'BLACK_HOLE';
+        core.timer = 0;
+        boss.coreSpinSpeed = 8.0;
+        spawnExplosion(core.x, core.y, '#d500f9', 26);
+        triggerCameraShake(0.22, 5.0);
+      }
+    } else if (core.phase === 'BLACK_HOLE') {
+      if (p && p.hp > 0) {
+        const dist = Math.hypot(p.x - core.x, p.y - core.y);
+        const pull = 165 + (1 - Math.min(1, dist / 620)) * 145;
+        applyRadialForceToPlayer(core.x, core.y, pull, dt);
+        if (Math.hypot(p.x - core.x, p.y - core.y) <= core.killRadius + p.hitboxRadius) {
+          if (killPlayerBySingularity(core)) return;
+        }
+      }
+      // Spawn outer violet orbs & meteors spiraling into the black hole's accretion ring
+      core.shotTimer -= dt;
+      if (core.shotTimer <= 0 && core.capturedProjectiles.length < 24) {
+        core.shotTimer = 0.24;
+        const ang = Math.random() * Math.PI * 2;
+        const startR = 520 + Math.random() * 140;
+        const x = core.x + Math.cos(ang) * startR;
+        const y = Math.max(70, Math.min(CONFIG.CANVAS_HEIGHT - 60, core.y + Math.sin(ang) * 340));
+        core.capturedProjectiles.push({
+          angle: Math.atan2(y - core.y, x - core.x),
+          dist: Math.hypot(x - core.x, y - core.y),
+          angVel: 1.9 + Math.random() * 0.9,
+          inwardSpeed: 290 + Math.random() * 90,
+          variant: Math.random() < 0.28 ? 'crescent' : 'orb'
+        });
+      }
+      for (const cp of core.capturedProjectiles) {
+        cp.angle += cp.angVel * dt;
+        if (cp.dist > 82) {
+          cp.dist = Math.max(78, cp.dist - cp.inwardSpeed * dt);
+        }
+      }
+      if (!core.railgunFiredThisCycle && core.timer >= 1.8 && !boss.gravityRailgun) {
+        core.railgunFiredThisCycle = true;
+        fireTier13GravityRailgun(boss);
+      }
+      if (core.timer >= core.blackDuration) {
+        core.phase = 'MORPH_TO_WHITE';
+        core.timer = 0;
+        boss.coreSpinSpeed = 20.0;
+        triggerCameraShake(0.24, 6.0);
+      }
+    } else if (core.phase === 'MORPH_TO_WHITE') {
+      const prog = Math.min(1, core.timer / core.morphDuration);
+      if (p && p.hp > 0) {
+        const dist = Math.hypot(p.x - core.x, p.y - core.y);
+        // Smooth gravity inversion cross-fade through center flash
+        const force = prog < 0.45 ? 110 * (1 - prog / 0.45) : -140 * ((prog - 0.45) / 0.55);
+        applyRadialForceToPlayer(core.x, core.y, force, dt);
+        if (dist <= core.killRadius + p.hitboxRadius) {
+          if (killPlayerBySingularity(core)) return;
+        }
+      }
+      for (const cp of core.capturedProjectiles) {
+        cp.angle += cp.angVel * (1 + prog * 1.6) * dt;
+        cp.dist = Math.max(38, cp.dist - 65 * dt);
+      }
+      if (core.timer >= core.morphDuration) {
+        core.phase = 'WHITE_HOLE';
+        core.timer = 0;
+        core.whiteBurstWave = 0;
+        core.shotTimer = 0.08;
+        boss.coreSpinSpeed = 7.5;
+        triggerCameraShake(0.32, 8.0);
+        spawnExplosion(core.x, core.y, '#58f0ff', 30);
+        // Eject all captured accretion projectiles outward as high-velocity star bursts
+        for (const cp of core.capturedProjectiles) {
+          const sx = core.x + Math.cos(cp.angle) * 56;
+          const sy = core.y + Math.sin(cp.angle) * 56;
+          spawnTier13Bullet(sx, sy, Math.cos(cp.angle) * 320, Math.sin(cp.angle) * 320, 'white_star');
+        }
+        core.capturedProjectiles = [];
+      }
+    } else if (core.phase === 'WHITE_HOLE') {
+      if (p && p.hp > 0) {
+        const dist = Math.hypot(p.x - core.x, p.y - core.y);
+        const push = 185 + (1 - Math.min(1, dist / 620)) * 165;
+        applyRadialForceToPlayer(core.x, core.y, -push, dt);
+        if (Math.hypot(p.x - core.x, p.y - core.y) <= core.killRadius + p.hitboxRadius) {
+          if (killPlayerBySingularity(core)) return;
+        }
+      }
+      core.shotTimer -= dt;
+      if (core.shotTimer <= 0 && core.whiteBurstWave < 4) {
+        const count = 14;
+        const rotOff = core.whiteBurstWave * (Math.PI / count);
+        for (let k = 0; k < count; k++) {
+          const ang = rotOff + (k * Math.PI * 2) / count;
+          spawnTier13Bullet(core.x + Math.cos(ang) * 52, core.y + Math.sin(ang) * 52, Math.cos(ang) * 310, Math.sin(ang) * 310, 'white_star');
+        }
+        core.whiteBurstWave += 1;
+        core.shotTimer = 0.78;
+      }
+      if (core.timer >= core.whiteDuration) {
+        startTier13Phase2Cycle(boss);
+      }
+    }
+  }
+
+  function renderTier13SingularityCore(boss) {
+    const core = boss?.singularityCore;
+    if (!core || boss.tier13P3) return;
+    ctx.save();
+    // During spawn, draw energy tether streams arcing from Boss spinning core into center seed
+    if (core.phase === 'SPAWNING') {
+      const bCore = getTier13BossCorePos(boss);
+      const prog = Math.min(1, core.timer / core.spawnDuration);
+      ctx.strokeStyle = `rgba(213, 0, 249, ${(0.40 + prog * 0.5).toFixed(2)})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(bCore.x, bCore.y);
+      const midX = (bCore.x + core.x) / 2;
+      const midY = (bCore.y + core.y) / 2 + Math.sin(core.age * 16) * 28;
+      ctx.quadraticCurveTo(midX, midY, core.x, core.y);
+      ctx.stroke();
+
+      // 4 rotating collapsing vortex ribbons drawing inward toward center
+      for (let arm = 0; arm < 4; arm++) {
+        const aBase = -core.age * 3.8 + (arm * Math.PI) / 2;
+        ctx.strokeStyle = arm % 2 === 0 ? 'rgba(213, 0, 249, 0.58)' : 'rgba(255, 128, 252, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let s = 0; s <= 12; s++) {
+          const t = s / 12;
+          const r = (145 * (1 - prog * 0.45)) * (1 - t * 0.78);
+          const a = aBase + t * 2.1;
+          const sx = core.x + Math.cos(a) * r;
+          const sy = core.y + Math.sin(a) * r;
+          if (s === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+      }
+
+      // Gradual emergence growth up to full 180x180px (scale = 3.0)
+      const frame = Math.min(11, Math.floor(prog * 12));
+      const growScale = CONFIG.SHIP_SCALE * (0.28 + 0.72 * prog);
+      ctx.strokeStyle = prog >= 0.80 ? 'rgba(255, 60, 168, 0.78)' : 'rgba(213, 0, 249, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.killRadius * growScale / CONFIG.SHIP_SCALE, 0, Math.PI * 2);
+      ctx.stroke();
+      const drawn = drawSpriteSheetFrame('effects/Singularity_BlackHole/BlackHole_Spawn_Sheet.png', frame, 60, 60, core.x, core.y, growScale, -core.age * 2.4, 0.35 + 0.65 * prog);
+      if (!drawn) {
+        ctx.fillStyle = '#05020d';
+        ctx.beginPath();
+        ctx.arc(core.x, core.y, core.killRadius * prog, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Orbiting captured accretion projectiles during BLACK_HOLE / MORPH_TO_WHITE
+    if (core.capturedProjectiles.length > 0) {
+      const morphing = core.phase === 'MORPH_TO_WHITE';
+      for (const cp of core.capturedProjectiles) {
+        const px = core.x + Math.cos(cp.angle) * cp.dist;
+        const py = core.y + Math.sin(cp.angle) * cp.dist;
+        const sheet = morphing
+          ? 'effects/Singularity_BlackHole/WhiteHole_Repulse_Star_Sheet.png'
+          : cp.variant === 'crescent'
+          ? 'effects/Singularity_BlackHole/Warped_Crescent_Shot_Sheet.png'
+          : 'effects/Singularity_BlackHole/Void_Singularity_Orb_Sheet.png';
+        const w = morphing ? 9 : 11;
+        const h = morphing ? 9 : cp.variant === 'crescent' ? 7 : 11;
+        drawSpriteSheetFrame(sheet, core.age * 14, w, h, px, py, CONFIG.BULLET_SCALE, cp.angle);
+      }
+    }
+
+    // Dynamic surrounding spiral streams / outward repulsion rays per phase!
+    const isWhite = core.phase === 'WHITE_HOLE';
+    const isMorph = core.phase === 'MORPH_TO_WHITE';
+    const morphProg = isMorph ? Math.min(1, core.timer / core.morphDuration) : 0;
+
+    if (!isMorph && !isWhite) {
+      // BLACK_HOLE: 6 animated inward-spiraling accretion suction arms + 3 collapsing rings
+      for (let arm = 0; arm < 6; arm++) {
+        const baseA = -core.age * 2.6 + (arm * Math.PI) / 3;
+        ctx.strokeStyle = arm % 2 === 0 ? 'rgba(213, 0, 249, 0.42)' : 'rgba(255, 128, 252, 0.30)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let s = 0; s <= 14; s++) {
+          const t = s / 14;
+          const r = 168 - t * 124;
+          const a = baseA + t * 2.45;
+          const sx = core.x + Math.cos(a) * r;
+          const sy = core.y + Math.sin(a) * r;
+          if (s === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+      }
+      for (let rIdx = 0; rIdx < 3; rIdx++) {
+        const cyc = ((core.age * 1.25) + rIdx / 3) % 1;
+        const r = 215 - cyc * 165;
+        ctx.strokeStyle = `rgba(213, 0, 249, ${(cyc * 0.42).toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(core.x, core.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (isWhite) {
+      // WHITE_HOLE: 8 outward-streaming repulsion flare rays + 3 expanding shockwave rings
+      for (let ray = 0; ray < 8; ray++) {
+        const a = core.age * 2.8 + (ray * Math.PI) / 4;
+        const innerR = 52;
+        const outerR = 135 + Math.sin(core.age * 9 + ray) * 24;
+        ctx.strokeStyle = ray % 2 === 0 ? 'rgba(255, 255, 255, 0.45)' : 'rgba(88, 240, 255, 0.36)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(core.x + Math.cos(a) * innerR, core.y + Math.sin(a) * innerR);
+        ctx.lineTo(core.x + Math.cos(a) * outerR, core.y + Math.sin(a) * outerR);
+        ctx.stroke();
+      }
+      for (let rIdx = 0; rIdx < 3; rIdx++) {
+        const cyc = ((core.age * 1.35) + rIdx / 3) % 1;
+        const r = 52 + cyc * 175;
+        ctx.strokeStyle = `rgba(88, 240, 255, ${((1 - cyc) * 0.48).toFixed(2)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(core.x, core.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    let sheetPath = 'effects/Singularity_BlackHole/BlackHole_Core_Vortex_Sheet.png';
+    let frameIdx = core.age * 16;
+    let rotAngle = -core.age * 2.8;
+    let drawScale = CONFIG.SHIP_SCALE;
+    if (isMorph) {
+      sheetPath = 'effects/Singularity_BlackHole/Black_To_White_Morph_Sheet.png';
+      frameIdx = Math.min(11, Math.floor(morphProg * 12));
+      rotAngle = morphProg < 0.45 ? -core.age * 6.0 : core.age * 4.5;
+      drawScale = morphProg < 0.45
+        ? CONFIG.SHIP_SCALE * (1 - morphProg * 0.9)
+        : CONFIG.SHIP_SCALE * (0.62 + (morphProg - 0.45) * 0.69);
+    } else if (isWhite) {
+      sheetPath = 'effects/Singularity_BlackHole/WhiteHole_Core_Burst_Sheet.png';
+      frameIdx = core.age * 16;
+      rotAngle = core.age * 3.2;
+      drawScale = CONFIG.SHIP_SCALE * (0.98 + Math.sin(core.age * 12) * 0.04);
+    }
+    const drawn = drawSpriteSheetFrame(sheetPath, frameIdx, 60, 60, core.x, core.y, drawScale, rotAngle);
+    if (!drawn) {
+      ctx.fillStyle = isWhite ? '#ffffff' : '#05020d';
+      ctx.strokeStyle = isWhite ? '#58f0ff' : '#d500f9';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, core.killRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Morph inversion blinding cross-flare & shockwave burst
+    if (isMorph && morphProg >= 0.38 && morphProg <= 0.68) {
+      const pFlare = 1 - Math.abs(morphProg - 0.52) / 0.16;
+      const armLen = 65 + Math.max(0, pFlare) * 125;
+      ctx.save();
+      ctx.translate(core.x, core.y);
+      ctx.rotate(core.age * 3.5);
+      ctx.fillStyle = `rgba(232, 252, 255, ${(Math.max(0, pFlare) * 0.85).toFixed(2)})`;
+      for (let k = 0; k < 4; k++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(-6, 0);
+        ctx.lineTo(0, -armLen);
+        ctx.lineTo(6, 0);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    } else if (isMorph && morphProg > 0.55) {
+      const burstProg = (morphProg - 0.55) / 0.45;
+      ctx.strokeStyle = `rgba(166, 251, 255, ${((1 - burstProg) * 0.85).toFixed(2)})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, 40 + burstProg * 185, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Crisp lethal boundary ring hint inside the core so players respect touching instant death
+    ctx.strokeStyle = isWhite ? 'rgba(88, 240, 255, 0.55)' : 'rgba(255, 60, 168, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(core.x, core.y, core.killRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function enterTier13Phase3(boss) {
+    if (!boss || boss.tier !== 13 || boss.tier13P3) return;
+    boss.entering = false;
+    boss.phase2Active = true;
+    boss.singularityCore = null;
+    boss.gravityRailgun = null;
+    state.meteors = [];
+    state.meteorWarnings = [];
+    state.microBlackHoles = [];
+    state.enemyBullets = [];
+    const cx = Math.round(CONFIG.CANVAS_WIDTH / 2);
+    const cy = Math.round(CONFIG.CANVAS_HEIGHT / 2);
+    // Keep the Berserk sky-blue Boss hovering menacingly on the right while Neutron Star collapses at center
+    boss.x = boss.homeX + 18;
+    boss.y = boss.homeY;
+    boss.prevX = boss.x;
+    boss.prevY = boss.y;
+    boss.rotation = -Math.PI / 2;
+    boss.coreSpinSpeed = 24.0;
+    boss.hp = 1;
+    // Clear player safely outside center Neutron Star radius when full-map movement unlocks
+    if (state.player) {
+      const dx = state.player.x - cx;
+      const dy = state.player.y - cy;
+      if (Math.hypot(dx, dy) < 130) {
+        state.player.x = cx - 220;
+        state.player.y = cy;
+      }
+      clampPlayerToArena(state.player);
+    }
+    boss.tier13P3 = {
+      x: cx,
+      y: cy,
+      berserk: true,
+      elapsed: 0,
+      remaining: CONFIG.TIER13_P3_DURATION,
+      duration: CONFIG.TIER13_P3_DURATION,
+      spinAngle: 0,
+      spinRate: 20.0,
+      laserTimer: 0.45,
+      magneticWaveTimer: 1.6,
+      magneticWave: null,
+      lightBeams: [],
+      sparkTimer: 0,
+      ending: false,
+      endingElapsed: 0,
+      endingDuration: 2.05,
+      endingBoomStep: 0,
+      supernovaDetonated: false,
+      bossObliterated: false,
+      bossObliterateStart: 0,
+      bossShards: []
+    };
+    spawnExplosion(cx, cy, '#7df9ff', 36);
+    spawnExplosion(boss.x, boss.y, '#38f6ff', 30);
+    triggerCameraShake(0.4, 7.5);
+    state.floatingTexts.push({
+      text: 'FINAL PHASE · BERSERK OVERDRIVE — NEUTRON STAR!',
+      x: cx,
+      y: 224,
+      color: '#5ceeff',
+      timer: 2.2
+    });
+    updateHudBadges();
+  }
+
+  function startTier13Phase3Ending(boss) {
+    const p3 = boss?.tier13P3;
+    if (!p3 || p3.ending) return;
+    p3.ending = true;
+    p3.endingElapsed = 0;
+    p3.endingDuration = 2.05;
+    p3.endingBoomStep = 0;
+    p3.supernovaDetonated = false;
+    p3.bossObliterated = false;
+    p3.bossObliterateStart = 0;
+    p3.bossShards = [];
+    p3.magneticWave = null;
+    p3.lightBeams = [];
+    state.enemyBullets = [];
+    spawnExplosion(p3.x, p3.y, '#ffffff', 36);
+    spawnExplosion(boss.x, boss.y, '#38f6ff', 32);
+    triggerCameraShake(0.55, 8.5);
+    state.floatingTexts.push({
+      text: 'CRITICAL COLLAPSE — SUPERNOVA!',
+      x: p3.x,
+      y: 224,
+      color: '#ffffff',
+      timer: 1.2
+    });
+  }
+
+  function finishTier13Phase3(boss) {
+    if (!boss || !boss.tier13P3) return;
+    const p3 = boss.tier13P3;
+    spawnExplosion(p3.x, p3.y, '#7df9ff', 42);
+    spawnExplosion(p3.x, p3.y, '#d500f9', 36);
+    spawnExplosion(boss.x, boss.y, '#38f6ff', 36);
+    triggerCameraShake(0.45, 8.0);
+    boss.tier13P3Complete = true;
+    boss.tier13P3 = null;
+    boss.hp = 0;
+    handleBossDefeated();
+    state.supernovaWhiteout = {
+      elapsed: 0,
+      hold: 0.25,
+      fade: 0.95,
+      duration: 1.20
+    };
+  }
+
+  function spawnPulsarLightLaser(p3, angle, isPrimary = false) {
+    const rimX = p3.x + Math.cos(angle) * 44;
+    const rimY = p3.y + Math.sin(angle) * 44;
+    const wave = {
+      phase: 'CHARGE', // 'CHARGE' -> 'LOCK_DANGER' -> 'FIRE'
+      stage: 1,
+      timer: 0,
+      elapsed: 0,
+      age: 0,
+      chargeDuration: 0.34,
+      lockDuration: 0.38,
+      fireDuration: 0.65,
+      angle,
+      trackPlayer: isPrimary,
+      length: computeRayDistanceToScreenEdge(rimX, rimY, angle) + 80,
+      headDist: 0,
+      tailDist: 0,
+      visEndDist: 0,
+      hitPlayer: false
+    };
+    p3.lightBeams.push(wave);
+    return wave;
+  }
+
+  function fireTier13MagneticWave(boss) {
+    const p3 = boss?.tier13P3;
+    if (!p3 || p3.ending) return null;
+    const p = state.player;
+    const angle = p ? Math.atan2(p.y - p3.y, p.x - p3.x) : Math.PI;
+    const wave = spawnPulsarLightLaser(p3, angle, true);
+    p3.magneticWave = wave;
+    return wave;
+  }
+
+  function updateTier13Phase3(boss, dt) {
+    const p3 = boss.tier13P3;
+    if (!p3) return;
+    if (p3.ending) {
+      p3.endingElapsed += dt;
+      p3.spinAngle += (34 + p3.endingElapsed * 42) * dt;
+      if (p3.endingElapsed < 0.72) {
+        boss.x = boss.homeX + 18 + Math.sin(p3.endingElapsed * 55) * (5 + p3.endingElapsed * 6);
+        const step = Math.floor(p3.endingElapsed / 0.13);
+        if (step > p3.endingBoomStep) {
+          p3.endingBoomStep = step;
+          const a = Math.random() * Math.PI * 2;
+          const r = 18 + Math.random() * 76;
+          spawnExplosion(p3.x + Math.cos(a) * r, p3.y + Math.sin(a) * r, step % 2 === 0 ? '#ffffff' : '#7df9ff', 18);
+          spawnExplosion(boss.x + (Math.random() - 0.5) * 60, boss.y + (Math.random() - 0.5) * 80, '#7df9ff', 14);
+        }
+      } else {
+        if (!p3.supernovaDetonated) {
+          p3.supernovaDetonated = true;
+          triggerCameraShake(0.85, 13.5);
+          for (let i = 0; i < 90; i++) {
+            const ang = (i / 90) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
+            const spd = 240 + Math.random() * 680;
+            state.particles.push({
+              x: p3.x,
+              y: p3.y,
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd,
+              size: i % 3 === 0 ? 6 : 4,
+              color: i % 3 === 0 ? '#ffffff' : (i % 2 === 0 ? '#aef9ff' : '#38f6ff'),
+              life: 0.45 + Math.random() * 0.4
+            });
+          }
+        }
+        const blastProg = Math.min(1, (p3.endingElapsed - 0.72) / 0.85);
+        const blastR = 48 + Math.pow(blastProg, 1.15) * 1450;
+        const bossDist = Math.hypot(boss.x - p3.x, boss.y - p3.y);
+        if (!p3.bossObliterated && blastR >= bossDist - 55) {
+          p3.bossObliterated = true;
+          p3.bossObliterateStart = p3.endingElapsed;
+          p3.bossShards = [];
+          triggerCameraShake(0.65, 12.0);
+          const shardColors = ['#ffffff', '#ccfaff', '#7df9ff', '#38f6ff'];
+          for (let i = 0; i < 32; i++) {
+            p3.bossShards.push({
+              x: boss.x + (Math.random() - 0.5) * 95,
+              y: boss.y + (Math.random() - 0.5) * 135,
+              vx: 420 + Math.random() * 580,
+              vy: (Math.random() - 0.5) * 300,
+              w: 6 + Math.random() * 14,
+              h: 4 + Math.random() * 8,
+              color: shardColors[i % 4],
+              age: 0,
+              life: 0.65 + Math.random() * 0.40
+            });
+          }
+          for (let i = 0; i < 55; i++) {
+            const ang = (Math.random() - 0.5) * 0.9;
+            const spd = 280 + Math.random() * 520;
+            state.particles.push({
+              x: boss.x + (Math.random() - 0.5) * 65,
+              y: boss.y + (Math.random() - 0.5) * 110,
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd,
+              size: i % 2 === 0 ? 6 : 4,
+              color: i % 3 === 0 ? '#ffffff' : '#7df9ff',
+              life: 0.45 + Math.random() * 0.35
+            });
+          }
+        }
+        if (p3.bossObliterated) {
+          boss.x += 130 * dt;
+          boss.rotation += 0.85 * dt;
+          for (const sh of p3.bossShards || []) {
+            sh.x += sh.vx * dt;
+            sh.y += sh.vy * dt;
+            sh.vx *= 1 + dt * 0.9;
+            sh.age += dt;
+          }
+          if (p3.endingElapsed - p3.bossObliterateStart < 0.48) {
+            for (let s = 0; s < 3; s++) {
+              state.particles.push({
+                x: boss.x + (Math.random() - 0.5) * 70,
+                y: boss.y + (Math.random() - 0.5) * 120,
+                vx: 360 + Math.random() * 440,
+                vy: (Math.random() - 0.5) * 200,
+                size: 4 + Math.floor(Math.random() * 3) * 2,
+                color: s === 0 ? '#ffffff' : '#7df9ff',
+                life: 0.25 + Math.random() * 0.25
+              });
+            }
+          }
+        }
+      }
+      if (p3.endingElapsed >= p3.endingDuration) {
+        finishTier13Phase3(boss);
+      }
+      return;
+    }
+
+    p3.elapsed += dt;
+    p3.remaining = Math.max(0, p3.remaining - dt);
+    const ratio = p3.elapsed / p3.duration;
+    p3.spinRate = 20.0 + ratio * 12.0;
+    p3.spinAngle += p3.spinRate * dt;
+
+    // Berserk sky-blue boss violently trembles on right flank while aiming toward center star
+    boss.phaseX = (boss.phaseX || 0) + dt * 1.1;
+    boss.phaseY = (boss.phaseY || 0) + dt * 1.35;
+    boss.x = boss.homeX + 18 + Math.sin(boss.phaseX) * 14 + Math.sin(p3.elapsed * 38) * 1.6;
+    boss.y = boss.homeY + Math.sin(boss.phaseY) * 68;
+    boss.rotation = Math.atan2(p3.y - boss.y, p3.x - boss.x) + Math.PI / 2 + Math.sin(p3.elapsed * 30) * 0.025;
+    enforceRightThirdBound(boss);
+    boss.coreSpinSpeed = 24.0 + ratio * 12.0;
+
+    // Continuous sky-blue overdrive plasma sparks venting from Berserk Boss
+    p3.sparkTimer -= dt;
+    if (p3.sparkTimer <= 0) {
+      p3.sparkTimer = 0.065;
+      const a = Math.random() * Math.PI * 2;
+      const spd = 65 + Math.random() * 140;
+      const palette = ['#38f6ff', '#aef9ff', '#ffffff'];
+      state.particles.push({
+        x: boss.x + (Math.random() - 0.5) * 70,
+        y: boss.y + (Math.random() - 0.5) * 90,
+        vx: Math.cos(a) * spd,
+        vy: Math.sin(a) * spd,
+        size: Math.random() < 0.45 ? 5 : 3,
+        color: palette[Math.floor(Math.random() * palette.length)],
+        life: 0.25 + Math.random() * 0.25
+      });
+    }
+
+    // Rotating gravitational/magnetic field pull toward the spinning sphere (pull only, no movement slow)
+    const p = state.player;
+    if (p && p.hp > 0) {
+      const magPull = 125 + ratio * 75;
+      const dist = applyRadialForceToPlayer(p3.x, p3.y, magPull, dt, 54);
+      if (dist <= 44 + p.hitboxRadius) {
+        damagePlayer(2, 'NEUTRON STAR CORE');
+        applyRadialForceToPlayer(p3.x, p3.y, -2600 * Math.max(0.016, dt), 1);
+      }
+    }
+
+    // Fire Railgun-style Sky-Blue Magnetic Field Waves instead of lasers!
+    p3.laserTimer -= dt;
+    if (p3.laserTimer <= 0) {
+      const burstCount = ratio > 0.66
+        ? (Math.random() < 0.25 ? 3 : Math.random() < 0.55 ? 2 : 1)
+        : (Math.random() < 0.35 ? 2 : 1);
+      const playerAng = p ? Math.atan2(p.y - p3.y, p.x - p3.x) : Math.PI;
+      for (let b = 0; b < burstCount; b++) {
+        const isPrimary = b === 0 && Math.random() < 0.72;
+        const ang = isPrimary
+          ? playerAng + (Math.random() - 0.5) * 0.25
+          : Math.random() * Math.PI * 2;
+        const w = spawnPulsarLightLaser(p3, ang, isPrimary);
+        if (isPrimary) p3.magneticWave = w;
+      }
+      p3.laserTimer = (0.48 + Math.random() * 0.48) * (1 - ratio * 0.22);
+    }
+
+    const getRim = (ang) => ({ x: p3.x + Math.cos(ang) * 44, y: p3.y + Math.sin(ang) * 44 });
+    for (let i = p3.lightBeams.length - 1; i >= 0; i--) {
+      const wave = p3.lightBeams[i];
+      const alive = updateLinearRailgun(wave, () => getRim(wave.angle), p3, null, dt, {
+        turnRate: wave.trackPlayer ? 2.8 : 0,
+        initialHeadDist: 70,
+        headSpeed: 3800,
+        pulseLength: 460,
+        hitHalfThick: 24,
+        shakeDur: 0.20,
+        shakeMag: 5.0,
+        burstColor: '#38f6ff',
+        burstCount: 14,
+        onHitPlayer: (pl) => {
+          spawnExplosion(pl.x, pl.y, '#38f6ff', 18);
+          damagePlayer(CONFIG.LASER_DAMAGE, 'MAGNETIC WAVE');
+        }
+      });
+      wave.elapsed += dt;
+      wave.stage = wave.phase === 'CHARGE' ? 1 : wave.phase === 'LOCK_DANGER' ? 2 : 3;
+      if (!alive) {
+        if (p3.magneticWave === wave) p3.magneticWave = null;
+        p3.lightBeams.splice(i, 1);
+      }
+    }
+
+    if (p3.remaining <= 0) {
+      startTier13Phase3Ending(boss);
+    }
+  }
+
+  function renderTier13BerserkAura(boss) {
+    if (!boss || boss.tier !== 13 || !boss.tier13P3) return;
+    const t = boss.age || 0;
+    const pulse = (Math.sin(t * 14) + 1) / 2;
+    const spec = SPRITE_SPECS['bosses/Tier_13/Boss_Berserk.png'] || { size: [44, 56] };
+    const bx = Math.round(boss.x);
+    const by = Math.round(boss.y);
+    ctx.save();
+
+    // Pulsing sky-blue overdrive plasma halos
+    ctx.fillStyle = `rgba(0, 184, 255, ${(0.18 + pulse * 0.08).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(bx, by, 96 + pulse * 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(125, 249, 255, ${(0.20 + pulse * 0.08).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(bx, by, 72 + pulse * 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Expanding overdrive shockwave ring
+    const waveCyc = (t * 1.9) % 1;
+    ctx.strokeStyle = `rgba(125, 249, 255, ${((1 - waveCyc) * 0.65).toFixed(2)})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(bx, by, 68 + waveCyc * 54, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Rotating 8-point jagged overdrive crown behind boss
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(-t * 2.8);
+    ctx.strokeStyle = 'rgba(56, 246, 255, 0.72)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < 16; i++) {
+      const a = (i * Math.PI) / 8;
+      const r = i % 2 === 0 ? 104 : 74;
+      const px = Math.cos(a) * r;
+      const py = Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+
+    // Trembling cyan afterimage echoes
+    for (const [ox, oy] of [[-5, -3], [5, 3]]) {
+      ctx.save();
+      ctx.globalAlpha *= 0.22;
+      drawRotatedSprite('bosses/Tier_13/Boss_Berserk.png', boss.x + ox, boss.y + oy, spec.size, boss.scale, boss.rotation ?? -Math.PI / 2, false);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  function renderTier13BerserkLightning(boss) {
+    if (!boss || boss.tier !== 13 || !boss.tier13P3) return;
+    const tick = Math.floor((boss.age || 0) * 16);
+    const seedVal = (n) => Math.abs(Math.sin(n * 12.9898 + tick * 78.233) * 43758.5453) % 1;
+    const rot = boss.rotation ?? -Math.PI / 2;
+    const localPts = [
+      [{ x: -19, y: -11 }, { x: 0, y: 2.5 }, 1],
+      [{ x: 19, y: -11 }, { x: 0, y: 2.5 }, 2],
+      [{ x: -7.5, y: -26 }, { x: 0, y: -15 }, 3],
+      [{ x: 7.5, y: -26 }, { x: 0, y: -15 }, 4]
+    ];
+    ctx.save();
+    for (const [pA, pB, sid] of localPts) {
+      const a = {
+        x: boss.x + (pA.x * Math.cos(rot) - pA.y * Math.sin(rot)) * boss.scale,
+        y: boss.y + (pA.x * Math.sin(rot) + pA.y * Math.cos(rot)) * boss.scale
+      };
+      const b = {
+        x: boss.x + (pB.x * Math.cos(rot) - pB.y * Math.sin(rot)) * boss.scale,
+        y: boss.y + (pB.x * Math.sin(rot) + pB.y * Math.cos(rot)) * boss.scale
+      };
+      const pts = [a];
+      for (let s = 1; s <= 3; s++) {
+        const u = s / 4;
+        const jx = (seedVal(sid * 17 + s) - 0.5) * 16;
+        const jy = (seedVal(sid * 31 + s) - 0.5) * 16;
+        pts.push({ x: a.x + (b.x - a.x) * u + jx, y: a.y + (b.y - a.y) * u + jy });
+      }
+      pts.push(b);
+      ctx.strokeStyle = 'rgba(0, 184, 255, 0.85)';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      pts.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
+      ctx.stroke();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      pts.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function renderTier13BossObliteration(boss) {
+    const p3 = boss?.tier13P3;
+    if (!p3 || !p3.ending) return;
+    const berserkSpec = SPRITE_SPECS['bosses/Tier_13/Boss_Berserk.png'] || boss.spec;
+    const rot = boss.rotation ?? -Math.PI / 2;
+
+    if (!p3.bossObliterated) {
+      const flash = p3.endingElapsed > 0.55 && Math.floor(p3.endingElapsed * 24) % 2 === 0;
+      renderTier13BerserkAura(boss);
+      drawRotatedSprite('bosses/Tier_13/Boss_Berserk.png', boss.x, boss.y, berserkSpec.size, boss.scale, rot, flash);
+      renderTier13BossCoreGlare(boss);
+      renderTier13BerserkLightning(boss);
+      return;
+    }
+
+    const oblitU = Math.min(1, (p3.endingElapsed - p3.bossObliterateStart) / 0.48);
+    ctx.save();
+    if (oblitU < 0.96) {
+      const erodeX = boss.x - 84 + oblitU * 172;
+      // Expanding obliteration shockwave ring centered on the Boss
+      ctx.strokeStyle = `rgba(125, 249, 255, ${(Math.max(0, 1 - oblitU) * 0.92).toFixed(2)})`;
+      ctx.lineWidth = Math.max(2, 7 * (1 - oblitU));
+      ctx.beginPath();
+      ctx.arc(Math.round(boss.x), Math.round(boss.y), 36 + oblitU * 185, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // White-hot eroding silhouette swept away left-to-right by the blast
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(erodeX, boss.y - 110, 260, 220);
+      ctx.clip();
+      ctx.globalAlpha = Math.max(0, 1 - oblitU * 0.95);
+      drawRotatedSprite('bosses/Tier_13/Boss_Berserk.png', boss.x, boss.y, berserkSpec.size, boss.scale, rot, true);
+      ctx.restore();
+
+      // Luminous vaporization streaks peeling off the erosion boundary
+      for (let k = -5; k <= 5; k++) {
+        const sy = boss.y + k * 14 + Math.sin((p3.endingElapsed * 40) + k) * 4;
+        const streakW = 14 + ((Math.abs(k) * 7 + Math.floor(p3.endingElapsed * 30)) % 22);
+        ctx.fillStyle = k % 2 === 0 ? 'rgba(255, 255, 255, 0.92)' : 'rgba(56, 246, 255, 0.85)';
+        ctx.fillRect(Math.round(erodeX - 4), Math.round(sy - 2), streakW, 4);
+      }
+    }
+
+    // Blazing white/sky-blue shards blasted rightward as the Boss vaporizes
+    for (const sh of p3.bossShards || []) {
+      if (sh.age >= sh.life) continue;
+      const alpha = Math.max(0, 1 - sh.age / sh.life);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = sh.color;
+      ctx.fillRect(Math.round(sh.x - sh.w / 2), Math.round(sh.y - sh.h / 2), Math.round(sh.w), Math.round(sh.h));
+    }
+    ctx.restore();
+  }
+
+  function renderTier13Phase3(boss) {
+    const p3 = boss?.tier13P3;
+    if (!p3) return;
+    ctx.save();
+    const fadeOut = p3.ending ? Math.max(0, 1 - p3.endingElapsed / p3.endingDuration) : 1;
+    ctx.globalAlpha = fadeOut;
+
+    // Crackling sky-blue overdrive energy tethers arcing from Berserk Boss into center Neutron Star
+    if (!p3.bossObliterated) {
+      const bCore = getTier13BossCorePos(boss);
+      const tick = Math.floor(p3.elapsed * 18);
+      for (let tIdx = 0; tIdx < 2; tIdx++) {
+        ctx.save();
+        const midX = (bCore.x + p3.x) / 2;
+        const midY = (bCore.y + p3.y) / 2 + Math.sin(tick * 2.1 + tIdx * 3.1) * 32;
+        ctx.strokeStyle = tIdx === 0 ? 'rgba(56, 246, 255, 0.55)' : 'rgba(180, 251, 255, 0.45)';
+        ctx.lineWidth = tIdx === 0 ? 3 : 1.5;
+        ctx.beginPath();
+        ctx.moveTo(bCore.x, bCore.y);
+        ctx.quadraticCurveTo(midX, midY, p3.x, p3.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // Subtle circular pull ripples converging on the sphere (clean sphere aesthetic)
+    for (let i = 0; i < 2; i++) {
+      const cyc = ((p3.elapsed * 0.9) + i * 0.5) % 1;
+      const r = 135 - cyc * 88;
+      ctx.strokeStyle = `rgba(125, 249, 255, ${(cyc * 0.28).toFixed(2)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(p3.x, p3.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Railgun-style Sky-Blue Magnetic Field Waves (crescent pulse waves replacing laser bars!)
+    for (const wave of p3.lightBeams) {
+      const rimX = p3.x + Math.cos(wave.angle) * 44;
+      const rimY = p3.y + Math.sin(wave.angle) * 44;
+      const ox = wave.ox ?? rimX;
+      const oy = wave.oy ?? rimY;
+      const len = wave.length || 1200;
+      const ex = ox + Math.cos(wave.angle) * len;
+      const ey = oy + Math.sin(wave.angle) * len;
+
+      if (wave.phase === 'CHARGE') {
+        const prog = Math.min(1, wave.timer / wave.chargeDuration);
+        ctx.save();
+        ctx.strokeStyle = `rgba(56, 246, 255, ${(0.25 + prog * 0.45).toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.moveTo(ox, oy);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        for (let r = 0; r < 2; r++) {
+          const cyc = ((wave.age * 2.6) + r * 0.5) % 1;
+          ctx.strokeStyle = r === 0 ? 'rgba(125, 249, 255, 0.8)' : 'rgba(56, 246, 255, 0.75)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(ox, oy, 10 + (1 - cyc) * 24, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else if (wave.phase === 'LOCK_DANGER') {
+        const prog = Math.min(1, wave.timer / wave.lockDuration);
+        const blink = Math.floor(wave.age * 24) % 2 === 0;
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(wave.angle);
+        ctx.fillStyle = blink ? 'rgba(56, 246, 255, 0.22)' : 'rgba(0, 153, 204, 0.14)';
+        ctx.fillRect(0, -25, len, 50);
+        const railOff = 25 * (1 - prog * 0.72);
+        ctx.strokeStyle = blink ? '#ffffff' : '#38f6ff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -railOff);
+        ctx.lineTo(len, -railOff);
+        ctx.moveTo(0, railOff);
+        ctx.lineTo(len, railOff);
+        ctx.stroke();
+        // Animated sky-blue wave-front crescents ) ) ) down warning lane
+        ctx.strokeStyle = '#7df9ff';
+        ctx.lineWidth = 2;
+        const wStep = 64;
+        const wOff = (wave.age * 520) % wStep;
+        for (let wx = wOff; wx < Math.min(len, 1150); wx += wStep) {
+          ctx.beginPath();
+          ctx.arc(wx, 0, 14, -0.85, 0.85);
+          ctx.stroke();
+        }
+        ctx.restore();
+        if (wave.trackPlayer) {
+          const bx = ox + Math.cos(wave.angle) * 220;
+          const by = oy + Math.sin(wave.angle) * 220;
+          ctx.save();
+          ctx.fillStyle = blink ? '#00b4d8' : '#0077b6';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(bx, by - 18);
+          ctx.lineTo(bx + 15, by + 8);
+          ctx.lineTo(bx - 15, by + 8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('!', bx, by + 3);
+          ctx.fillText('! 자기장 파장 !', bx, by - 24);
+          ctx.restore();
+        }
+      } else if (wave.phase === 'FIRE') {
+        const headDist = wave.headDist || 120;
+        const tailStart = wave.tailDist ?? Math.max(0, headDist - 460);
+        const visEnd = wave.visEndDist ?? Math.min(len, headDist);
+        const segLen = visEnd - tailStart;
+        if (segLen <= 4) continue;
+        const exitFade = Math.min(1, segLen / 120);
+        // Optional subtle tiled crescent wave sheet along wave body (transparent wave ribbons!)
+        drawTiledBeamSheet('effects/Singularity_BlackHole/Magnetic_Wave_Beam_Sheet.png', wave.age * 22, 48, 32, ox + Math.cos(wave.angle) * tailStart, oy + Math.sin(wave.angle) * tailStart, wave.angle, Math.max(16, segLen), 2, Math.min(1, exitFade * 0.95));
+
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(wave.angle);
+        ctx.globalAlpha *= Math.min(1, exitFade * 1.1);
+
+        // 2 intertwining sky-blue sinusoidal wave ribbons trailing within active wave pulse [tailStart, visEnd]
+        for (const sgn of [-1, 1]) {
+          ctx.strokeStyle = sgn > 0 ? '#38f6ff' : '#80f8ff';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          for (let x = tailStart; x <= visEnd; x += 14) {
+            const wy = sgn * Math.sin(x * 0.055 - wave.age * 28) * 18;
+            if (x === tailStart) ctx.moveTo(x, wy);
+            else ctx.lineTo(x, wy);
+          }
+          ctx.stroke();
+        }
+
+        // Train of 5 crisp sky-blue crescent shockwave arcs ())) surging forward within active segment
+        for (let k = 0; k < 5; k++) {
+          const arcX = headDist - k * 65;
+          if (arcX < tailStart || arcX > visEnd + 16) continue;
+          const arcAlpha = Math.max(0.2, 1 - k * 0.16) * exitFade;
+          const arcR = 26 + k * 2;
+          ctx.strokeStyle = `rgba(0, 153, 204, ${(arcAlpha * 0.55).toFixed(2)})`;
+          ctx.lineWidth = 8;
+          ctx.beginPath();
+          ctx.arc(arcX - 24, 0, arcR, -0.78, 0.78);
+          ctx.stroke();
+
+          ctx.strokeStyle = `rgba(56, 246, 255, ${(arcAlpha * 0.95).toFixed(2)})`;
+          ctx.lineWidth = 4.5;
+          ctx.beginPath();
+          ctx.arc(arcX - 24, 0, arcR, -0.78, 0.78);
+          ctx.stroke();
+
+          ctx.strokeStyle = `rgba(255, 255, 255, ${(arcAlpha * 0.95).toFixed(2)})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(arcX - 23, 0, arcR, -0.58, 0.58);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    // Pure ultra-fast spinning Neutron Star Sphere (56x56 at 3x = 168x168px)
+    const starScale = p3.ending ? CONFIG.SHIP_SCALE * (1 + p3.endingElapsed * 1.1) : CONFIG.SHIP_SCALE;
+    const drawn = drawSpriteSheetFrame('effects/Singularity_BlackHole/Neutron_Star_Core_Sheet.png', p3.elapsed * 22, 56, 56, p3.x, p3.y, starScale, p3.spinAngle, fadeOut);
+    if (!drawn) {
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#7df9ff';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(p3.x, p3.y, 48, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Crisp high-speed circular motion blur arcs skimming the sphere perimeter
+    for (let k = 0; k < 3; k++) {
+      const a0 = p3.spinAngle * 1.3 + (k * Math.PI * 2) / 3;
+      ctx.strokeStyle = k === 0 ? 'rgba(255, 255, 255, 0.65)' : 'rgba(125, 249, 255, 0.50)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(p3.x, p3.y, 52 * (starScale / CONFIG.SHIP_SCALE), a0, a0 + 0.85);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function updateTier13Boss(boss, dt) {
+    boss.coreSpinAngle = (boss.coreSpinAngle || 0) + (boss.coreSpinSpeed || 3.6) * dt;
+    if (boss.gravityPulseTimer > 0) boss.gravityPulseTimer = Math.max(0, boss.gravityPulseTimer - dt);
+
+    if (boss.tier13P3) {
+      updateTier13Phase3(boss, dt);
+      return;
+    }
+
+    if (boss.gravityRailgun) {
+      updateTier13GravityRailgun(boss, dt);
+    }
+
+    if (boss.hp > 0 && !boss.phase2Triggered) {
+      checkAndTriggerBossPhase2(boss);
+    }
+
+    if (boss.phase2Triggered && boss.phase2Active) {
+      updateTier13Phase2(boss, dt);
+    } else {
+      boss.coreSpinSpeed = boss.gravityRailgun ? 11.0 : 3.6;
+      updateTier13Phase1(boss, dt);
+    }
+  }
+
+  // ============================================================================
   // 12. CONTINUOUS COLLISION DETECTION HELPERS
   // ============================================================================
   function distSqPointToSegment(px, py, ax, ay, bx, by) {
@@ -5133,6 +7535,16 @@
       for(let i=state.particles.length-1;i>=0;i--){const pt=state.particles[i];pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;pt.life-=dt;if(pt.life<=0)state.particles.splice(i,1);}
       return;
     }
+    if (state.singularityDeath) {
+      updateSingularityDeath(dt);
+      return;
+    }
+    if (state.supernovaWhiteout) {
+      state.supernovaWhiteout.elapsed += dt;
+      if (state.supernovaWhiteout.elapsed >= state.supernovaWhiteout.duration) {
+        state.supernovaWhiteout = null;
+      }
+    }
     if(state.errorHandDemo)state.errorHandDemo.age+=dt;
     updateErrorEffects(dt);
     advancePlayerSkills(dt);
@@ -5152,6 +7564,7 @@
       p.stunRemaining=Math.max(0,(p.stunRemaining || 0)-dt);
       p.electrocutionRemaining=Math.max(0,(p.electrocutionRemaining || 0)-dt);
       p.empRemaining=Math.max(0,(p.empRemaining || 0)-dt);
+      p.magneticSlowRemaining=Math.max(0,(p.magneticSlowRemaining || 0)-dt);
       if(p.empRemaining===0) p.empMap=null;
       let mx=0,my=0;
       const directions=[[-1,0],[1,0],[0,-1],[0,1]],map=p.empMap || [0,1,2,3];
@@ -5202,18 +7615,20 @@
         state.cumulativeWaveTime = (getStageNumber(state.currentTier) - 1) * CONFIG.WAVE_DURATION + progressRatio * CONFIG.WAVE_DURATION;
 
         state.enemySpawnTimer -= dt;
-        const maxConcurrent = 2 * (3 + Math.floor(state.currentTier / 3)); // Double wave population: 6..10 regular enemies
+        const maxConcurrent = state.currentTier === 13 ? 8 : 2 * (3 + Math.floor(state.currentTier / 3)); // Tier 13 balanced cap: 8, other tiers: 6..10
         if (state.currentTier!==11 && state.enemySpawnTimer <= 0 && state.enemies.filter((e) => !e.retreating).length < maxConcurrent) {
           spawnWaveEnemy(state.currentTier);
-          state.enemySpawnTimer = 0.5 * (1.65 - state.currentTier * 0.06) * (0.85 + Math.random() * 0.35);
+          state.enemySpawnTimer = state.currentTier === 13
+            ? 0.95 * (0.85 + Math.random() * 0.35)
+            : 0.5 * (1.65 - state.currentTier * 0.06) * (0.85 + Math.random() * 0.35);
         }
       }
     }
 
-    // 4. Time-based Meteor Spawning (paused during Tier 08 Ultimate, Phase 2, & Phase 3)
+    // 4. Time-based Meteor Spawning (paused during Tier 08 Ultimate, Phase 2, & Phase 3, and Tier 13 Singularity Boss)
     const isTier8Ult = state.boss && state.boss.tier === 8 &&
       (state.boss.laserMode === 'ULTIMATE' || state.boss.phase2Active || state.boss.tier8P3);
-    if (!isTier8Ult && !state.boss?.errorP3) {
+    if (!isTier8Ult && !state.boss?.errorP3 && state.boss?.tier !== 13) {
       state.meteorSpawnTimer -= dt;
       if (state.meteorSpawnTimer <= 0) {
         scheduleMeteorWarning();
@@ -5231,11 +7646,32 @@
       }
     }
 
-    // 5. Update Meteors (continuous collision check)
+    // 5. Update Meteors (continuous collision check + Tier 13 single gravitational course deflection)
     for (let i = state.meteors.length - 1; i >= 0; i--) {
       const m = state.meteors[i];
       m.prevX = m.x;
       m.prevY = m.y;
+      m.age = (m.age || 0) + dt;
+      if (m.isPurpleGravity) {
+        if (m.bendFlashTimer > 0) m.bendFlashTimer = Math.max(0, m.bendFlashTimer - dt);
+        if (!m.hasBent && p && m.age >= (m.bendDelay ?? 0.55) && m.x < CONFIG.CANVAS_WIDTH - 60) {
+          bendPurpleMeteorTowardPlayer(m);
+        }
+        if (m.bendTurnRemaining > 0 && m.bendTargetAngle !== null) {
+          const stepFrac = Math.min(1, dt / Math.max(dt, m.bendTurnRemaining));
+          const curAng = Math.atan2(m.vy, m.vx);
+          let diff = m.bendTargetAngle - curAng;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          const nextAng = curAng + diff * stepFrac;
+          const curSpd = Math.hypot(m.vx, m.vy) || 240;
+          const tgtSpd = m.bendTargetSpeed || curSpd;
+          const nextSpd = curSpd + (tgtSpd - curSpd) * stepFrac;
+          m.vx = Math.cos(nextAng) * nextSpd;
+          m.vy = Math.sin(nextAng) * nextSpd;
+          m.bendTurnRemaining = Math.max(0, m.bendTurnRemaining - dt);
+        }
+      }
       m.x += m.vx * dt;
       m.y += m.vy * dt;
       m.rotation += m.rotSpeed * dt;
@@ -5243,14 +7679,14 @@
       if (p) {
         const hitR = m.radius + p.hitboxRadius;
         if (distSqPointToSegment(p.x, p.y, m.prevX, m.prevY, m.x, m.y) <= hitR * hitR) {
-          damagePlayer(CONFIG.METEOR_DAMAGE, 'METEOR');
-          spawnExplosion(m.x, m.y, '#ff9b3d', 18);
+          damagePlayer(CONFIG.METEOR_DAMAGE, m.isPurpleGravity ? 'GRAVITY METEOR' : 'METEOR');
+          spawnExplosion(m.x, m.y, m.isPurpleGravity ? '#d500f9' : '#ff9b3d', 18);
           state.meteors.splice(i, 1);
           continue;
         }
       }
 
-      if (m.x < -m.radius-60 || m.y < -m.radius-60 || m.y > CONFIG.CANVAS_HEIGHT + m.radius+60) {
+      if (m.x < -m.radius-60 || (m.age > 0.6 && m.x > CONFIG.CANVAS_WIDTH + m.radius + 90) || m.y < -m.radius-60 || m.y > CONFIG.CANVAS_HEIGHT + m.radius+60) {
         state.meteors.splice(i, 1);
       }
     }
@@ -5287,6 +7723,9 @@
       }
 
       if (updateEnemySpecial(e, dt)) continue;
+      if (e.miniRailgun) {
+        updateEnemyMiniRailgun(e, dt);
+      }
       if (e.tier === 5 && e.enemyIdx >= 3 && !e.entering) {
         e.specialCooldown -= dt;
         if (e.specialCooldown <= 0) { startEnemyDash(e); continue; }
@@ -5297,10 +7736,19 @@
           e.x = e.homeX;
           e.entering = false;
         }
-      } else {
+      } else if (!e.miniRailgun || e.miniRailgun.phase === 'CHARGE') {
+        const moveDt = e.miniRailgun ? dt * 0.25 : dt;
         const targetX = e.homeX + Math.sin(e.age * e.moveFreqX + e.phaseOffset) * e.moveAmpX;
         const targetY = e.homeY + Math.cos(e.age * e.moveFreqY + e.phaseOffset) * e.moveAmpY;
-        moveEnemyToward(e, targetX, targetY, 160, dt);
+        moveEnemyToward(e, targetX, targetY, 160, moveDt);
+      } else {
+        // Recover rotation back toward left facing after firing mini railgun when done
+      }
+      if (!e.miniRailgun && e.tier === 13 && e.rotation !== undefined && e.rotation !== -Math.PI / 2) {
+        let diff = (-Math.PI / 2) - e.rotation;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        e.rotation += diff * Math.min(1, dt * 7);
       }
 
       enforceRightThirdBound(e);
@@ -5310,12 +7758,16 @@
         state.telemetry.minEnemyLeftEdgeObserved = b.left;
       }
 
-      e.fireCooldown -= dt;
-      if (!e.entering && e.fireCooldown <= 0) {
-        fireEnemyPattern(e);
-        e.fireInterval = e.tier === 7 && e.enemyIdx >= 3
-          ? 4 + Math.random() * 2 : computeEnemyFireInterval(e.tier, e.enemyIdx);
-        e.fireCooldown = e.fireInterval;
+      if (e.castAnimTimer > 0) e.castAnimTimer = Math.max(0, e.castAnimTimer - dt);
+
+      if (!e.miniRailgun) {
+        e.fireCooldown -= dt;
+        if (!e.entering && e.fireCooldown <= 0) {
+          fireEnemyPattern(e);
+          e.fireInterval = e.tier === 7 && e.enemyIdx >= 3
+            ? 4 + Math.random() * 2 : computeEnemyFireInterval(e.tier, e.enemyIdx);
+          e.fireCooldown = e.fireInterval;
+        }
       }
     }
 
@@ -5544,12 +7996,24 @@
     updateElectricVolleys(dt);
     updateElectricSweeps(dt);
     updateEmpWaves(dt);
+    updateMicroBlackHoles(dt);
 
     // 13. Update Enemy Bullets & Player Collision
     for (let i = state.enemyBullets.length - 1; i >= 0; i--) {
       const eb = state.enemyBullets[i];
+      eb.age = (eb.age || 0) + dt;
       eb.x += eb.vx * dt;
       eb.y += eb.vy * dt;
+
+      if (p && p.hp > 0 && eb.gravityPullRadius > 0 && eb.gravityPullStrength > 0) {
+        const dx = eb.x - p.x;
+        const dy = eb.y - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1 && dist < eb.gravityPullRadius) {
+          const factor = 1 - dist / eb.gravityPullRadius;
+          applyRadialForceToPlayer(eb.x, eb.y, factor * eb.gravityPullStrength, dt);
+        }
+      }
 
       if (p && checkBulletHitsPlayer(eb, p)) {
         damagePlayer(CONFIG.ENEMY_BULLET_DAMAGE, 'BULLET', eb.stunDuration || 0, eb.electrocutionColor || null);
@@ -5642,6 +8106,7 @@
     }
 
     if(boss.kind==='TIER_BOSS' && boss.tier===12) {updateErrorBoss(boss,dt);return;}
+    if(boss.kind==='TIER_BOSS' && boss.tier===13) {updateTier13Boss(boss,dt);return;}
 
     if(boss.kind==='TIER_BOSS' && boss.tier===10) {
       boss.empFlashTimer=Math.max(0,(boss.empFlashTimer || 0)-dt);
@@ -6329,6 +8794,7 @@
     if (!boss || boss.hp<=0 || boss.entering || boss.defeatedHandled || boss.dyingTimer>0) return false;
     if(boss.kind==='CHAIN_BOSS' && !boss.combat)return false;
     if(boss.tier===12 && (boss.errorP3 || boss.errorBlink?.phase==='SHIFT'))return false;
+    if (boss.tier === 13 && boss.tier13P3) return false;
     if (['OFFSCREEN','P2_WARN','P2_WAIT'].includes(boss.dashState)) return false;
     if (boss.tier===8 && (boss.phase2Active || (boss.tier8P3 && !boss.tier8P3Complete))) return false;
     if (boss.tier===7 && boss.phase2Triggered && !state.lasers.some(l=>l.id===boss.p2ActiveBeamId && l.stage===3)) return false;
@@ -6606,12 +9072,16 @@
       if(!boss.tier8P3)enterTier8Phase3(boss);
       return;
     }
+    if(boss.tier===13 && !boss.tier13P3Complete && (boss.tier13P3 || boss.hp<=0)) {
+      if(!boss.tier13P3)enterTier13Phase3(boss);
+      return;
+    }
     boss.defeatedHandled = true;
 
-    // Fleet Boss (tier 8) and Error Boss (tier 12) heal 2 HP; other bosses heal 1 HP without changing maximum HP.
+    // Fleet Boss (tier 8), Error Boss (tier 12), and Singularity Boss (tier 13) heal 2 HP; other bosses heal 1 HP.
     if (state.player && state.player.hp > 0) {
       const p = state.player;
-      const healAmount = (boss.tier === 8 || boss.tier === 12) ? 2 : 1;
+      const healAmount = (boss.tier === 8 || boss.tier === 12 || boss.tier === 13) ? 2 : 1;
       const healed = Math.min(healAmount, p.maxHp - p.hp);
       p.hp += healed;
       if (healed) state.floatingTexts.push({ text: `+${healed} HP`, x: p.x, y: p.y - 36,
@@ -6778,7 +9248,7 @@
   const ctx = canvas.getContext('2d', { alpha: false });
 
   // T12: a bullet-driven signal-corruption encounter. Nodes own their echo one-to-one.
-  function isPlayerSectorRestricted() {return state.currentTier!==11 && state.boss?.kind!=='CHAIN_BOSS' && !state.boss?.tier8P3;}
+  function isPlayerSectorRestricted() {return state.currentTier!==11 && state.boss?.kind!=='CHAIN_BOSS' && !state.boss?.tier8P3 && !state.boss?.tier13P3;}
 
   function isErrorAttackContext() {
     return isErrorBossCombat() || (state.currentTier===12 && ['WAVE','TEST'].includes(state.phase));
@@ -7452,6 +9922,15 @@
     if (state.boss && state.boss.tier === 8 && state.boss.tier8P3) {
       renderTier8Phase3Overlay(state.boss);
     }
+    if (state.boss && state.boss.tier === 13 && state.boss.singularityCore) {
+      renderTier13SingularityCore(state.boss);
+    }
+    if (state.boss && state.boss.tier === 13 && state.boss.tier13P3) {
+      renderTier13Phase3(state.boss);
+    }
+    if (state.microBlackHoles.length > 0) {
+      renderMicroBlackHoles();
+    }
 
     // 3b. Render Tier 06 Phase 2 Full-Map Random Explosion Warnings
     for (const wave of state.globalBlastWaves) {
@@ -7476,6 +9955,16 @@
     }
 
     for (const m of state.meteors) {
+      if (m.isPurpleGravity && m.bendFlashTimer > 0) {
+        const pRatio = m.bendFlashTimer / 0.45;
+        ctx.save();
+        ctx.strokeStyle = `rgba(213, 0, 249, ${(pRatio * 0.78).toFixed(2)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(Math.round(m.x), Math.round(m.y), m.radius + (1 - pRatio) * 18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
       drawRotatedSprite(m.path, m.x, m.y, m.spec.size, m.scale, m.rotation, false);
       if (state.debugShowHitboxes) {
         ctx.strokeStyle = '#ff9b3d';
@@ -7535,16 +10024,18 @@
       renderEnemySpecialWarning(e);
       if (e.specialState === 'FLYBY_WARN') continue;
       const movingSpecial = ['FLYBY', 'DASH', 'SUICIDE_APPROACH'].includes(e.specialState);
-      const rotation = movingSpecial ? e.specialAngle + Math.PI / 2 : -Math.PI / 2;
+      const rotation = e.miniRailgun ? (e.rotation ?? -Math.PI / 2) : (movingSpecial ? e.specialAngle + Math.PI / 2 : (e.rotation ?? -Math.PI / 2));
       if(e.glitch)renderErrorSpriteFringe(e.path,e.x,e.y,e.spec.size,e.scale,rotation,true);
       drawRotatedSprite(e.path, e.x, e.y, e.spec.size, e.scale, rotation,
         e.hitFlash > 0 || (e.specialState === 'SUICIDE_ARM' && Math.floor(e.specialTimer * 16) % 2 === 0));
+      if (e.miniRailgun) renderEnemyMiniRailgun(e);
+      if (e.tier === 13) renderTier13MinionAttackFx(e);
       if(e.glitch)renderErrorEnemyArtifacts(e,rotation);
       if (e.isTier8Phase2Raider && e.isWeakRaider) {
         ctx.save(); ctx.fillStyle='#ffe366'; ctx.font='bold 12px monospace'; ctx.textAlign='center';
         ctx.fillText('Lv1',Math.round(e.x),Math.round(e.y-32)); ctx.restore();
       }
-      if (!e.entering && !e.retreating && !e.isTier8Phase2Raider && e.fireCooldown < 0.32) {
+      if (!e.entering && !e.retreating && !e.isTier8Phase2Raider && e.tier !== 13 && e.fireCooldown < 0.32) {
         const muzzles = getWorldMuzzles(e.x, e.y, e.spec, false, e.scale);
         ctx.save();
         ctx.fillStyle = '#ffe366';
@@ -7595,19 +10086,45 @@
         }
         if(b.errorP3?.ending)ctx.globalAlpha=Math.max(0,1-b.errorP3.ending/1.4);
         if(b.glitch)renderErrorSpriteFringe(b.path,b.x,b.y,b.spec.size,b.scale,b.rotation ?? -Math.PI/2,b.tier===12);
-        drawRotatedSprite(
-          b.path,
-          b.x,
-          b.y,
-          b.spec.size,
-          b.scale,
-          b.rotation ?? -Math.PI / 2,
-          b.hitFlash > 0,
-          b.tier === 8 && b.tier8P3 ? getTier8CrippledBossSprite() : null
-        );
-        if (b.tier === 8 && b.tier8P3) renderTier8BossGlare(b);
+        if (b.tier === 13 && b.tier13P3) {
+          if (b.tier13P3.ending) {
+            renderTier13BossObliteration(b);
+          } else {
+            const berserkSpec = SPRITE_SPECS['bosses/Tier_13/Boss_Berserk.png'] || b.spec;
+            renderTier13BerserkAura(b);
+            drawRotatedSprite(
+              'bosses/Tier_13/Boss_Berserk.png',
+              b.x,
+              b.y,
+              berserkSpec.size,
+              b.scale,
+              b.rotation ?? -Math.PI / 2,
+              b.hitFlash > 0
+            );
+            renderTier13BossCoreGlare(b);
+            renderTier13BerserkLightning(b);
+          }
+        } else {
+          drawRotatedSprite(
+            b.path,
+            b.x,
+            b.y,
+            b.spec.size,
+            b.scale,
+            b.rotation ?? -Math.PI / 2,
+            b.hitFlash > 0,
+            b.tier === 8 && b.tier8P3
+              ? getTier8CrippledBossSprite()
+              : (b.tier === 13 && isTier13WhiteHoleActive(b) ? getTier13WhiteHoleBossSprite() : null)
+          );
+          if (b.tier === 8 && b.tier8P3) renderTier8BossGlare(b);
+          if (b.tier === 13) renderTier13BossCoreGlare(b);
+        }
         if(b.tier===12)renderErrorEnemyArtifacts(b,b.rotation ?? -Math.PI/2);
         ctx.restore();
+      }
+      if (b.tier === 13 && b.gravityRailgun) {
+        renderTier13GravityRailgun(b);
       }
 
       if (b.tier===8 && b.phase2Active) {
@@ -7681,8 +10198,8 @@
       ctx.restore();
     }
 
-    // 13. Render Player (captured player is layered inside the gripping hand).
-    if (state.player && !state.boss?.errorP3?.capture) {
+    // 13. Render Player (captured player is layered inside the gripping hand; singularityDeath animates suck-in/blast).
+    if (state.player && !state.boss?.errorP3?.capture && !state.singularityDeath) {
       const p = state.player;
       if(p.skills.shield.remaining>0) {
         const bounds=getRotatedBounds(p.x,p.y,p.spec,true,p.scale);
@@ -7714,9 +10231,36 @@
         ctx.stroke();
       }
     }
+    if (state.singularityDeath) {
+      renderSingularityDeath();
+    }
 
     // 14. Render Enemy Bullets
     for (const eb of state.enemyBullets) {
+      if (eb.gravityPullRadius > 0) {
+        const cyc = ((eb.age || 0) * 1.8) % 1;
+        const r = 10 + (1 - cyc) * (eb.gravityPullRadius * 0.38);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(213, 0, 249, 0.16)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 6]);
+        ctx.beginPath();
+        ctx.arc(Math.round(eb.x), Math.round(eb.y), eb.gravityPullRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = `rgba(255, 128, 252, ${(cyc * 0.45).toFixed(2)})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(Math.round(eb.x), Math.round(eb.y), r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (eb.sheetPath) {
+        const [sw, sh] = eb.sheetSize || [9, 9];
+        const rot = eb.sheetPath.includes('Crescent') ? eb.angle : (eb.age || 0) * 3.8;
+        const drawn = drawSpriteSheetFrame(eb.sheetPath, (eb.age || 0) * (eb.sheetFps || 12), sw, sh, eb.x, eb.y, eb.scale || CONFIG.BULLET_SCALE, rot);
+        if (drawn) continue;
+      }
       const rot = eb.shape === 'Needle' ? eb.angle : 0;
       const errorPath=eb.glitch?`bullets/Colors/${errorColorName(eb.x*0.013+eb.y*0.007)}/${eb.shape==='Needle'?'Needle':'Orb'}.png`:eb.path;
       if(eb.glitch)renderErrorSpriteFringe(errorPath,eb.x,eb.y,eb.size,eb.scale,rot,eb.errorPower>1);
@@ -7772,6 +10316,95 @@
     // 16. Render Pixel UI (Top-left Player HP, Top-center Timer, Top-center 64x32 Boss Health Bar)
     renderPixelUI();
     renderErrorCorruptionHUD();
+    renderSupernovaWhiteout();
+  }
+
+  function renderSupernovaWhiteout() {
+    const p3 = state.boss?.tier13P3;
+    if (p3?.ending) {
+      const t = p3.endingElapsed;
+      ctx.save();
+      if (t < 0.72) {
+        const u = t / 0.72;
+        const pulse = (Math.sin(t * 36) + 1) / 2;
+        ctx.fillStyle = `rgba(180, 252, 255, ${(0.14 + u * 0.28 + pulse * 0.1).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(p3.x, p3.y, 68 + u * 58, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 255, 255, ${(0.45 + u * 0.45).toFixed(2)})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p3.x, p3.y, Math.max(14, 155 * (1 - u * 0.82)), 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        const blastProg = Math.min(1, (t - 0.72) / 0.85);
+        const blastR = 48 + Math.pow(blastProg, 1.15) * 1450;
+        const coreR = 45 + Math.pow(blastProg, 1.6) * 520;
+
+        // Expanding blazing cyan-white supernova shockwave ring hitting the Boss first
+        ctx.strokeStyle = `rgba(125, 249, 255, ${(Math.max(0.25, 1 - blastProg * 0.45) * 0.92).toFixed(2)})`;
+        ctx.lineWidth = Math.max(6, 26 * (1 - blastProg * 0.55));
+        ctx.beginPath();
+        ctx.arc(p3.x, p3.y, blastR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${(Math.max(0.3, 1 - blastProg * 0.4) * 0.95).toFixed(2)})`;
+        ctx.lineWidth = Math.max(3, 12 * (1 - blastProg * 0.5));
+        ctx.beginPath();
+        ctx.arc(p3.x, p3.y, blastR * 0.97, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(p3.x, p3.y);
+        ctx.rotate(t * 2.4);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.86)';
+        const rayLen = 140 + blastProg * 950;
+        const rayHalfW = 12 + blastProg * 68;
+        for (let k = 0; k < 8; k++) {
+          ctx.rotate(Math.PI / 4);
+          ctx.beginPath();
+          ctx.moveTo(-rayHalfW, 0);
+          ctx.lineTo(0, -rayLen);
+          ctx.lineTo(rayHalfW, 0);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // Blinding cyan-white supernova core expansion
+        ctx.fillStyle = 'rgba(160, 250, 255, 0.65)';
+        ctx.beginPath();
+        ctx.arc(p3.x, p3.y, coreR * 1.18, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+        ctx.beginPath();
+        ctx.arc(p3.x, p3.y, coreR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Keep white glare mild until Boss vaporization completes (t=1.40s), then surge to solid whiteout!
+        const whiteAlpha = t < 1.40
+          ? blastProg * 0.35
+          : Math.min(1, 0.35 + ((t - 1.40) / 0.45) * 0.65);
+        ctx.fillStyle = `rgba(255, 255, 255, ${whiteAlpha.toFixed(3)})`;
+        ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+      }
+      ctx.restore();
+      return;
+    }
+
+    if (state.supernovaWhiteout) {
+      const sw = state.supernovaWhiteout;
+      const alpha = sw.elapsed <= sw.hold
+        ? 1
+        : Math.max(0, 1 - (sw.elapsed - sw.hold) / Math.max(0.01, sw.fade));
+      if (alpha > 0.005) {
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(3)})`;
+        ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+        ctx.restore();
+      }
+    }
   }
 
   function renderFinalBossPresence(boss) {
@@ -8646,16 +11279,19 @@
         ctx.drawImage(emptyImg, barX, barY, barW, barH);
       }
 
-      const ratio = state.boss.tier === 8 && state.boss.tier8P3
-        ? Math.max(0, Math.min(1, state.boss.tier8P3.remaining / state.boss.tier8P3.duration))
+      const p3State = state.boss.tier === 8 ? state.boss.tier8P3 : (state.boss.tier === 13 ? state.boss.tier13P3 : null);
+      const ratio = p3State
+        ? Math.max(0, Math.min(1, p3State.remaining / p3State.duration))
         : Math.max(0, Math.min(1, health.hp / health.maxHp));
       const fillRect = CONFIG.BOSS_FILL_RECT;
       const isTier8P3 = state.boss.tier === 8 && state.boss.tier8P3;
-      const fillNativeW = (isTier8P3 ? state.boss.tier8P3.remaining > 0 : health.hp > 0) ? Math.max(1, Math.round(fillRect.width * ratio)) : 0;
+      const isTier13P3 = state.boss.tier === 13 && state.boss.tier13P3;
+      const isSurvivalP3 = !!(isTier8P3 || isTier13P3);
+      const fillNativeW = (isSurvivalP3 ? p3State.remaining > 0 : health.hp > 0) ? Math.max(1, Math.round(fillRect.width * ratio)) : 0;
 
       if (fillImg && fillNativeW > 0) {
-        if (isTier8P3) {
-          ctx.fillStyle = '#ff263d';
+        if (isSurvivalP3) {
+          ctx.fillStyle = isTier13P3 ? '#7df9ff' : '#ff263d';
           ctx.fillRect(
             barX + fillRect.x * barScale,
             barY + fillRect.y * barScale,
@@ -8677,12 +11313,18 @@
       if (frameImg) {
         ctx.drawImage(frameImg, barX, barY, barW, barH);
       }
-      if (isTier8P3) {
+      if (isSurvivalP3) {
         ctx.save();
         ctx.textAlign = 'center';
-        ctx.fillStyle = state.boss.tier8P3.remaining <= 10 ? '#ff6278' : '#ffb8c2';
+        ctx.fillStyle = isTier13P3
+          ? (p3State.remaining <= 10 ? '#ff80fc' : '#b8faff')
+          : (p3State.remaining <= 10 ? '#ff6278' : '#ffb8c2');
         ctx.font = 'bold 13px monospace';
-        ctx.fillText(`FINAL SURVIVAL · ${state.boss.tier8P3.remaining.toFixed(1)}s`, barX + barW / 2, barY + barH - 6);
+        ctx.fillText(
+          isTier13P3 ? `BERSERK NEUTRON PULSAR · ${p3State.remaining.toFixed(1)}s` : `FINAL SURVIVAL · ${p3State.remaining.toFixed(1)}s`,
+          barX + barW / 2,
+          barY + barH - 6
+        );
         ctx.restore();
       }
       if(handBars) {
@@ -8709,7 +11351,13 @@
       } else if (state.phase === 'TEST') {
         stageEl.textContent = `TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} PATTERN TEST`;
       } else if (state.phase === 'BOSS') {
-        stageEl.textContent = state.boss?.kind==='CHAIN_BOSS' ? (state.boss.campaign?'TIER 09 · CHAIN BOSS':'CHAIN BOSS · PROTOTYPE') : (state.boss?.tier===8&&state.boss?.tier8P3?'TIER 11 FINAL SURVIVAL':`TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} BOSS`);
+        stageEl.textContent = state.boss?.kind==='CHAIN_BOSS'
+          ? (state.boss.campaign?'TIER 09 · CHAIN BOSS':'CHAIN BOSS · PROTOTYPE')
+          : (state.boss?.tier===8&&state.boss?.tier8P3
+            ? 'TIER 11 FINAL SURVIVAL'
+            : (state.boss?.tier===13&&state.boss?.tier13P3
+              ? 'TIER 13 BERSERK NEUTRON STAR'
+              : `TIER ${String(getStageNumber(state.currentTier)).padStart(2,'0')} BOSS`));
       } else if (state.phase === 'FINAL_SHADOW') {
         stageEl.textContent = 'FINAL BOSS (SHADOW)';
       } else if (state.phase === 'FINAL_REVEALED') {
@@ -8918,6 +11566,7 @@
           if (tier === 6) { enemy.hp = 0; beginEnemySuicide(enemy); }
           if (tier === 5 && stage >= 3) enemy.specialCooldown = 0.5;
           if (tier === 7 && stage >= 3) enemy.fireCooldown = 0.5 + stage * 0.2;
+          if (tier === 13) { enemy.x = enemy.homeX = 1040; enemy.y = enemy.homeY = 120 + (stage - 1) * 165; enemy.fireCooldown = 0.25 + stage * 0.1; }
         }
       }
     } else if (action === 'jump-tier') {
@@ -9057,14 +11706,38 @@
       const b=state.boss?.kind==='CHAIN_BOSS'&&!state.boss.phase2Triggered?state.boss:startChainBoss({combat:true,campaign:true,skipEntrance:true});
       b.combat=true;b.entering=false;b.pathState='ROAM';state.phase='BOSS';b.hp=b.maxHp*0.4;
       beginChainPhase2(b);updateHudBadges();
-    } else if (['trigger-b5-p2', 'trigger-b6-p2', 'trigger-b7-p2', 'trigger-b8-p2', 'trigger-electric-p2', 'trigger-error-p2'].includes(action)) {
+    } else if (action === 'trigger-b13-railgun') {
+      hideRewardModal();
+      hideOverlay();
+      state.mode = 'PLAYING';
+      state.currentTier = 13;
+      state.cumulativeWaveTime = getStageNumber(13) * CONFIG.WAVE_DURATION;
+      if (!state.boss || state.boss.tier !== 13 || state.boss.tier13P3) startTierBoss(13);
+      state.boss.entering = false;
+      state.boss.x = state.boss.homeX;
+      fireTier13GravityRailgun(state.boss);
+      updateHudBadges();
+    } else if (action === 'trigger-b13-p3' || action === 'trigger-b13-magwave') {
+      hideRewardModal();
+      hideOverlay();
+      state.mode = 'PLAYING';
+      state.currentTier = 13;
+      state.cumulativeWaveTime = getStageNumber(13) * CONFIG.WAVE_DURATION;
+      if (!state.boss || state.boss.tier !== 13) startTierBoss(13);
+      state.boss.entering = false;
+      state.boss.x = state.boss.homeX;
+      if (!state.boss.tier13P3) enterTier13Phase3(state.boss);
+      if (action === 'trigger-b13-magwave') fireTier13MagneticWave(state.boss);
+      updateHudBadges();
+    } else if (['trigger-b5-p2', 'trigger-b6-p2', 'trigger-b7-p2', 'trigger-b8-p2', 'trigger-electric-p2', 'trigger-error-p2', 'trigger-b13-p2'].includes(action)) {
       const tierMap = {
         'trigger-b5-p2': 5,
         'trigger-b6-p2': 6,
         'trigger-b7-p2': 7,
         'trigger-b8-p2': 8,
         'trigger-electric-p2': 9,
-        'trigger-error-p2': 12
+        'trigger-error-p2': 12,
+        'trigger-b13-p2': 13
       };
       const tier = tierMap[action];
       hideRewardModal();
@@ -9108,6 +11781,7 @@
       if (state.boss) {
         if(state.boss.errorP3) {state.boss.errorP3.age=Math.max(6,state.boss.errorP3.age);for(const h of state.boss.errorP3.hands)window.ErrorPhase3.hit(state.boss.errorP3,h,h.maxHp);}
         else if (state.boss.tier8P3) { state.boss.tier8P3.remaining = 0; finishTier8Phase3(state.boss); }
+        else if (state.boss.tier13P3) { state.boss.tier13P3.remaining = 0; finishTier13Phase3(state.boss); }
         else {state.boss.hp = 0;handleBossDefeated();}
       }
     } else if (action === 'toggle-invincible') {
@@ -9293,6 +11967,28 @@
     openRewardSelection,
     applyRewardChoice,
     handleBossDefeated,
+    initTier13Boss,
+    fireTier13MinionPattern,
+    fireEnemyMiniRailgun,
+    spawnMicroBlackHole,
+    spawnPurpleGravityMeteor,
+    bendPurpleMeteorTowardPlayer,
+    triggerTier13GravityWave,
+    fireTier13GravityRailgun,
+    fireTier13MagneticWave,
+    enterTier13Phase2,
+    startTier13Phase2Cycle,
+    killPlayerBySingularity,
+    enterTier13Phase3,
+    startTier13Phase3Ending,
+    finishTier13Phase3,
+    getTier13BossCorePos,
+    getTier13RailgunMuzzle,
+    getLoadedSheetInfo,
+    recolorTier13PurpleToLightSkyPixels,
+    getTier13WhiteHoleBossSprite,
+    isTier13WhiteHoleActive,
+    computeEnemyFireInterval,
     step: (dt) => {
       updateGame(dt);
       renderGame();
@@ -9362,7 +12058,20 @@
     } else if (params.get('reward')) {
       const rt = Number(params.get('reward')) || 2;
       openRewardSelection(rt);
+    } else if (params.get('tier13Wave') === '1') {
+      state.phase = 'WAVE';
+      state.currentTier = 13;
+      for (let i = 1; i <= 4; i++) {
+        const e = spawnWaveEnemy(13, { enemyIdx: i });
+        e.entering = false;
+        e.x = e.homeX = 1040;
+        e.y = e.homeY = 120 + (i - 1) * 165;
+        e.fireCooldown = 0.25 + i * 0.1;
+      }
+      const secs = Math.max(0, Math.min(10, Number(params.get('simSeconds')) || 0));
+      for (let i = 0; i < secs * 25; i++) updateGame(0.04);
     } else if (params.get('phase') === 'boss') {
+      if (params.get('inv') === '1') state.debugInvincible = true;
       const t = getPatternTier(Number(params.get('tier')) || 1);
       state.currentTier = t;
       state.cumulativeWaveTime = getStageNumber(t) * CONFIG.WAVE_DURATION;
@@ -9370,6 +12079,12 @@
       state.boss.entering = false;
       if(state.boss.kind!=='CHAIN_BOSS')state.boss.x = state.boss.homeX;
       if(params.get('p3')==='1' && t===12) {enterErrorPhase3(state.boss);state.player.x=CONFIG.CANVAS_WIDTH/2;}
+      if(params.get('p3')==='1' && t===13) {
+        enterTier13Phase3(state.boss);
+        if(params.get('magWave')==='1')fireTier13MagneticWave(state.boss);
+        if(params.get('p3End')==='1')startTier13Phase3Ending(state.boss);
+      }
+      if(params.get('railgun')==='1' && t===13) {fireTier13GravityRailgun(state.boss);}
       if(params.get('handAttack') && t===12)previewErrorHandAttack(params.get('handAttack'));
       if(params.get('errorPulse')==='1' && t===12) {beginErrorWave(state.boss);}
       if(params.get('emp')==='1' && t===10) state.boss.empCooldown=0.25;
@@ -9378,6 +12093,19 @@
       if (params.get('p2') === '1' && CONFIG.BOSS_PHASE2_THRESHOLDS[t]) {
         state.boss.hp = Math.max(1, Math.floor(state.boss.maxHp * CONFIG.BOSS_PHASE2_THRESHOLDS[t]));
         checkAndTriggerBossPhase2(state.boss);
+        if (t === 13 && params.get('whiteHole') === '1' && state.boss.singularityCore) {
+          state.boss.singularityCore.phase = 'WHITE_HOLE';
+          state.boss.singularityCore.timer = 0.2;
+          state.boss.singularityCore.shotTimer = 0.2;
+        }
+        if (t === 13 && params.get('suckDemo') === '1' && state.boss.singularityCore) {
+          state.boss.singularityCore.phase = 'BLACK_HOLE';
+          state.boss.singularityCore.timer = 1.0;
+          state.debugInvincible = false;
+          state.player.x = state.boss.singularityCore.x - 42;
+          state.player.y = state.boss.singularityCore.y;
+          killPlayerBySingularity(state.boss.singularityCore);
+        }
       }
       if (params.get('ult') === '1' && t === 8) {
         startTier8UltimateLasers(state.boss);
